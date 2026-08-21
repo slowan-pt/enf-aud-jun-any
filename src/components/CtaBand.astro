@@ -1,0 +1,119 @@
+---
+import Icon from './Icon.astro';
+import { waLink } from '../data/site';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  text?: string;
+  primaryLabel?: string;
+  primaryHref?: string;
+  whatsappMessage?: string;
+}
+
+const { company, whatsapp } = Astro.locals.settings;
+const {
+  eyebrow,
+  title,
+  text,
+  primaryLabel = 'Solicitar uma apresentação',
+  primaryHref = '/contato',
+  whatsappMessage = whatsapp.defaultMessage,
+} = Astro.props;
+---
+
+<section class="cta-band">
+  <div class="container">
+    <div class="cta-band__inner" data-reveal>
+      <div class="cta-band__text">
+        {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+        <h2 class="title-md">{title}</h2>
+        {text && <p>{text}</p>}
+      </div>
+      <div class="cta-band__actions">
+        <a href={primaryHref} class="btn btn--on-brand btn--lg">
+          {primaryLabel}
+          <Icon name="arrow-right" size={18} class="icon--arrow" />
+        </a>
+        <a
+          href={waLink(whatsapp.number, whatsappMessage)}
+          class="btn btn--outline-on-brand btn--lg"
+          target="_blank"
+          rel="noopener"
+        >
+          <Icon name="whatsapp" size={18} />
+          {company.phoneDisplay}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cta-band {
+    padding-block: var(--section-y-sm);
+    background: var(--c-white);
+  }
+
+  .cta-band__inner {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: var(--sp-6);
+    align-items: center;
+    padding: clamp(1.75rem, 4vw, 3.25rem);
+    border-radius: var(--r-xl);
+    background:
+      radial-gradient(120% 130% at 100% 0%, rgba(18, 167, 148, 0.28), transparent 55%),
+      linear-gradient(120deg, var(--c-brand-900), var(--c-brand-700));
+    color: var(--text-on-brand);
+    box-shadow: var(--shadow-lg);
+  }
+
+  @media (min-width: 900px) {
+    .cta-band__inner {
+      grid-template-columns: 1.15fr auto;
+      gap: var(--sp-10);
+    }
+  }
+
+  .cta-band__inner::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    bottom: -90px;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    pointer-events: none;
+  }
+
+  .cta-band__text h2 {
+    color: #fff;
+  }
+
+  .cta-band__text .eyebrow {
+    color: var(--c-accent-300);
+  }
+
+  .cta-band__text p {
+    margin-top: var(--sp-3);
+    color: rgba(234, 243, 251, 0.82);
+    font-size: var(--fs-md);
+    max-width: 52ch;
+  }
+
+  .cta-band__actions {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  @media (max-width: 559px) {
+    .cta-band__actions .btn {
+      width: 100%;
+    }
+  }
+</style>

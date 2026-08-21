@@ -1,0 +1,907 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import EloDiagram from '../components/EloDiagram.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import ServiceCard from '../components/ServiceCard.astro';
+import PostCard from '../components/PostCard.astro';
+import CtaBand from '../components/CtaBand.astro';
+import ContactForm from '../components/ContactForm.astro';
+
+import { publishedOnly as publishedServicesOnly, findBySlug } from '../lib/services';
+import { publishedOnly as publishedPostsOnly } from '../lib/posts';
+import { waLink } from '../data/site';
+import { getDB } from '../lib/db';
+import { getHomeContent } from '../lib/pages';
+
+const { company, whatsapp } = Astro.locals.settings;
+const db = getDB();
+const publishedServices = publishedServicesOnly(Astro.locals.services);
+const {
+  hero,
+  valueProposition,
+  elo,
+  benefits,
+  howWeWork,
+  missionVisionValues,
+  clientSegments,
+  finalCta,
+} = await getHomeContent(db);
+const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
+const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
+const qualificacao = findBySlug(publishedServices, 'qualificacao-da-rede-prestadora')!;
+const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
+---
+
+<BaseLayout
+  description="Essencial Saúde Auditoria: auditoria concorrente, auditoria de contas hospitalares, gestão da jornada do paciente e gestão hospitalar, com foco na segurança do paciente e na sustentabilidade do sistema. Brasília - DF."
+  path="/"
+>
+  <!-- ==================================================== HERO -->
+  <section class="hero">
+    <div class="hero__bg" aria-hidden="true"></div>
+    <div class="container hero__inner">
+      <div class="hero__text">
+        <p class="eyebrow">{hero.eyebrow}</p>
+        <h1 class="title-xl">
+          {hero.title}
+          <span class="hero__highlight">{hero.titleHighlight}</span>
+        </h1>
+        <p class="hero__lead">{hero.lead}</p>
+        <div class="cluster hero__actions">
+          <a href={hero.primaryCta.href} class="btn btn--on-brand btn--lg">
+            {hero.primaryCta.label}
+            <Icon name="arrow-right" size={18} class="icon--arrow" />
+          </a>
+          <a href={hero.secondaryCta.href} class="btn btn--outline-on-brand btn--lg">
+            {hero.secondaryCta.label}
+          </a>
+        </div>
+        <ul class="hero__pillars">
+          {
+            hero.pillars.map((pillar) => (
+              <li>
+                <Icon name="check" size={15} />
+                {pillar}
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="hero__media">
+        <img
+          src={hero.image}
+          alt={hero.imageAlt}
+          width="1200"
+          height="900"
+          fetchpriority="high"
+          decoding="async"
+        />
+        <div class="hero__card">
+          <span class="hero__card-icon"><Icon name="heart-pulse" size={22} /></span>
+          <div>
+            <strong>Paciente no centro</strong>
+            <span>Cada decisão técnica começa pelo que é mais seguro para quem é cuidado.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================== PROPOSTA DE VALOR -->
+  <section class="section">
+    <div class="container split split--wide-text">
+      <div data-reveal>
+        <p class="eyebrow">{valueProposition.eyebrow}</p>
+        <h2 class="title-lg">{valueProposition.title}</h2>
+        <p class="lead" style="margin-top: var(--sp-4)">{valueProposition.text}</p>
+        <div class="value-points">
+          {
+            valueProposition.points.map((point) => (
+              <div class="value-point">
+                <span class="icon-badge icon-badge--sm">
+                  <Icon name={point.icon} size={20} />
+                </span>
+                <div>
+                  <h3>{point.title}</h3>
+                  <p>{point.text}</p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+      <div class="media-frame" data-reveal>
+        <figure class="figure">
+          <img
+            src={valueProposition.image}
+            alt={valueProposition.imageAlt}
+            width="1200"
+            height="900"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ ELO / MODELO -->
+  <section class="section section--brand elo-section">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{elo.eyebrow}</p>
+        <h2 class="title-lg">{elo.title}</h2>
+        <p class="lead">{elo.text}</p>
+      </div>
+      <div data-reveal>
+        <EloDiagram elo={elo} />
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================== SERVIÇOS -->
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Nossos serviços</p>
+        <h2 class="title-lg">Soluções técnicas para cada ponto da cadeia assistencial</h2>
+        <p class="lead">
+          Da avaliação durante a internação à qualificação da rede prestadora, com a mesma base
+          metodológica e a mesma exigência de evidência.
+        </p>
+      </div>
+      <div class="grid grid--3">
+        {publishedServices.map((service) => <ServiceCard service={service} />)}
+      </div>
+      <div class="text-center" style="margin-top: var(--sp-8)">
+        <a href="/servicos" class="btn btn--secondary">
+          Ver todos os serviços
+          <Icon name="arrow-right" size={16} class="icon--arrow" />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================== AUDITORIA CONCORRENTE -->
+  <section class="section">
+    <div class="container split split--media-first">
+      <div class="media-frame" data-reveal>
+        <figure class="figure">
+          <img
+            src={concorrente.image}
+            alt={concorrente.imageAlt}
+            width="1200"
+            height="900"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      </div>
+      <div data-reveal>
+        <p class="eyebrow">Serviço em destaque</p>
+        <h2 class="title-lg">{concorrente.name}</h2>
+        <p class="lead" style="margin-top: var(--sp-4)">{concorrente.summary}</p>
+        <ul class="check-list" style="margin-top: var(--sp-6)">
+          {
+            concorrente.highlights.map((item) => (
+              <li>
+                <Icon name="check-circle" size={18} />
+                <span>
+                  <strong>{item.title}.</strong> {item.text}
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+        <div class="cluster" style="margin-top: var(--sp-8)">
+          <a href={`/servicos/${concorrente.slug}`} class="btn">
+            Conhecer o serviço
+            <Icon name="arrow-right" size={16} class="icon--arrow" />
+          </a>
+          <a
+            href={waLink(whatsapp.number, concorrente.whatsappMessage)}
+            class="btn btn--secondary"
+            target="_blank"
+            rel="noopener"
+          >
+            <Icon name="whatsapp" size={16} />
+            Falar sobre auditoria concorrente
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ GESTÃO HOSPITALAR -->
+  <section class="section section--brand-soft">
+    <div class="container split">
+      <div data-reveal>
+        <p class="eyebrow">Além da conferência de contas</p>
+        <h2 class="title-lg">{gestao.name}</h2>
+        <p class="lead" style="margin-top: var(--sp-4)">{gestao.summary}</p>
+        <div class="mini-grid">
+          {
+            gestao.highlights.map((item) => (
+              <div class="mini-card">
+                <span class="icon-badge icon-badge--accent icon-badge--sm">
+                  <Icon name={item.icon} size={18} />
+                </span>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </div>
+            ))
+          }
+        </div>
+        <a href={`/servicos/${gestao.slug}`} class="btn" style="margin-top: var(--sp-6)">
+          Conhecer gestão hospitalar
+          <Icon name="arrow-right" size={16} class="icon--arrow" />
+        </a>
+      </div>
+      <div class="media-frame" data-reveal>
+        <figure class="figure">
+          <img
+            src={gestao.image}
+            alt={gestao.imageAlt}
+            width="1200"
+            height="900"
+            loading="lazy"
+            decoding="async"
+          />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================== BENEFÍCIOS -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">{benefits.eyebrow}</p>
+        <h2 class="title-lg">{benefits.title}</h2>
+        <p class="lead">{benefits.text}</p>
+      </div>
+      <div class="grid grid--3">
+        {
+          benefits.items.map((item) => (
+            <article class="card benefit" data-reveal>
+              <span class="icon-badge icon-badge--accent">
+                <Icon name={item.icon} size={22} />
+              </span>
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ COMO ATUAMOS -->
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">{howWeWork.eyebrow}</p>
+        <h2 class="title-lg">{howWeWork.title}</h2>
+        <p class="lead">{howWeWork.text}</p>
+      </div>
+      <ProcessSteps steps={howWeWork.steps} />
+    </div>
+  </section>
+
+  <!-- ======================================== QUALIFICAÇÃO DA REDE -->
+  <section class="section">
+    <div class="container">
+      <div class="net-band" data-reveal>
+        <div class="net-band__text">
+          <p class="eyebrow">Rede prestadora</p>
+          <h2 class="title-md">{qualificacao.name}</h2>
+          <p>{qualificacao.summary}</p>
+          <a
+            href={`/servicos/${qualificacao.slug}`}
+            class="link-arrow"
+            style="margin-top: var(--sp-4)"
+          >
+            Ver como qualificamos a rede
+            <Icon name="arrow-right" size={16} />
+          </a>
+        </div>
+        <ul class="net-band__list">
+          {
+            qualificacao.highlights.map((item) => (
+              <li>
+                <span class="icon-badge icon-badge--sm">
+                  <Icon name={item.icon} size={18} />
+                </span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.text}</span>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================== MISSÃO, VISÃO E VALORES -->
+  <section class="section section--brand">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{missionVisionValues.eyebrow}</p>
+        <h2 class="title-lg">{missionVisionValues.title}</h2>
+      </div>
+
+      <div class="mvv" data-reveal>
+        {
+          [missionVisionValues.mission, missionVisionValues.vision].map((item) => (
+            <article class="mvv__card">
+              <span class="icon-badge icon-badge--on-brand">
+                <Icon name={item.icon} size={22} />
+              </span>
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="values" data-reveal>
+        {
+          missionVisionValues.values.map((value) => (
+            <article class="value">
+              <span class="value__icon">
+                <Icon name={value.icon} size={20} />
+              </span>
+              <h3>{value.title}</h3>
+              <p>{value.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ PARA QUEM -->
+  <section class="section section--tight">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-md">{clientSegments.title}</h2>
+      </div>
+      <ul class="audience" data-reveal>
+        {
+          clientSegments.items.map((item) => (
+            <li>
+              <Icon name={item.icon} size={20} />
+              {item.label}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================== CONTEÚDOS -->
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head section-head--split" data-reveal>
+        <div>
+          <p class="eyebrow">Conteúdos</p>
+          <h2 class="title-lg">Publicações técnicas da nossa equipe</h2>
+        </div>
+        <a href="/conteudos" class="btn btn--secondary btn--sm">
+          Ver todos
+          <Icon name="arrow-right" size={16} class="icon--arrow" />
+        </a>
+      </div>
+      <div class="grid grid--3">
+        {latestPosts.map((post) => <PostCard post={post} />)}
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================== CTA FINAL -->
+  <CtaBand
+    eyebrow={finalCta.eyebrow}
+    title={finalCta.title}
+    text={finalCta.text}
+    primaryLabel={finalCta.primary.label}
+    primaryHref={finalCta.primary.href}
+  />
+
+  <!-- ================================================= FORMULÁRIO -->
+  <section class="section section--tight" id="contato">
+    <div class="container split split--wide-text">
+      <div data-reveal>
+        <p class="eyebrow">Contato</p>
+        <h2 class="title-lg">Solicite uma apresentação</h2>
+        <p class="lead" style="margin-top: var(--sp-4)">
+          Preencha o formulário e nossa equipe retornará com uma proposta de conversa técnica.
+          Se preferir, fale diretamente pelos canais abaixo.
+        </p>
+
+        <ul class="contact-list">
+          <li>
+            <span class="icon-badge icon-badge--sm"><Icon name="whatsapp" size={18} /></span>
+            <div>
+              <strong>WhatsApp e telefone</strong>
+              <a
+                href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+                target="_blank"
+                rel="noopener"
+              >
+                {company.phoneDisplay}
+              </a>
+            </div>
+          </li>
+          <li>
+            <span class="icon-badge icon-badge--sm"><Icon name="mail" size={18} /></span>
+            <div>
+              <strong>E-mail</strong>
+              <a href={`mailto:${company.email}`}>{company.email}</a>
+            </div>
+          </li>
+          <li>
+            <span class="icon-badge icon-badge--sm"><Icon name="map-pin" size={18} /></span>
+            <div>
+              <strong>Endereço</strong>
+              <address>
+                {company.address.line1}, {company.address.line2}<br />
+                {company.address.district} — {company.address.city} - {company.address.state},
+                CEP {company.address.zip}
+              </address>
+            </div>
+          </li>
+          <li>
+            <span class="icon-badge icon-badge--sm"><Icon name="clock" size={18} /></span>
+            <div>
+              <strong>Atendimento</strong>
+              <span>{company.hours}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div data-reveal>
+        <ContactForm
+          variant="commercial"
+          id="form-home"
+          title="Fale com um especialista"
+          description="Retornamos por e-mail ou WhatsApp, conforme sua preferência."
+          origin="Home"
+        />
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ---------------------------------------------------------- hero */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--c-brand-900);
+    color: var(--text-on-brand);
+    padding-block: clamp(3rem, 7vw, 6rem);
+  }
+
+  .hero__bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(90% 80% at 85% 5%, rgba(18, 167, 148, 0.3), transparent 55%),
+      radial-gradient(80% 70% at 5% 95%, rgba(47, 142, 205, 0.32), transparent 60%);
+  }
+
+  .hero__inner {
+    position: relative;
+    display: grid;
+    gap: clamp(2.5rem, 5vw, 4rem);
+    align-items: center;
+  }
+
+  @media (min-width: 980px) {
+    .hero__inner {
+      grid-template-columns: 1.08fr 0.92fr;
+    }
+  }
+
+  .hero h1 {
+    color: #fff;
+  }
+
+  .hero .eyebrow {
+    color: var(--c-accent-300);
+  }
+
+  .hero__highlight {
+    display: block;
+    color: var(--c-accent-300);
+  }
+
+  .hero__lead {
+    margin-top: var(--sp-5);
+    font-size: var(--fs-lg);
+    color: rgba(234, 243, 251, 0.84);
+    max-width: 44ch;
+  }
+
+  .hero__actions {
+    margin-top: var(--sp-8);
+  }
+
+  @media (max-width: 480px) {
+    .hero__actions .btn {
+      width: 100%;
+    }
+  }
+
+  .hero__pillars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3) var(--sp-6);
+    list-style: none;
+    margin: var(--sp-8) 0 0;
+    padding: var(--sp-5) 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .hero__pillars li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.02em;
+    color: rgba(234, 243, 251, 0.8);
+  }
+
+  .hero__pillars :global(.icon) {
+    color: var(--c-accent-300);
+  }
+
+  .hero__media {
+    position: relative;
+  }
+
+  .hero__media img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--r-xl);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .hero__card {
+    position: absolute;
+    left: clamp(-0.5rem, 2vw, -2rem);
+    bottom: clamp(-1rem, -1vw, -0.5rem);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    width: min(330px, 86%);
+    padding: var(--sp-4);
+    background: var(--c-white);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .hero__card strong {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--c-brand-900);
+  }
+
+  .hero__card span {
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    color: var(--c-ink-600);
+  }
+
+  .hero__card-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: var(--r-sm);
+    background: var(--c-accent-50);
+    color: var(--c-accent-600);
+  }
+
+  @media (max-width: 640px) {
+    .hero__card {
+      position: static;
+      width: 100%;
+      margin-top: var(--sp-4);
+    }
+  }
+
+  /* ------------------------------------------------ proposta valor */
+  .value-points {
+    display: grid;
+    gap: var(--sp-5);
+    margin-top: var(--sp-8);
+  }
+
+  @media (min-width: 600px) {
+    .value-points {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .value-point {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-3);
+    align-items: start;
+  }
+
+  .value-point h3 {
+    font-size: var(--fs-base);
+    margin-bottom: 0.25rem;
+  }
+
+  .value-point p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  /* ------------------------------------------------ gestão hospitalar */
+  .mini-grid {
+    display: grid;
+    gap: var(--sp-4);
+    margin-top: var(--sp-6);
+  }
+
+  @media (min-width: 560px) {
+    .mini-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .mini-card {
+    padding: var(--sp-4);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .mini-card h3 {
+    font-size: var(--fs-sm);
+    margin: var(--sp-3) 0 0.25rem;
+  }
+
+  .mini-card p {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  /* -------------------------------------------------- qualificação */
+  .net-band {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid var(--line);
+    border-radius: var(--r-xl);
+    background: linear-gradient(140deg, var(--c-ink-50), var(--c-white));
+  }
+
+  @media (min-width: 900px) {
+    .net-band {
+      grid-template-columns: 0.9fr 1.1fr;
+      align-items: center;
+    }
+  }
+
+  .net-band__text p {
+    margin-top: var(--sp-3);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
+
+  .net-band__list {
+    display: grid;
+    gap: var(--sp-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 620px) {
+    .net-band__list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .net-band__list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-3);
+    align-items: start;
+  }
+
+  .net-band__list strong {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--text-strong);
+    margin-bottom: 0.15rem;
+  }
+
+  .net-band__list span {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  /* --------------------------------------------------------- MVV */
+  .mvv {
+    display: grid;
+    gap: var(--sp-5);
+    margin-bottom: var(--sp-10);
+  }
+
+  @media (min-width: 760px) {
+    .mvv {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .mvv__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: clamp(1.35rem, 2.5vw, 2rem);
+    border-radius: var(--r-lg);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .mvv__card h3 {
+    font-size: var(--fs-xl);
+  }
+
+  .mvv__card p {
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
+
+  .values {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  @media (min-width: 620px) {
+    .values {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .values {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .value {
+    padding-top: var(--sp-4);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .value__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--r-sm);
+    background: rgba(18, 167, 148, 0.18);
+    color: var(--c-accent-300);
+    margin-bottom: var(--sp-3);
+  }
+
+  .value h3 {
+    font-size: var(--fs-base);
+    margin-bottom: 0.35rem;
+  }
+
+  .value p {
+    font-size: var(--fs-xs);
+    line-height: var(--lh-relaxed);
+  }
+
+  /* ----------------------------------------------------- audiência */
+  .audience {
+    display: grid;
+    gap: var(--sp-3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 600px) {
+    .audience {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 940px) {
+    .audience {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .audience li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-white);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-strong);
+  }
+
+  .audience :global(.icon) {
+    color: var(--c-brand-500);
+  }
+
+  /* ------------------------------------------------------- diversos */
+  .section-head--split {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    max-width: none;
+  }
+
+  .benefit {
+    gap: var(--sp-3);
+  }
+
+  .contact-list {
+    display: grid;
+    gap: var(--sp-5);
+    list-style: none;
+    margin: var(--sp-8) 0 0;
+    padding: 0;
+  }
+
+  .contact-list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-3);
+    align-items: start;
+  }
+
+  .contact-list strong {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--text-strong);
+    margin-bottom: 0.15rem;
+  }
+
+  .contact-list a,
+  .contact-list span,
+  .contact-list address {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    font-style: normal;
+    line-height: var(--lh-relaxed);
+    text-decoration: none;
+  }
+
+  .contact-list a:hover {
+    color: var(--c-brand-600);
+    text-decoration: underline;
+  }
+</style>

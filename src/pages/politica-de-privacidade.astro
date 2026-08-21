@@ -1,0 +1,194 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+
+const { company } = Astro.locals.settings;
+
+const updatedAt = '20 de agosto de 2026';
+---
+
+<BaseLayout
+  title="Política de Privacidade"
+  description="Política de Privacidade da Essencial Saúde Auditoria: como tratamos dados pessoais coletados neste site, base legal, finalidades, retenção e direitos do titular (LGPD)."
+  path="/politica-de-privacidade"
+>
+  <PageHero
+    eyebrow="Documento legal"
+    title="Política de Privacidade"
+    lead={`Como a ${company.name} trata os dados pessoais coletados neste site, em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018).`}
+    crumbs={[{ label: 'Política de Privacidade' }]}
+  />
+
+  <section class="section">
+    <div class="container container--narrow">
+      <p class="note">
+        <Icon name="info" size={16} />
+        <span>
+          Documento em versão preliminar (Etapa 1), redigido como base técnica. Antes da
+          publicação em produção deve ser revisado pelo responsável jurídico da
+          {company.name}. Última atualização: {updatedAt}.
+        </span>
+      </p>
+
+      <div class="prose policy">
+        <h2>1. Quem é o controlador dos dados</h2>
+        <p>
+          O controlador dos dados pessoais tratados neste site é a <strong
+            >{company.name}</strong
+          >, estabelecida em {company.address.line1}, {company.address.line2},
+          {company.address.district}, {company.address.city} - {company.address.state}, CEP
+          {' '}{company.address.zip}. Contato para assuntos de privacidade:
+          {' '}<a href={`mailto:${company.email}`}>{company.email}</a>.
+        </p>
+
+        <h2>2. Quais dados coletamos</h2>
+        <p>Coletamos apenas os dados necessários para responder ao seu contato:</p>
+        <ul>
+          <li>
+            <strong>Dados fornecidos por você</strong> nos formulários do site: nome, empresa ou organização,
+            cargo, e-mail, telefone/WhatsApp, tipo de organização, serviço de interesse, assunto e
+            mensagem.
+          </li>
+          <li>
+            <strong>Dados técnicos de navegação</strong> gerados automaticamente, como endereço IP,
+            data e hora do acesso, páginas visitadas e informações do dispositivo/navegador, utilizados
+            para segurança, prevenção a abusos e estatísticas agregadas.
+          </li>
+          <li>
+            <strong>Registro da origem do contato</strong>, isto é, a página do site a partir da
+            qual a mensagem foi enviada.
+          </li>
+        </ul>
+
+        <h2>3. Dados que não devem ser enviados</h2>
+        <p>
+          Este site é institucional. <strong
+            >Não solicitamos dados clínicos, prontuários, diagnósticos ou qualquer informação de
+            saúde de pacientes</strong
+          > por meio dos formulários ou dos canais de contato aqui divulgados. Pedimos que esse tipo
+          de informação não seja enviado por estes canais.
+        </p>
+
+        <h2>4. Para que utilizamos seus dados</h2>
+        <ul>
+          <li>Responder à solicitação enviada e dar seguimento ao contato comercial;</li>
+          <li>Elaborar e apresentar propostas de serviços;</li>
+          <li>Manter o histórico do relacionamento com sua organização;</li>
+          <li>Garantir a segurança do site e prevenir uso abusivo dos formulários;</li>
+          <li>Cumprir obrigações legais e regulatórias aplicáveis.</li>
+        </ul>
+
+        <h2>5. Base legal do tratamento</h2>
+        <p>O tratamento é realizado com fundamento nas seguintes hipóteses da LGPD:</p>
+        <ul>
+          <li>
+            <strong>Consentimento</strong> (art. 7º, I), manifestado no envio do formulário;
+          </li>
+          <li>
+            <strong>Procedimentos preliminares relacionados a contrato</strong> (art. 7º, V), quando
+            o contato tem finalidade comercial;
+          </li>
+          <li>
+            <strong>Legítimo interesse</strong> (art. 7º, IX), para segurança da informação e prevenção
+            a fraudes, sempre respeitados os seus direitos e liberdades;
+          </li>
+          <li>
+            <strong>Cumprimento de obrigação legal</strong> (art. 7º, II), quando aplicável.
+          </li>
+        </ul>
+
+        <h2>6. Compartilhamento</h2>
+        <p>
+          Não vendemos e não cedemos dados pessoais. O compartilhamento ocorre apenas quando
+          necessário, com: prestadores de infraestrutura tecnológica que hospedam e protegem o
+          site; e autoridades públicas, mediante requisição legal. Fornecedores atuam como
+          operadores, sob instrução da {company.name} e com obrigação de confidencialidade.
+        </p>
+
+        <h2>7. Cookies e tecnologias semelhantes</h2>
+        <p>
+          Utilizamos apenas o estritamente necessário ao funcionamento e à segurança do site.
+          Caso, futuramente, sejam adotadas ferramentas de medição de audiência, esta política
+          será atualizada e será exibido aviso adequado para coleta de consentimento.
+        </p>
+
+        <h2>8. Por quanto tempo mantemos os dados</h2>
+        <p>
+          Os dados de contato são mantidos pelo tempo necessário ao atendimento da solicitação e
+          à manutenção do relacionamento comercial, ou pelo prazo exigido por obrigação legal.
+          Encerrada a finalidade, os dados são eliminados ou anonimizados.
+        </p>
+
+        <h2>9. Segurança da informação</h2>
+        <p>
+          Adotamos medidas técnicas e administrativas para proteger os dados contra acesso não
+          autorizado, perda, alteração e divulgação indevida — incluindo comunicação
+          criptografada (HTTPS), controle de acesso administrativo, registro de operações
+          relevantes e validação de dados recebidos pelos formulários.
+        </p>
+
+        <h2>10. Seus direitos como titular</h2>
+        <p>Nos termos do art. 18 da LGPD, você pode solicitar:</p>
+        <ul>
+          <li>Confirmação da existência de tratamento e acesso aos dados;</li>
+          <li>Correção de dados incompletos, inexatos ou desatualizados;</li>
+          <li>Anonimização, bloqueio ou eliminação de dados desnecessários ou excessivos;</li>
+          <li>Portabilidade, nos termos da regulamentação aplicável;</li>
+          <li>Eliminação dos dados tratados com base no consentimento;</li>
+          <li>Informação sobre compartilhamentos realizados;</li>
+          <li>Revogação do consentimento a qualquer momento.</li>
+        </ul>
+        <p>
+          As solicitações podem ser enviadas para
+          {' '}<a href={`mailto:${company.email}`}>{company.email}</a>, e serão respondidas nos
+          prazos previstos em lei.
+        </p>
+
+        <h2>11. Links para sites de terceiros</h2>
+        <p>
+          Este site pode conter links para serviços de terceiros (por exemplo, WhatsApp ou redes
+          sociais). O tratamento de dados realizado nesses serviços segue as políticas de
+          privacidade de seus respectivos responsáveis.
+        </p>
+
+        <h2>12. Alterações desta política</h2>
+        <p>
+          Esta política pode ser atualizada para refletir mudanças legais, técnicas ou de
+          processo. A data da última atualização é sempre indicada no início do documento.
+        </p>
+
+        <h2>13. Contato</h2>
+        <p>
+          Dúvidas sobre esta política ou sobre o tratamento dos seus dados podem ser enviadas
+          para <a href={`mailto:${company.email}`}>{company.email}</a> ou pelo telefone
+          {' '}{company.phoneDisplay}.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .note {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-3);
+    align-items: start;
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-8);
+    border-radius: var(--r-md);
+    background: var(--c-warning-100);
+    color: var(--c-warning-600);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-relaxed);
+  }
+
+  .policy {
+    max-width: none;
+  }
+
+  .policy h2 {
+    font-size: var(--fs-lg);
+  }
+</style>

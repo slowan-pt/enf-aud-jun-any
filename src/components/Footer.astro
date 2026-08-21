@@ -1,0 +1,304 @@
+---
+import Logo from './Logo.astro';
+import Icon from './Icon.astro';
+import { footerLinks, waLink } from '../data/site';
+import { publishedOnly } from '../lib/services';
+import { publishedOnly as publishedPostsOnly } from '../lib/posts';
+
+const { company, whatsapp, social } = Astro.locals.settings;
+const publishedServices = publishedOnly(Astro.locals.services);
+const year = new Date().getFullYear();
+const latest = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
+const activeSocial = social.filter((s) => s.enabled);
+---
+
+<footer class="footer">
+  <div class="container footer__top">
+    <div class="footer__brand">
+      <Logo variant="inverse" />
+      <p class="footer__about">
+        Empresa especializada em gestão e auditoria em saúde, atuando como elo técnico entre
+        fontes pagadoras, prestadores e beneficiários, com foco na segurança do paciente e na
+        sustentabilidade do sistema.
+      </p>
+      <a
+        href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+        class="btn btn--accent btn--sm"
+        target="_blank"
+        rel="noopener"
+      >
+        <Icon name="whatsapp" size={16} />
+        Falar no WhatsApp
+      </a>
+      {
+        activeSocial.length > 0 && (
+          <ul class="footer__social">
+            {activeSocial.map((item) => (
+              <li>
+                <a href={item.href} aria-label={item.label} target="_blank" rel="noopener">
+                  <Icon name={item.icon} size={18} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+
+    <nav class="footer__col" aria-label="Serviços">
+      <h2 class="footer__title">Serviços</h2>
+      <ul class="footer__list">
+        {
+          publishedServices.map((service) => (
+            <li>
+              <a href={`/servicos/${service.slug}`}>{service.name}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <nav class="footer__col" aria-label="Links rápidos">
+      <h2 class="footer__title">Links rápidos</h2>
+      <ul class="footer__list">
+        {
+          footerLinks.institucional.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <h2 class="footer__title footer__title--spaced">Conteúdos recentes</h2>
+      <ul class="footer__list footer__list--posts">
+        {
+          latest.map((post) => (
+            <li>
+              <a href={`/conteudos/${post.slug}`}>{post.title}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="footer__col">
+      <h2 class="footer__title">Contato</h2>
+      <ul class="footer__contact">
+        <li>
+          <Icon name="whatsapp" size={18} />
+          <a
+            href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+            target="_blank"
+            rel="noopener"
+          >
+            {company.phoneDisplay}
+          </a>
+        </li>
+        <li>
+          <Icon name="mail" size={18} />
+          <a href={`mailto:${company.email}`}>{company.email}</a>
+        </li>
+        <li>
+          <Icon name="map-pin" size={18} />
+          <address>
+            {company.address.line1}<br />
+            {company.address.line2}<br />
+            {company.address.district} — {company.address.city} - {company.address.state}<br />
+            CEP {company.address.zip}
+          </address>
+        </li>
+        <li>
+          <Icon name="clock" size={18} />
+          <span>{company.hours}</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer__bottom">
+    <div class="container footer__bottom-inner">
+      <p>© {year} {company.name}. Todos os direitos reservados.</p>
+      <ul class="footer__legal">
+        <li><a href="/politica-de-privacidade">Política de Privacidade</a></li>
+        <li><a href="/contato">Contato</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--c-brand-950);
+    color: rgba(234, 243, 251, 0.72);
+    font-size: var(--fs-sm);
+  }
+
+  .footer__top {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    padding-block: clamp(3rem, 6vw, 4.5rem);
+  }
+
+  @media (min-width: 720px) {
+    .footer__top {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1040px) {
+    .footer__top {
+      grid-template-columns: 1.35fr 1fr 1fr 1.15fr;
+    }
+  }
+
+  .footer__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+  }
+
+  .footer__about {
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+    max-width: 34ch;
+  }
+
+  .footer__social {
+    display: flex;
+    gap: var(--sp-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footer__social a {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-sm);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(234, 243, 251, 0.8);
+    transition:
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .footer__social a:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .footer__title {
+    font-family: var(--font-text);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-accent-300);
+    margin-bottom: var(--sp-4);
+  }
+
+  .footer__title--spaced {
+    margin-top: var(--sp-8);
+  }
+
+  .footer__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .footer__list a {
+    color: inherit;
+    text-decoration: none;
+    line-height: 1.45;
+    display: inline-block;
+    transition: color var(--dur) var(--ease);
+  }
+
+  .footer__list a:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+
+  .footer__list--posts a {
+    font-size: var(--fs-xs);
+    color: rgba(234, 243, 251, 0.6);
+  }
+
+  .footer__contact {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .footer__contact li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-3);
+    align-items: start;
+    line-height: var(--lh-normal);
+  }
+
+  .footer__contact :global(.icon) {
+    color: var(--c-accent-300);
+    margin-top: 2px;
+  }
+
+  .footer__contact a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .footer__contact a:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+
+  .footer__contact address {
+    font-style: normal;
+    font-size: var(--fs-xs);
+    line-height: 1.6;
+  }
+
+  .footer__bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: var(--fs-xs);
+    color: rgba(234, 243, 251, 0.55);
+  }
+
+  .footer__bottom-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding-block: var(--sp-5);
+  }
+
+  .footer__legal {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-4);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .footer__legal a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .footer__legal a:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
+</style>

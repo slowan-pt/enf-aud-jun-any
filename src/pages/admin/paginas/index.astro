@@ -1,0 +1,143 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { pages } from '../../../data/admin';
+---
+
+<AdminLayout
+  title="Páginas"
+  description="Páginas institucionais do site. A Home é editada por seções estruturadas; as demais possuem título, conteúdo, imagem e SEO."
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <button
+      type="button"
+      class="btn btn--sm"
+      data-toast-trigger="Criação de páginas será liberada na Etapa 2."
+    >
+      <Icon name="plus" size={16} />
+      Nova página
+    </button>
+  </div>
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar página"
+          aria-label="Buscar página"
+          data-table-search="tabela-paginas"
+        />
+      </label>
+      <select class="select" aria-label="Filtrar por status" data-table-filter="tabela-paginas">
+        <option value="">Todos os status</option>
+        <option value="published">Publicada</option>
+        <option value="draft">Rascunho</option>
+      </select>
+      <span class="toolbar__count" data-table-count="tabela-paginas"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-paginas">
+        <thead>
+          <tr>
+            <th>Página</th>
+            <th>URL</th>
+            <th>Seções</th>
+            <th>Status</th>
+            <th>Atualizada</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            pages.map((page) => (
+              <tr data-status={page.status}>
+                <td>
+                  <a
+                    class="table__main"
+                    href={page.title === 'Home' ? '/admin/paginas/home' : '#'}
+                  >
+                    {page.title}
+                  </a>
+                  <span class="table__sub">por {page.updatedBy}</span>
+                </td>
+                <td>
+                  <span class="kbd">{page.slug}</span>
+                </td>
+                <td>{page.sections}</td>
+                <td>
+                  <span
+                    class:list={[
+                      'badge',
+                      page.status === 'published' ? 'badge--success' : 'badge--warning',
+                    ]}
+                  >
+                    {page.status === 'published' ? 'Publicada' : 'Rascunho'}
+                  </span>
+                </td>
+                <td class="muted small">{page.updatedAt}</td>
+                <td>
+                  <div class="table__actions">
+                    <a
+                      class="row-btn"
+                      href={page.title === 'Home' ? '/admin/paginas/home' : '#'}
+                      aria-label={`Editar ${page.title}`}
+                    >
+                      <Icon name="edit" size={16} />
+                    </a>
+                    <a
+                      class="row-btn"
+                      href={page.slug}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label="Ver no site"
+                    >
+                      <Icon name="eye" size={16} />
+                    </a>
+                    <button
+                      type="button"
+                      class="row-btn row-btn--danger"
+                      aria-label="Excluir"
+                      data-toast-trigger="Exclusão com soft delete será implementada na Etapa 2."
+                    >
+                      <Icon name="trash" size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" data-table-empty="tabela-paginas" hidden>
+      <span class="empty-state__icon"><Icon name="search" size={22} /></span>
+      <h2 class="title-sm">Nenhuma página encontrada</h2>
+      <p>Ajuste a busca ou o filtro de status.</p>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">4 páginas cadastradas (demonstração)</span>
+      <div class="pagination">
+        <button type="button" disabled aria-label="Página anterior">
+          <Icon name="chevron-left" size={16} />
+        </button>
+        <button type="button" class="is-current">1</button>
+        <button type="button" disabled aria-label="Próxima página">
+          <Icon name="chevron-right" size={16} />
+        </button>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+</style>

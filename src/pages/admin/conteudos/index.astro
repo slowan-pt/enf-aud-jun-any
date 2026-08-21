@@ -1,0 +1,223 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { listPosts, archivePost, formatDateShort, type Post } from '../../../lib/posts';
+import { listCategories } from '../../../lib/categories';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const slug = String(form.get('slug') ?? '');
+  if (slug) {
+    await archivePost(db, slug);
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'post.archive',
+      target: `Matéria: ${slug}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+  }
+  return Astro.redirect('/admin/conteudos');
+}
+
+const posts = await listPosts(db);
+const categories = await listCategories(db);
+
+const statusLabel: Record<Post['status'], string> = {
+  published: 'Publicada',
+  draft: 'Rascunho',
+  archived: 'Arquivada',
+};
+const statusTone: Record<Post['status'], string> = {
+  published: 'badge--success',
+  draft: 'badge--warning',
+  archived: 'badge--neutral',
+};
+---
+
+<AdminLayout
+  title="Matérias"
+  description="Conteúdos do blog institucional. Criar, editar, publicar, despublicar e arquivar."
+  active="/admin/conteudos"
+>
+  <div slot="actions">
+    <a href="/admin/conteudos/nova" class="btn btn--sm">
+      <Icon name="plus" size={16} />
+      Nova matéria
+    </a>
+  </div>
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar por título ou categoria"
+          aria-label="Buscar matérias"
+          data-table-search="tabela-conteudos"
+        />
+      </label>
+      <select
+        class="select"
+        aria-label="Filtrar por status"
+        data-table-filter="tabela-conteudos"
+      >
+        <option value="">Todos os status</option>
+        <option value="published">Publicadas</option>
+        <option value="draft">Rascunhos</option>
+        <option value="archived">Arquivadas</option>
+      </select>
+      <span class="toolbar__count" data-table-count="tabela-conteudos"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-conteudos">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Categoria</th>
+            <th>Autor</th>
+            <th>Status</th>
+            <th>Publicação</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            posts.map((post) => (
+              <tr data-status={post.status}>
+                <td>
+                  <div class="cell-post">
+                    {post.cover ? (
+                      <img src={post.cover} alt="" width="56" height="42" loading="lazy" />
+                    ) : (
+                      <span class="cell-post__placeholder">
+                        <Icon name="file-text" size={18} />
+                      </span>
+                    )}
+                    <div>
+                      <a class="table__main" href={`/admin/conteudos/${post.slug}`}>
+                        {post.title}
+                      </a>
+                      <span class="table__sub">/conteudos/{post.slug}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {post.categoryName && (
+                    <span class="badge badge--brand">{post.categoryName}</span>
+                  )}
+                </td>
+                <td class="muted small">{post.authorName}</td>
+                <td>
+                  <span class:list={['badge', statusTone[post.status]]}>
+                    {statusLabel[post.status]}
+                  </span>
+                </td>
+                <td class="muted small">{formatDateShort(post.publishedAt)}</td>
+                <td>
+                  <div class="table__actions">
+                    <a
+                      class="row-btn"
+                      href={`/admin/conteudos/${post.slug}`}
+                      aria-label="Editar"
+                    >
+                      <Icon name="edit" size={16} />
+                    </a>
+                    <a
+                      class="row-btn"
+                      href={`/conteudos/${post.slug}`}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label="Ver no site"
+                    >
+                      <Icon name="eye" size={16} />
+                    </a>
+                    {post.status !== 'archived' && (
+                      <form method="post" style="display:contents">
+                        <input type="hidden" name="slug" value={post.slug} />
+                        <button
+                          type="submit"
+                          class="row-btn row-btn--danger"
+                          aria-label="Arquivar"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    {
+      posts.length === 0 && (
+        <div class="empty-state">
+          <span class="empty-state__icon">
+            <Icon name="search" size={22} />
+          </span>
+          <h2 class="title-sm">Nenhuma matéria cadastrada</h2>
+          <p>Crie a primeira matéria.</p>
+          <a href="/admin/conteudos/nova" class="btn btn--secondary btn--sm">
+            <Icon name="plus" size={16} />
+            Criar nova matéria
+          </a>
+        </div>
+      )
+    }
+
+    <div class="empty-state" data-table-empty="tabela-conteudos" hidden>
+      <span class="empty-state__icon"><Icon name="search" size={22} /></span>
+      <h2 class="title-sm">Nenhuma matéria encontrada</h2>
+      <p>Ajuste a busca ou os filtros aplicados.</p>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">
+        {posts.length} matéria(s) · {categories.length} categoria(s)
+      </span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .cell-post {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 300px;
+  }
+
+  .cell-post img {
+    width: 56px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: var(--r-xs);
+    border: 1px solid var(--line);
+    flex: none;
+  }
+
+  .cell-post__placeholder {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 42px;
+    border-radius: var(--r-xs);
+    border: 1px dashed var(--line-strong);
+    color: var(--c-ink-400);
+    flex: none;
+  }
+</style>

@@ -1,0 +1,97 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, listAuditLogs } from '../../lib/db';
+
+const logs = await listAuditLogs(getDB());
+
+const toneFor = (action: string): string => {
+  if (action.includes('delete') || action.includes('archive')) return 'warning';
+  if (action.includes('create')) return 'success';
+  return 'brand';
+};
+---
+
+<AdminLayout
+  title="Logs administrativos"
+  description="Registro das ações relevantes realizadas no painel: publicações, alterações de configuração, exclusões e mudanças de usuário."
+  active="/admin/logs"
+>
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar por ação, usuário ou item"
+          aria-label="Buscar logs"
+          data-table-search="tabela-logs"
+        />
+      </label>
+      <span class="toolbar__count" data-table-count="tabela-logs"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-logs">
+        <thead>
+          <tr>
+            <th>Data e hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Item</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            logs.map((log) => (
+              <tr>
+                <td class="nowrap muted small">{log.at}</td>
+                <td class="small">{log.user}</td>
+                <td>
+                  <span class:list={['badge', `badge--${toneFor(log.action)}`]}>
+                    {log.action}
+                  </span>
+                </td>
+                <td class="table__main">{log.target}</td>
+                <td class="muted small">{log.ip || '—'}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    {
+      logs.length === 0 && (
+        <div class="empty-state">
+          <span class="empty-state__icon">
+            <Icon name="history" size={22} />
+          </span>
+          <h2 class="title-sm">Nenhum registro ainda</h2>
+          <p>As ações administrativas relevantes aparecerão aqui.</p>
+        </div>
+      )
+    }
+
+    <div class="empty-state" data-table-empty="tabela-logs" hidden>
+      <span class="empty-state__icon"><Icon name="history" size={22} /></span>
+      <h2 class="title-sm">Nenhum registro encontrado</h2>
+      <p>Ajuste a busca.</p>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">
+        Mostrando os {logs.length} registros mais recentes. Não são registrados dados pessoais desnecessários.
+      </span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+</style>

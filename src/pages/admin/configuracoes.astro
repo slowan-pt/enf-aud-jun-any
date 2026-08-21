@@ -1,0 +1,528 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { seo } from '../../data/site';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { updateSetting } from '../../lib/settings';
+
+const { company, whatsapp, social, brand } = Astro.locals.settings;
+const userId = Astro.locals.user?.id;
+const userName = Astro.locals.user?.name ?? '';
+const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+
+if (Astro.request.method === 'POST') {
+  const db = getDB();
+  const form = await Astro.request.formData();
+  const formName = String(form.get('_form') ?? '');
+  const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+
+  if (formName === 'empresa') {
+    const updated = {
+      ...company,
+      name: text('nome', company.name),
+      legalName: text('razao', company.legalName),
+      email: text('email', company.email),
+      phone: text('telefone', company.phone),
+      hours: text('horario', company.hours),
+      address: {
+        ...company.address,
+        line1: text('end1', company.address.line1),
+        line2: text('end2', company.address.line2),
+        district: text('bairro', company.address.district),
+        city: text('cidade', company.address.city),
+        state: text('uf', company.address.state),
+        zip: text('cep', company.address.zip),
+      },
+    };
+    await updateSetting(db, 'company', updated, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações > Empresa',
+      ip,
+    });
+    return Astro.redirect('/admin/configuracoes?tab=empresa&saved=1');
+  }
+
+  if (formName === 'whatsapp') {
+    const updated = {
+      ...whatsapp,
+      number: text('wa-numero', whatsapp.number).replace(/\D/g, ''),
+      tooltip: text('wa-tooltip', whatsapp.tooltip),
+      defaultMessage: text('wa-msg', whatsapp.defaultMessage),
+      enabled: form.get('wa-enabled') === 'on',
+    };
+    await updateSetting(db, 'whatsapp', updated, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações > WhatsApp',
+      ip,
+    });
+    return Astro.redirect('/admin/configuracoes?tab=whatsapp&saved=1');
+  }
+
+  if (formName === 'redes') {
+    const updatedSocial = social.map((item) => ({
+      ...item,
+      href: text(`rede-${item.icon}-href`, item.href),
+      enabled: form.get(`rede-${item.icon}-enabled`) === 'on',
+    }));
+    await updateSetting(db, 'social', updatedSocial, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações > Redes sociais',
+      ip,
+    });
+    return Astro.redirect('/admin/configuracoes?tab=redes&saved=1');
+  }
+
+  if (formName === 'marca') {
+    const updated = {
+      ...brand,
+      markUrl: text('marca-url', brand.markUrl),
+    };
+    await updateSetting(db, 'brand', updated, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações > Marca',
+      ip,
+    });
+    return Astro.redirect('/admin/configuracoes?tab=marca&saved=1');
+  }
+}
+
+const activeTab = Astro.url.searchParams.get('tab') || 'empresa';
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title="Configurações"
+  description="Dados da empresa, do site, do WhatsApp e das redes sociais. Alterações aqui refletem em todo o site — sem edição de código."
+  active="/admin/configuracoes"
+>
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>
+          <strong>Configurações salvas.</strong>
+          Já valem para o site publicado.
+        </span>
+      </div>
+    )
+  }
+
+  <section class="panel" data-tabs data-active-tab={activeTab}>
+    <div class="tabs">
+      <button
+        type="button"
+        class:list={['tab', { 'is-active': activeTab === 'empresa' }]}
+        data-tab="empresa"
+        aria-selected={activeTab === 'empresa'}>Empresa</button
+      >
+      <button
+        type="button"
+        class:list={['tab', { 'is-active': activeTab === 'site' }]}
+        data-tab="site"
+        aria-selected={activeTab === 'site'}>Site</button
+      >
+      <button
+        type="button"
+        class:list={['tab', { 'is-active': activeTab === 'whatsapp' }]}
+        data-tab="whatsapp"
+        aria-selected={activeTab === 'whatsapp'}>WhatsApp</button
+      >
+      <button
+        type="button"
+        class:list={['tab', { 'is-active': activeTab === 'redes' }]}
+        data-tab="redes"
+        aria-selected={activeTab === 'redes'}>Redes sociais</button
+      >
+      <button
+        type="button"
+        class:list={['tab', { 'is-active': activeTab === 'marca' }]}
+        data-tab="marca"
+        aria-selected={activeTab === 'marca'}>Marca</button
+      >
+    </div>
+
+    <!-- EMPRESA -->
+    <form
+      class="panel__body"
+      method="post"
+      data-tab-panel="empresa"
+      hidden={activeTab !== 'empresa'}
+    >
+      <input type="hidden" name="_form" value="empresa" />
+      <div class="form-section">
+        <h2 class="form-section__title">Identificação</h2>
+        <div class="form-grid form-grid--2">
+          <div class="field">
+            <label class="label" for="nome">Nome fantasia</label>
+            <input class="input" id="nome" name="nome" value={company.name} />
+          </div>
+          <div class="field">
+            <label class="label" for="razao">Razão social</label>
+            <input
+              class="input"
+              id="razao"
+              name="razao"
+              placeholder="Não informada"
+              value={company.legalName}
+            />
+            <span class="hint">Campo opcional — preencher quando disponível.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="email">E-mail</label>
+            <input class="input" id="email" name="email" type="email" value={company.email} />
+          </div>
+          <div class="field">
+            <label class="label" for="telefone">Telefone (exibição)</label>
+            <input class="input" id="telefone" name="telefone" value={company.phone} />
+          </div>
+          <div class="field field--full">
+            <label class="label" for="horario">Horário de atendimento</label>
+            <input class="input" id="horario" name="horario" value={company.hours} />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h2 class="form-section__title">Endereço</h2>
+        <div class="form-grid form-grid--2">
+          <div class="field field--full">
+            <label class="label" for="end1">Logradouro</label>
+            <input class="input" id="end1" name="end1" value={company.address.line1} />
+          </div>
+          <div class="field field--full">
+            <label class="label" for="end2">Complemento</label>
+            <input class="input" id="end2" name="end2" value={company.address.line2} />
+          </div>
+          <div class="field">
+            <label class="label" for="bairro">Bairro</label>
+            <input class="input" id="bairro" name="bairro" value={company.address.district} />
+          </div>
+          <div class="field">
+            <label class="label" for="cidade">Cidade</label>
+            <input class="input" id="cidade" name="cidade" value={company.address.city} />
+          </div>
+          <div class="field">
+            <label class="label" for="uf">Estado</label>
+            <input class="input" id="uf" name="uf" value={company.address.state} />
+          </div>
+          <div class="field">
+            <label class="label" for="cep">CEP</label>
+            <input class="input" id="cep" name="cep" value={company.address.zip} />
+          </div>
+        </div>
+        <p class="hint">
+          <Icon name="info" size={13} />
+          Estes dados alimentam o rodapé, a página de contato e o Schema.org de SEO local.
+        </p>
+      </div>
+
+      <div class="cluster">
+        <button type="submit" class="btn">
+          <Icon name="save" size={16} />
+          Salvar dados da empresa
+        </button>
+      </div>
+    </form>
+
+    <!-- SITE (ainda não conectado ao banco — Fase 3) -->
+    <form
+      class="panel__body"
+      data-tab-panel="site"
+      hidden={activeTab !== 'site'}
+      data-admin-form="Configurações do site salvas (simulação)."
+    >
+      <div class="form-alert form-alert--info" style="margin-bottom: var(--sp-5)">
+        <Icon name="info" size={16} />
+        <span>Esta aba ainda simula o salvamento. SEO padrão entra na próxima fase.</span>
+      </div>
+      <div class="form-section">
+        <h2 class="form-section__title">Identidade do site</h2>
+        <div class="form-grid form-grid--2">
+          <div class="field">
+            <label class="label" for="site-nome">Nome do site</label>
+            <input class="input" id="site-nome" value={seo.siteName} />
+          </div>
+          <div class="field">
+            <label class="label" for="site-url">URL do site</label>
+            <input class="input" id="site-url" value={seo.siteUrl} />
+            <span class="hint">Atualizar quando o domínio próprio for conectado.</span>
+          </div>
+          <div class="field field--full">
+            <label class="label" for="site-title">Título padrão</label>
+            <input class="input" id="site-title" value={seo.defaultTitle} />
+          </div>
+          <div class="field field--full">
+            <label class="label" for="site-desc">Descrição padrão</label>
+            <textarea class="textarea" id="site-desc" style="min-height:88px"
+              >{seo.defaultDescription}</textarea
+            >
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar configurações do site
+      </button>
+    </form>
+
+    <!-- WHATSAPP -->
+    <form
+      class="panel__body"
+      method="post"
+      data-tab-panel="whatsapp"
+      hidden={activeTab !== 'whatsapp'}
+    >
+      <input type="hidden" name="_form" value="whatsapp" />
+      <div class="form-section">
+        <h2 class="form-section__title">Botão flutuante</h2>
+        <div class="form-grid form-grid--2">
+          <div class="field">
+            <label class="label" for="wa-numero">Número (formato internacional)</label>
+            <input class="input" id="wa-numero" name="wa-numero" value={whatsapp.number} />
+            <span class="hint">Somente dígitos, com DDI e DDD. Ex.: 5561982444083</span>
+          </div>
+          <div class="field">
+            <label class="label" for="wa-tooltip">Tooltip</label>
+            <input class="input" id="wa-tooltip" name="wa-tooltip" value={whatsapp.tooltip} />
+          </div>
+          <div class="field field--full">
+            <label class="label" for="wa-msg">Mensagem padrão</label>
+            <textarea class="textarea" id="wa-msg" name="wa-msg" style="min-height:88px"
+              >{whatsapp.defaultMessage}</textarea
+            >
+          </div>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" name="wa-enabled" checked={whatsapp.enabled} />
+          <span>Botão ativo em todas as páginas públicas</span>
+        </label>
+      </div>
+
+      <div class="form-section">
+        <h2 class="form-section__title">Mensagens contextuais por serviço</h2>
+        <p class="hint">
+          Cada serviço tem a sua própria mensagem, editável na tela do serviço (Serviços →
+          editar → Mídia e ícone).
+        </p>
+        <a href="/admin/servicos" class="btn btn--secondary btn--sm">
+          <Icon name="layers" size={16} />
+          Abrir serviços
+        </a>
+      </div>
+
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar WhatsApp
+      </button>
+    </form>
+
+    <!-- REDES -->
+    <form
+      class="panel__body"
+      method="post"
+      data-tab-panel="redes"
+      hidden={activeTab !== 'redes'}
+    >
+      <input type="hidden" name="_form" value="redes" />
+      <div class="form-section">
+        <h2 class="form-section__title">Perfis</h2>
+        <p class="hint">
+          Redes desativadas não aparecem no rodapé. Ative apenas quando houver perfil oficial.
+        </p>
+        {
+          social.map((item) => (
+            <div class="social-row">
+              <span class="icon-badge icon-badge--sm">
+                <Icon name={item.icon} size={18} />
+              </span>
+              <div class="field">
+                <label class="label" for={`rede-${item.icon}`}>
+                  {item.label}
+                </label>
+                <input
+                  class="input"
+                  id={`rede-${item.icon}`}
+                  name={`rede-${item.icon}-href`}
+                  placeholder="https://"
+                  value={item.href === '#' ? '' : item.href}
+                />
+              </div>
+              <label class="checkbox social-row__toggle">
+                <input
+                  type="checkbox"
+                  name={`rede-${item.icon}-enabled`}
+                  checked={item.enabled}
+                />
+                <span>Exibir</span>
+              </label>
+            </div>
+          ))
+        }
+      </div>
+
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar redes sociais
+      </button>
+    </form>
+
+    <!-- MARCA -->
+    <form
+      class="panel__body"
+      method="post"
+      data-tab-panel="marca"
+      hidden={activeTab !== 'marca'}
+    >
+      <input type="hidden" name="_form" value="marca" />
+      <div class="form-section">
+        <h2 class="form-section__title">Logotipo</h2>
+        <div class="form-alert form-alert--info">
+          <Icon name="info" size={18} />
+          <span>
+            Logo para fundo escuro e favicon ainda não são editáveis por aqui — o ícone atual
+            usa uma placa branca por trás para manter contraste sobre fundos escuros.
+          </span>
+        </div>
+
+        <div class="brand-grid">
+          <div class="field">
+            <span class="label">Logo principal</span>
+            <img
+              id="marca-preview"
+              src={brand.markUrl}
+              alt="Pré-visualização do logo"
+              width="160"
+              height="120"
+              style="width:100%;max-width:200px;object-fit:contain;border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--sp-3);background:var(--c-white)"
+            />
+            <div id="marca-dropzone" class="dropzone" style="cursor:pointer">
+              <Icon name="upload" size={20} />
+              <span class="small">SVG, PNG ou WebP · até 5 MB</span>
+              <input
+                type="file"
+                id="marca-input"
+                accept="image/svg+xml,image/png,image/webp"
+                style="display:none"
+              />
+            </div>
+            <span class="hint" id="marca-status"></span>
+            <input type="hidden" name="marca-url" id="marca-url" value={brand.markUrl} />
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar marca
+      </button>
+    </form>
+  </section>
+</AdminLayout>
+
+<script>
+  // Ativa a aba indicada em ?tab= (útil após o redirecionamento pós-salvamento)
+  const panel = document.querySelector<HTMLElement>('[data-tabs]');
+  const initialTab = panel?.dataset.activeTab;
+  if (initialTab) {
+    const btn = panel?.querySelector<HTMLButtonElement>(`[data-tab="${initialTab}"]`);
+    btn?.click();
+  }
+
+  const marcaDropzone = document.getElementById('marca-dropzone');
+  const marcaInput = document.querySelector<HTMLInputElement>('#marca-input');
+  const marcaStatus = document.getElementById('marca-status');
+  const marcaUrl = document.querySelector<HTMLInputElement>('#marca-url');
+  const marcaPreview = document.querySelector<HTMLImageElement>('#marca-preview');
+
+  marcaDropzone?.addEventListener('click', () => marcaInput?.click());
+
+  marcaInput?.addEventListener('change', async () => {
+    const file = marcaInput.files?.[0];
+    if (!file) return;
+    if (marcaStatus) marcaStatus.textContent = `Enviando ${file.name}…`;
+    const body = new FormData();
+    body.set('file', file);
+    body.set('alt', 'Logo Essencial Saúde Auditoria');
+    body.set('title', 'Logo');
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) {
+        if (marcaStatus) marcaStatus.textContent = data.error ?? 'Falha no envio.';
+        return;
+      }
+      if (marcaUrl) marcaUrl.value = data.url;
+      if (marcaPreview) marcaPreview.src = data.url;
+      if (marcaStatus)
+        marcaStatus.textContent = 'Enviado. Clique em "Salvar marca" para aplicar.';
+    } catch {
+      if (marcaStatus) marcaStatus.textContent = 'Falha no envio. Tente novamente.';
+    }
+  });
+</script>
+
+<style>
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .social-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--sp-4);
+    align-items: end;
+    padding: var(--sp-4) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .social-row:last-of-type {
+    border-bottom: 0;
+  }
+
+  .social-row__toggle {
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+    padding-bottom: 0.6rem;
+  }
+
+  @media (max-width: 640px) {
+    .social-row {
+      grid-template-columns: auto 1fr;
+    }
+
+    .social-row__toggle {
+      grid-column: 1 / -1;
+      padding-bottom: 0;
+    }
+  }
+
+  .brand-grid {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  @media (min-width: 820px) {
+    .brand-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

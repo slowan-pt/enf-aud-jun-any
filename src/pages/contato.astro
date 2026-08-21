@@ -1,0 +1,308 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+import ContactForm from '../components/ContactForm.astro';
+import { waLink, seo } from '../data/site';
+
+const { company, whatsapp } = Astro.locals.settings;
+
+const mapsQuery = encodeURIComponent(
+  `${company.address.line1}, ${company.address.line2}, ${company.address.district}, ${company.address.city} - ${company.address.state}, ${company.address.zip}`
+);
+
+const contactLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ContactPage',
+  name: 'Contato — Essencial Saúde Auditoria',
+  url: new URL('/contato', seo.siteUrl).href,
+};
+
+const channels = [
+  {
+    icon: 'whatsapp',
+    title: 'WhatsApp',
+    text: company.phoneDisplay,
+    href: waLink(whatsapp.number, whatsapp.defaultMessage),
+    hint: 'Resposta em horário comercial',
+    external: true,
+  },
+  {
+    icon: 'mail',
+    title: 'E-mail',
+    text: company.email,
+    href: `mailto:${company.email}`,
+    hint: 'Para propostas e documentos',
+    external: false,
+  },
+  {
+    icon: 'phone',
+    title: 'Telefone',
+    text: company.phoneDisplay,
+    href: `tel:+${company.phoneRaw}`,
+    hint: company.hours,
+    external: false,
+  },
+];
+---
+
+<BaseLayout
+  title="Contato"
+  description="Fale com a Essencial Saúde Auditoria: WhatsApp, e-mail, telefone e endereço em Brasília - DF. Solicite uma apresentação dos nossos serviços."
+  path="/contato"
+  jsonLd={[contactLd]}
+>
+  <PageHero
+    eyebrow="Contato"
+    title="Fale com a Essencial Saúde"
+    lead="Conte o cenário da sua organização. Nossa equipe técnica retorna com os próximos passos para uma conversa objetiva."
+    crumbs={[{ label: 'Contato' }]}
+    image="/images/contato.svg"
+    imageAlt="Composição gráfica representando os canais de contato da Essencial Saúde"
+  />
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="channels">
+        {
+          channels.map((channel) => (
+            <a
+              class="channel"
+              href={channel.href}
+              target={channel.external ? '_blank' : undefined}
+              rel={channel.external ? 'noopener' : undefined}
+              data-reveal
+            >
+              <span class="icon-badge">
+                <Icon name={channel.icon} size={22} />
+              </span>
+              <span class="channel__body">
+                <strong>{channel.title}</strong>
+                <span class="channel__value">{channel.text}</span>
+                <span class="channel__hint">{channel.hint}</span>
+              </span>
+              <Icon name="arrow-up-right" size={18} class="channel__arrow" />
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tight">
+    <div class="container contact-layout">
+      <div data-reveal>
+        <ContactForm
+          variant="full"
+          id="form-contato"
+          title="Envie sua mensagem"
+          description="Todos os campos marcados são obrigatórios. Retornamos em horário comercial."
+          origin="Página de contato"
+        />
+      </div>
+
+      <aside class="contact-aside" data-reveal>
+        <div class="aside-card">
+          <h2 class="aside-card__title">
+            <Icon name="map-pin" size={18} />
+            Endereço
+          </h2>
+          <address>
+            <strong>{company.name}</strong><br />
+            {company.address.line1}<br />
+            {company.address.line2}<br />
+            {company.address.district}<br />
+            {company.address.city} - {company.address.state}<br />
+            CEP {company.address.zip}
+          </address>
+          <a
+            class="link-arrow"
+            href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
+            target="_blank"
+            rel="noopener"
+          >
+            Ver no mapa
+            <Icon name="arrow-up-right" size={16} />
+          </a>
+        </div>
+
+        <div class="aside-card">
+          <h2 class="aside-card__title">
+            <Icon name="clock" size={18} />
+            Atendimento
+          </h2>
+          <p>{company.hours}</p>
+          <p class="muted small">
+            Mensagens recebidas fora do horário são respondidas no próximo dia útil.
+          </p>
+        </div>
+
+        <div class="aside-card aside-card--brand">
+          <h2 class="title-sm">Prefere falar agora?</h2>
+          <p>Fale com nossa equipe pelo WhatsApp e receba retorno direto.</p>
+          <a
+            href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+            class="btn btn--accent btn--block"
+            target="_blank"
+            rel="noopener"
+          >
+            <Icon name="whatsapp" size={18} />
+            {company.phoneDisplay}
+          </a>
+        </div>
+
+        <div class="aside-card aside-card--note">
+          <h2 class="aside-card__title">
+            <Icon name="lock" size={18} />
+            Privacidade
+          </h2>
+          <p class="muted small">
+            Os dados enviados serão utilizados apenas para responder ao contato, conforme a
+            <a href="/politica-de-privacidade"> Política de Privacidade</a> e a LGPD. Não solicitamos
+            e não devem ser enviados dados clínicos de pacientes por este canal.
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .channels {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  @media (min-width: 760px) {
+    .channels {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .channel {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--c-white);
+    text-decoration: none;
+    transition:
+      border-color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+
+  .channel:hover {
+    border-color: var(--c-brand-200);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+  }
+
+  .channel__body {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .channel strong {
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-brand-600);
+  }
+
+  .channel__value {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+  }
+
+  .channel__hint {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+
+  .channel__arrow {
+    color: var(--c-ink-300);
+  }
+
+  .channel:hover .channel__arrow {
+    color: var(--c-brand-500);
+  }
+
+  .contact-layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    align-items: start;
+  }
+
+  @media (min-width: 1000px) {
+    .contact-layout {
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+    }
+  }
+
+  .contact-aside {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .aside-card {
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--c-white);
+  }
+
+  .aside-card__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-text);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-brand-600);
+    margin-bottom: var(--sp-3);
+  }
+
+  .aside-card address {
+    font-style: normal;
+    font-size: var(--fs-sm);
+    line-height: 1.7;
+    color: var(--text-muted);
+    margin-bottom: var(--sp-3);
+  }
+
+  .aside-card address strong {
+    color: var(--text-strong);
+  }
+
+  .aside-card p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  .aside-card p + p {
+    margin-top: var(--sp-2);
+  }
+
+  .aside-card--brand {
+    display: grid;
+    gap: var(--sp-3);
+    background: linear-gradient(160deg, var(--c-brand-50), var(--c-white));
+    border-color: var(--c-brand-100);
+  }
+
+  .aside-card--note a {
+    color: var(--c-brand-600);
+    font-weight: var(--fw-medium);
+  }
+</style>

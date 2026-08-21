@@ -1,0 +1,122 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Icon from '../../components/Icon.astro';
+import ServiceCard from '../../components/ServiceCard.astro';
+import ProcessSteps from '../../components/ProcessSteps.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { publishedOnly } from '../../lib/services';
+import { howWeWork, clientSegments } from '../../data/institutional';
+import { seo } from '../../data/site';
+
+const publishedServices = publishedOnly(Astro.locals.services);
+
+const itemListLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Serviços da Essencial Saúde Auditoria',
+  itemListElement: publishedServices.map((service, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: service.name,
+    url: new URL(`/servicos/${service.slug}`, seo.siteUrl).href,
+  })),
+};
+---
+
+<BaseLayout
+  title="Serviços"
+  description="Auditoria concorrente, auditoria de contas hospitalares, gestão da jornada do paciente, gestão hospitalar, qualificação da rede prestadora e segurança assistencial."
+  path="/servicos"
+  jsonLd={[itemListLd]}
+>
+  <PageHero
+    eyebrow="Serviços"
+    title="Soluções técnicas em gestão e auditoria em saúde"
+    lead="Seis frentes de atuação que compartilham a mesma base: avaliação com critério, evidência documental e acompanhamento até o desfecho."
+    crumbs={[{ label: 'Serviços' }]}
+  />
+
+  <section class="section">
+    <div class="container">
+      <div class="grid grid--3">
+        {publishedServices.map((service) => <ServiceCard service={service} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">{howWeWork.eyebrow}</p>
+        <h2 class="title-lg">{howWeWork.title}</h2>
+        <p class="lead">{howWeWork.text}</p>
+      </div>
+      <ProcessSteps />
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-md">{clientSegments.title}</h2>
+      </div>
+      <ul class="audience" data-reveal>
+        {
+          clientSegments.items.map((item) => (
+            <li>
+              <Icon name={item.icon} size={20} />
+              {item.label}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <CtaBand
+    eyebrow="Fale com a Essencial"
+    title="Qual desses cenários é o seu?"
+    text="Apresentamos o escopo, o método e os indicadores de acompanhamento de acordo com o serviço de interesse."
+  />
+</BaseLayout>
+
+<style>
+  .audience {
+    display: grid;
+    gap: var(--sp-3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (min-width: 600px) {
+    .audience {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 940px) {
+    .audience {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .audience li {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-white);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-strong);
+  }
+
+  .audience :global(.icon) {
+    color: var(--c-brand-500);
+  }
+</style>

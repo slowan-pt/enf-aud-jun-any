@@ -1,0 +1,466 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import {
+  listUsers,
+  createUser,
+  updateUser,
+  resetPassword,
+  countActiveAdmins,
+  emailExists,
+  type AdminUserRow,
+} from '../../lib/users';
+
+const db = getDB();
+let formError = '';
+
+const permissions = [
+  { area: 'Páginas e Home', admin: 'Total', editor: 'Editar e publicar' },
+  { area: 'Serviços', admin: 'Total', editor: 'Editar e publicar' },
+  { area: 'Matérias e categorias', admin: 'Total', editor: 'Total' },
+  { area: 'Mídia', admin: 'Total', editor: 'Enviar e usar' },
+  { area: 'Contatos', admin: 'Total', editor: 'Visualizar e atender' },
+  { area: 'SEO e redirecionamentos', admin: 'Total', editor: 'Somente leitura' },
+  { area: 'Configurações', admin: 'Total', editor: 'Sem acesso' },
+  { area: 'Usuários e permissões', admin: 'Total', editor: 'Sem acesso' },
+  { area: 'Logs', admin: 'Total', editor: 'Sem acesso' },
+];
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+  const actorId = Astro.locals.user?.id;
+  const actorName = Astro.locals.user?.name ?? '';
+
+  if (action === 'create') {
+    const name = String(form.get('name') ?? '').trim();
+    const email = String(form.get('email') ?? '')
+      .trim()
+      .toLowerCase();
+    const password = String(form.get('password') ?? '');
+    const role = form.get('role') === 'admin' ? 'admin' : 'editor';
+
+    if (!name || !email) {
+      formError = 'Informe nome e e-mail.';
+    } else if (password.length < 10) {
+      formError = 'A senha inicial deve ter pelo menos 10 caracteres.';
+    } else if (await emailExists(db, email)) {
+      formError = 'Já existe um usuário com esse e-mail.';
+    } else {
+      await createUser(db, { name, email, password, role });
+      await writeAuditLog(db, {
+        userId: actorId,
+        userName: actorName,
+        action: 'user.create',
+        target: `Usuário: ${email}`,
+        ip,
+      });
+    }
+  } else if (action === 'update') {
+    const id = Number(form.get('id'));
+    const name = String(form.get('name') ?? '').trim();
+    const email = String(form.get('email') ?? '')
+      .trim()
+      .toLowerCase();
+    const role = form.get('role') === 'admin' ? 'admin' : 'editor';
+    const status = form.get('status') === 'inactive' ? 'inactive' : 'active';
+
+    const before = await db
+      .prepare(`SELECT role, status FROM users WHERE id = ?1`)
+      .bind(id)
+      .first<{ role: string; status: string }>();
+    const demotingOrDeactivating =
+      before?.role === 'admin' && (role !== 'admin' || status !== 'active');
+
+    if (!name || !email) {
+      formError = 'Informe nome e e-mail.';
+    } else if (demotingOrDeactivating && (await countActiveAdmins(db)) <= 1) {
+      formError = 'Não é possível remover o último administrador ativo.';
+    } else {
+      await updateUser(db, id, { name, email, role, status });
+      await writeAuditLog(db, {
+        userId: actorId,
+        userName: actorName,
+        action: 'user.update',
+        target: `Usuário: ${email}`,
+        ip,
+      });
+    }
+  } else if (action === 'resetpassword') {
+    const id = Number(form.get('id'));
+    const password = String(form.get('password') ?? '');
+    if (password.length < 10) {
+      formError = 'A nova senha deve ter pelo menos 10 caracteres.';
+    } else {
+      await resetPassword(db, id, password);
+      await writeAuditLog(db, {
+        userId: actorId,
+        userName: actorName,
+        action: 'user.reset_password',
+        target: `Usuário #${id}`,
+        ip,
+      });
+    }
+  }
+
+  if (!formError) {
+    return Astro.redirect('/admin/usuarios');
+  }
+}
+
+const users = await listUsers(db);
+const editId = Astro.url.searchParams.get('editar');
+const creating = Astro.url.searchParams.get('novo') === '1';
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function initialsOf(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+---
+
+<AdminLayout
+  title="Usuários"
+  description="Contas com acesso ao painel e perfis de permissão (RBAC). Senhas nunca são exibidas, só armazenadas como hash."
+  active="/admin/usuarios"
+>
+  <div slot="actions">
+    <a href="/admin/usuarios?novo=1" class="btn btn--sm">
+      <Icon name="plus" size={16} />
+      Novo usuário
+    </a>
+  </div>
+
+  {
+    formError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{formError}</span>
+      </div>
+    )
+  }
+
+  {
+    creating && (
+      <section class="panel" style="margin-bottom: var(--sp-5); max-width:560px">
+        <div class="panel__head">
+          <h2 class="panel__title">Novo usuário</h2>
+        </div>
+        <form class="panel__body stack" method="post">
+          <input type="hidden" name="_action" value="create" />
+          <div class="field">
+            <label class="label" for="new-name">
+              Nome
+            </label>
+            <input
+              class="input"
+              id="new-name"
+              name="name"
+              placeholder="Nome completo"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="label" for="new-email">
+              E-mail
+            </label>
+            <input
+              class="input"
+              id="new-email"
+              name="email"
+              type="email"
+              placeholder="pessoa@essencialsaude.com.br"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="label" for="new-role">
+              Perfil
+            </label>
+            <select class="select" id="new-role" name="role">
+              <option value="editor">Editor</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="new-password">
+              Senha inicial
+            </label>
+            <input
+              class="input"
+              id="new-password"
+              name="password"
+              type="text"
+              minlength="10"
+              required
+            />
+            <span class="hint">
+              Mínimo 10 caracteres. Não há convite por e-mail ainda — passe esta senha ao
+              usuário por um canal seguro e peça para trocá-la no primeiro acesso.
+            </span>
+          </div>
+          <div class="cluster">
+            <button type="submit" class="btn btn--sm">
+              <Icon name="plus" size={16} />
+              Criar usuário
+            </button>
+            <a class="btn btn--secondary btn--sm" href="/admin/usuarios">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </section>
+    )
+  }
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar por nome ou e-mail"
+          aria-label="Buscar usuários"
+          data-table-search="tabela-usuarios"
+        />
+      </label>
+      <span class="toolbar__count" data-table-count="tabela-usuarios"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-usuarios">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th>Último acesso</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            users.map((user: AdminUserRow) =>
+              editId === String(user.id) ? (
+                <tr>
+                  <td colspan={6}>
+                    <form method="post" class="inline-edit">
+                      <input type="hidden" name="_action" value="update" />
+                      <input type="hidden" name="id" value={user.id} />
+                      <div class="form-grid form-grid--2">
+                        <div class="field">
+                          <label class="label" for={`u-name-${user.id}`}>
+                            Nome
+                          </label>
+                          <input
+                            class="input"
+                            id={`u-name-${user.id}`}
+                            name="name"
+                            value={user.name}
+                          />
+                        </div>
+                        <div class="field">
+                          <label class="label" for={`u-email-${user.id}`}>
+                            E-mail
+                          </label>
+                          <input
+                            class="input"
+                            id={`u-email-${user.id}`}
+                            name="email"
+                            type="email"
+                            value={user.email}
+                          />
+                        </div>
+                        <div class="field">
+                          <label class="label" for={`u-role-${user.id}`}>
+                            Perfil
+                          </label>
+                          <select class="select" id={`u-role-${user.id}`} name="role">
+                            <option value="editor" selected={user.role === 'editor'}>
+                              Editor
+                            </option>
+                            <option value="admin" selected={user.role === 'admin'}>
+                              Administrador
+                            </option>
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label class="label" for={`u-status-${user.id}`}>
+                            Status
+                          </label>
+                          <select class="select" id={`u-status-${user.id}`} name="status">
+                            <option value="active" selected={user.status === 'active'}>
+                              Ativo
+                            </option>
+                            <option value="inactive" selected={user.status === 'inactive'}>
+                              Inativo
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="cluster">
+                        <button type="submit" class="btn btn--sm">
+                          <Icon name="save" size={16} />
+                          Salvar
+                        </button>
+                        <a class="btn btn--secondary btn--sm" href="/admin/usuarios">
+                          Cancelar
+                        </a>
+                      </div>
+                    </form>
+                    <form method="post" class="inline-edit" style="margin-top: var(--sp-4)">
+                      <input type="hidden" name="_action" value="resetpassword" />
+                      <input type="hidden" name="id" value={user.id} />
+                      <div class="field">
+                        <label class="label" for={`u-pass-${user.id}`}>
+                          Redefinir senha
+                        </label>
+                        <input
+                          class="input"
+                          id={`u-pass-${user.id}`}
+                          name="password"
+                          type="text"
+                          minlength="10"
+                          placeholder="Nova senha (mín. 10 caracteres)"
+                        />
+                      </div>
+                      <button type="submit" class="btn btn--secondary btn--sm">
+                        <Icon name="lock" size={16} />
+                        Redefinir senha
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ) : (
+                <tr data-status={user.status}>
+                  <td>
+                    <div class="cell-user">
+                      <span class="avatar">{initialsOf(user.name)}</span>
+                      <span class="table__main">{user.name}</span>
+                    </div>
+                  </td>
+                  <td class="small">{user.email}</td>
+                  <td>
+                    <span
+                      class:list={[
+                        'badge',
+                        user.role === 'admin' ? 'badge--brand' : 'badge--neutral',
+                      ]}
+                    >
+                      {user.role === 'admin' ? 'Administrador' : 'Editor'}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      class:list={[
+                        'badge',
+                        user.status === 'active' ? 'badge--success' : 'badge--neutral',
+                      ]}
+                    >
+                      {user.status === 'active' ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td class="muted small">{formatDate(user.lastLoginAt)}</td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/usuarios?editar=${user.id}`}
+                        aria-label="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              )
+            )
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" data-table-empty="tabela-usuarios" hidden>
+      <span class="empty-state__icon"><Icon name="users" size={22} /></span>
+      <h2 class="title-sm">Nenhum usuário encontrado</h2>
+      <p>Ajuste a busca.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Perfis e permissões (RBAC)</h2>
+      <span class="muted small">Referência — aplicação por tela chega numa próxima fase</span>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Área do painel</th>
+            <th>Administrador</th>
+            <th>Editor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            permissions.map((permission) => (
+              <tr>
+                <td class="table__main">{permission.area}</td>
+                <td>
+                  <span class="badge badge--success">{permission.admin}</span>
+                </td>
+                <td>
+                  <span
+                    class:list={[
+                      'badge',
+                      permission.editor === 'Sem acesso'
+                        ? 'badge--neutral'
+                        : permission.editor === 'Somente leitura'
+                          ? 'badge--warning'
+                          : 'badge--brand',
+                    ]}
+                  >
+                    {permission.editor}
+                  </span>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .cell-user {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 220px;
+  }
+
+  .inline-edit {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+  }
+</style>

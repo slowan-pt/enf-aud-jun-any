@@ -1,0 +1,433 @@
+---
+export const prerender = false;
+
+import '@fontsource-variable/inter';
+import '@fontsource-variable/sora';
+import '../../styles/admin.css';
+
+import Icon from '../../components/Icon.astro';
+import Logo from '../../components/Logo.astro';
+
+import {
+  getDB,
+  findUserByEmail,
+  touchUserLogin,
+  recentFailedAttempts,
+  recordLoginAttempt,
+  createSession,
+  writeAuditLog,
+} from '../../lib/db';
+import {
+  verifyPassword,
+  newSessionId,
+  sessionExpiry,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE,
+} from '../../lib/auth';
+
+const { company } = Astro.locals.settings;
+const nextPath = Astro.url.searchParams.get('next');
+const safeNext = nextPath && nextPath.startsWith('/admin') ? nextPath : '/admin';
+
+let errorMessage = '';
+let submittedEmail = '';
+
+if (Astro.request.method === 'POST') {
+  const db = getDB();
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? 'desconhecido';
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('senha') ?? '');
+  submittedEmail = email;
+
+  const failed = await recentFailedAttempts(db, email, ip);
+  if (failed >= 8) {
+    errorMessage = 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+  } else {
+    const user = email ? await findUserByEmail(db, email) : null;
+    const valid =
+      user && user.status === 'active'
+        ? await verifyPassword(password, user.password_hash, user.password_salt)
+        : false;
+
+    await recordLoginAttempt(db, email, ip, Boolean(valid));
+
+    if (valid && user) {
+      const sessionId = newSessionId();
+      await createSession(db, sessionId, user.id, sessionExpiry());
+      await touchUserLogin(db, user.id);
+      await writeAuditLog(db, {
+        userId: user.id,
+        userName: user.name,
+        action: 'login',
+        target: 'Sessão administrativa',
+        ip,
+      });
+
+      Astro.cookies.set(SESSION_COOKIE, sessionId, {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: SESSION_MAX_AGE,
+      });
+
+      return Astro.redirect(safeNext);
+    }
+
+    errorMessage = 'E-mail ou senha incorretos.';
+  }
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Entrar | CMS {company.shortName}</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body class="login">
+    <div class="login__grid">
+      <!-- painel institucional -->
+      <section class="login__brand">
+        <div class="login__brand-inner">
+          <Logo variant="inverse" size="lg" />
+          <h1 class="title-lg">Painel de conteúdo da Essencial Saúde</h1>
+          <p>
+            Gerencie páginas, serviços, matérias, mídia, contatos e SEO do site sem depender de
+            programador ou de ferramentas de IA.
+          </p>
+          <ul class="login__list">
+            <li><Icon name="check-circle" size={18} /> Publicação e edição de conteúdo</li>
+            <li><Icon name="check-circle" size={18} /> Contatos recebidos pelo site</li>
+            <li><Icon name="check-circle" size={18} /> Biblioteca de mídia e SEO</li>
+            <li><Icon name="check-circle" size={18} /> Registro de ações administrativas</li>
+          </ul>
+        </div>
+        <p class="login__foot">© {new Date().getFullYear()} {company.name}</p>
+      </section>
+
+      <!-- formulário -->
+      <section class="login__form-side">
+        <div class="login__box">
+          <a href="/" class="login__back">
+            <Icon name="arrow-left" size={16} />
+            Voltar ao site
+          </a>
+
+          <h2 class="title-md">Acessar o painel</h2>
+          <p class="muted small">Use suas credenciais administrativas.</p>
+
+          {
+            errorMessage && (
+              <div class="form-alert form-alert--error login__notice" role="alert">
+                <Icon name="alert" size={18} />
+                <span>
+                  <strong>Não foi possível entrar</strong>
+                  {errorMessage}
+                </span>
+              </div>
+            )
+          }
+
+          <form class="login__form" method="post" novalidate data-login-form>
+            <div class="field" data-field>
+              <label class="label" for="email">E-mail</label>
+              <input
+                class="input"
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="username"
+                placeholder="voce@essencialsaude.com.br"
+                value={submittedEmail}
+                required
+              />
+              <span class="error-text" data-error>
+                <Icon name="alert-circle" size={14} />
+                <span data-error-text>Informe um e-mail válido.</span>
+              </span>
+            </div>
+
+            <div class="field" data-field>
+              <label class="label" for="senha">Senha</label>
+              <div class="login__password">
+                <input
+                  class="input"
+                  id="senha"
+                  name="senha"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  class="login__toggle"
+                  data-toggle-password
+                  aria-label="Mostrar senha"
+                >
+                  <Icon name="eye" size={18} />
+                </button>
+              </div>
+              <span class="error-text" data-error>
+                <Icon name="alert-circle" size={14} />
+                <span data-error-text>Informe a senha.</span>
+              </span>
+            </div>
+
+            <div class="login__row">
+              <label class="checkbox login__remember">
+                <input type="checkbox" name="lembrar" />
+                <span>Manter conectado neste dispositivo</span>
+              </label>
+              <a href="#" class="login__link" data-forgot>Esqueci minha senha</a>
+            </div>
+
+            <button type="submit" class="btn btn--lg btn--block" data-login-submit>
+              <span data-login-label>Entrar no painel</span>
+              <Icon name="arrow-right" size={18} class="icon--arrow" />
+            </button>
+
+            <p class="form-note login__note">
+              <Icon name="lock" size={14} />
+              Conexão protegida. Suas ações no painel ficam registradas em Logs.
+            </p>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <style>
+      .login {
+        min-height: 100dvh;
+        background: var(--c-ink-50);
+      }
+
+      .login__grid {
+        display: grid;
+        min-height: 100dvh;
+      }
+
+      @media (min-width: 940px) {
+        .login__grid {
+          grid-template-columns: 1.05fr 0.95fr;
+        }
+      }
+
+      .login__brand {
+        display: none;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: var(--sp-8);
+        padding: clamp(2rem, 5vw, 4rem);
+        background:
+          radial-gradient(90% 80% at 90% 5%, rgba(18, 167, 148, 0.3), transparent 55%),
+          linear-gradient(160deg, var(--c-brand-950), var(--c-brand-700));
+        color: rgba(234, 243, 251, 0.82);
+      }
+
+      @media (min-width: 940px) {
+        .login__brand {
+          display: flex;
+        }
+      }
+
+      .login__brand-inner {
+        display: grid;
+        gap: var(--sp-5);
+        align-content: center;
+        flex: 1;
+      }
+
+      .login__brand h1 {
+        color: #fff;
+        margin-top: var(--sp-6);
+      }
+
+      .login__brand p {
+        max-width: 46ch;
+        line-height: var(--lh-relaxed);
+      }
+
+      .login__list {
+        display: grid;
+        gap: var(--sp-3);
+        list-style: none;
+        margin: var(--sp-4) 0 0;
+        padding: 0;
+        font-size: var(--fs-sm);
+      }
+
+      .login__list li {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+      }
+
+      .login__list :global(.icon) {
+        color: var(--c-accent-300);
+      }
+
+      .login__foot {
+        font-size: var(--fs-xs);
+        color: rgba(234, 243, 251, 0.62);
+      }
+
+      .login__form-side {
+        display: grid;
+        place-items: center;
+        padding: clamp(1.5rem, 5vw, 3rem);
+      }
+
+      .login__box {
+        width: min(440px, 100%);
+        padding: clamp(1.5rem, 4vw, 2.5rem);
+        background: var(--c-white);
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        box-shadow: var(--shadow-md);
+      }
+
+      .login__back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: var(--sp-6);
+        font-size: var(--fs-xs);
+        color: var(--text-faint);
+        text-decoration: none;
+      }
+
+      .login__back:hover {
+        color: var(--c-brand-600);
+      }
+
+      .login__box h2 {
+        margin-bottom: 0.35rem;
+      }
+
+      .login__notice {
+        margin: var(--sp-5) 0;
+        font-size: var(--fs-xs);
+        line-height: var(--lh-normal);
+      }
+
+      .login__form {
+        display: grid;
+        gap: var(--sp-4);
+      }
+
+      .login__password {
+        position: relative;
+      }
+
+      .login__toggle {
+        position: absolute;
+        right: 0.35rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: var(--r-xs);
+        color: var(--c-ink-500);
+      }
+
+      .login__toggle:hover {
+        background: var(--c-ink-100);
+        color: var(--c-brand-700);
+      }
+
+      .login__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-3);
+      }
+
+      .login__remember {
+        font-size: var(--fs-xs);
+      }
+
+      .login__link {
+        font-size: var(--fs-xs);
+        color: var(--c-brand-600);
+        text-decoration: none;
+        font-weight: var(--fw-medium);
+      }
+
+      .login__link:hover {
+        text-decoration: underline;
+      }
+
+      .login__note {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        justify-content: center;
+      }
+    </style>
+
+    <script>
+      const form = document.querySelector<HTMLFormElement>('[data-login-form]');
+
+      document
+        .querySelector<HTMLButtonElement>('[data-toggle-password]')
+        ?.addEventListener('click', (event) => {
+          const button = event.currentTarget as HTMLButtonElement;
+          const input = document.querySelector<HTMLInputElement>('#senha');
+          if (!input) return;
+          const toText = input.type === 'password';
+          input.type = toText ? 'text' : 'password';
+          button.setAttribute('aria-label', toText ? 'Ocultar senha' : 'Mostrar senha');
+        });
+
+      document.querySelector('[data-forgot]')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.alert(
+          'Recuperação de senha por token de uso único ainda não está disponível. Peça a um administrador para redefinir sua senha em Usuários.'
+        );
+      });
+
+      // validação no cliente antes do envio real (POST nativo ao servidor)
+      form?.addEventListener('submit', (event) => {
+        const email = form.querySelector<HTMLInputElement>('#email');
+        const senha = form.querySelector<HTMLInputElement>('#senha');
+        let valid = true;
+
+        [email, senha].forEach((input) => {
+          if (!input) return;
+          const field = input.closest<HTMLElement>('[data-field]');
+          const ok =
+            input.id === 'email'
+              ? /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(input.value.trim())
+              : input.value.trim().length >= 4;
+          field?.setAttribute('data-state', ok ? 'valid' : 'invalid');
+          input.setAttribute('aria-invalid', ok ? 'false' : 'true');
+          if (!ok && valid) {
+            input.focus();
+            valid = false;
+          }
+        });
+
+        if (!valid) {
+          event.preventDefault();
+          return;
+        }
+
+        const submit = document.querySelector<HTMLButtonElement>('[data-login-submit]');
+        const label = document.querySelector<HTMLElement>('[data-login-label]');
+        submit?.setAttribute('aria-disabled', 'true');
+        if (label) label.textContent = 'Entrando…';
+      });
+    </script>
+  </body>
+</html>

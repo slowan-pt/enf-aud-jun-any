@@ -1,0 +1,294 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import {
+  listCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from '../../lib/categories';
+
+const db = getDB();
+let deleteBlocked = false;
+
+function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+  const userId = Astro.locals.user?.id;
+  const userName = Astro.locals.user?.name ?? '';
+
+  if (action === 'create') {
+    const name = String(form.get('name') ?? '').trim();
+    const slugInput = String(form.get('slug') ?? '').trim();
+    const description = String(form.get('description') ?? '').trim();
+    if (name) {
+      await createCategory(db, { name, slug: slugify(slugInput || name), description });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'category.create',
+        target: `Categoria: ${name}`,
+        ip,
+      });
+    }
+  } else if (action === 'update') {
+    const id = Number(form.get('id'));
+    const name = String(form.get('name') ?? '').trim();
+    const slugInput = String(form.get('slug') ?? '').trim();
+    const description = String(form.get('description') ?? '').trim();
+    if (id && name) {
+      await updateCategory(db, id, { name, slug: slugify(slugInput || name), description });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'category.update',
+        target: `Categoria: ${name}`,
+        ip,
+      });
+    }
+  } else if (action === 'delete') {
+    const id = Number(form.get('id'));
+    const ok = await deleteCategory(db, id);
+    if (!ok) {
+      deleteBlocked = true;
+    } else {
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'category.delete',
+        target: `Categoria #${id}`,
+        ip,
+      });
+    }
+  }
+
+  if (!deleteBlocked) {
+    return Astro.redirect('/admin/categorias');
+  }
+}
+
+const categories = await listCategories(db);
+const editId = Astro.url.searchParams.get('editar');
+---
+
+<AdminLayout
+  title="Categorias"
+  description="Categorias usadas para organizar as matérias do blog e as páginas de listagem."
+  active="/admin/categorias"
+>
+  {
+    deleteBlocked && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>Não é possível excluir: há matérias vinculadas a esta categoria.</span>
+      </div>
+    )
+  }
+
+  <div class="grid-2 grid-2--wide">
+    <section class="panel">
+      <div class="toolbar">
+        <label class="toolbar__search">
+          <Icon name="search" size={16} />
+          <input
+            type="search"
+            class="input"
+            placeholder="Buscar categoria"
+            aria-label="Buscar categoria"
+            data-table-search="tabela-categorias"
+          />
+        </label>
+        <span class="toolbar__count" data-table-count="tabela-categorias"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="tabela-categorias">
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Slug</th>
+              <th>Matérias</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              categories.map((category) =>
+                editId === String(category.id) ? (
+                  <tr>
+                    <td colspan={4}>
+                      <form method="post" class="inline-edit">
+                        <input type="hidden" name="_action" value="update" />
+                        <input type="hidden" name="id" value={category.id} />
+                        <div class="field">
+                          <label class="label" for={`name-${category.id}`}>
+                            Nome
+                          </label>
+                          <input
+                            class="input"
+                            id={`name-${category.id}`}
+                            name="name"
+                            value={category.name}
+                          />
+                        </div>
+                        <div class="field">
+                          <label class="label" for={`slug-${category.id}`}>
+                            Slug
+                          </label>
+                          <input
+                            class="input"
+                            id={`slug-${category.id}`}
+                            name="slug"
+                            value={category.slug}
+                          />
+                        </div>
+                        <div class="field">
+                          <label class="label" for={`desc-${category.id}`}>
+                            Descrição
+                          </label>
+                          {/* prettier-ignore */}
+                          <textarea class="textarea" id={`desc-${category.id}`} name="description" style="min-height:70px">{category.description}</textarea>
+                        </div>
+                        <div class="cluster">
+                          <button type="submit" class="btn btn--sm">
+                            <Icon name="save" size={16} />
+                            Salvar
+                          </button>
+                          <a class="btn btn--secondary btn--sm" href="/admin/categorias">
+                            Cancelar
+                          </a>
+                        </div>
+                      </form>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td>
+                      <span class="table__main">{category.name}</span>
+                      <span class="table__sub">{category.description}</span>
+                    </td>
+                    <td>
+                      <span class="kbd">{category.slug}</span>
+                    </td>
+                    <td>
+                      {category.postCount > 0 ? (
+                        <span class="badge badge--brand">{category.postCount}</span>
+                      ) : (
+                        <span class="badge badge--neutral">0</span>
+                      )}
+                    </td>
+                    <td>
+                      <div class="table__actions">
+                        <a
+                          class="row-btn"
+                          href={`/admin/categorias?editar=${category.id}`}
+                          aria-label="Editar"
+                        >
+                          <Icon name="edit" size={16} />
+                        </a>
+                        <form method="post" style="display:contents">
+                          <input type="hidden" name="_action" value="delete" />
+                          <input type="hidden" name="id" value={category.id} />
+                          <button
+                            type="submit"
+                            class="row-btn row-btn--danger"
+                            aria-label="Excluir"
+                            disabled={category.postCount > 0}
+                            title={
+                              category.postCount > 0
+                                ? 'Há matérias vinculadas a esta categoria'
+                                : 'Excluir'
+                            }
+                          >
+                            <Icon name="trash" size={16} />
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {
+        categories.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="search" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhuma categoria cadastrada</h2>
+            <p>Crie a primeira categoria ao lado.</p>
+          </div>
+        )
+      }
+
+      <div class="panel__foot">
+        <span class="muted small">{categories.length} categorias cadastradas</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Nova categoria</h2>
+      </div>
+      <form class="panel__body stack" method="post">
+        <input type="hidden" name="_action" value="create" />
+        <div class="field">
+          <label class="label" for="cat-nome">Nome</label>
+          <input
+            class="input"
+            id="cat-nome"
+            name="name"
+            placeholder="Ex.: Gestão Assistencial"
+            required
+          />
+        </div>
+        <div class="field">
+          <label class="label" for="cat-slug">Slug</label>
+          <input class="input" id="cat-slug" name="slug" placeholder="gestao-assistencial" />
+          <span class="hint">Deixe em branco para gerar a partir do nome. Deve ser único.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="cat-desc">Descrição</label>
+          <textarea
+            class="textarea"
+            id="cat-desc"
+            name="description"
+            style="min-height:88px"
+            placeholder="Aparece na listagem e no SEO da categoria."></textarea>
+        </div>
+        <button type="submit" class="btn">
+          <Icon name="plus" size={16} />
+          Criar categoria
+        </button>
+      </form>
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .inline-edit {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+  }
+</style>

@@ -1,0 +1,39 @@
+{
+  "name": "essencial-saude-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Site institucional + CMS proprio da Essencial Saude Auditoria (Etapa 1 - frontend/visual)",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "lint": "eslint . && prettier --check \"src/**/*.{astro,ts,css}\"",
+    "format": "prettier --write \"src/**/*.{astro,ts,css}\"",
+    "qa": "npm run lint && npm run typecheck && npm run build",
+    "db:migrate:local": "wrangler d1 execute essencial-saude-db --local --file=migrations/0001_init.sql && wrangler d1 execute essencial-saude-db --local --file=migrations/0002_posts_cover_url.sql",
+    "db:migrate:remote": "wrangler d1 execute essencial-saude-db --remote --file=migrations/0001_init.sql && wrangler d1 execute essencial-saude-db --remote --file=migrations/0002_posts_cover_url.sql",
+    "db:studio:local": "wrangler d1 execute essencial-saude-db --local --command=\"SELECT id,name,email,role,status FROM users\""
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.2.3",
+    "@astrojs/sitemap": "^3.7.3",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/sora": "^5.3.0",
+    "astro": "^7.2.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-plugin-astro": "^1.7.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-astro": "^0.14.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "wrangler": "^4.125.0"
+  }
+}

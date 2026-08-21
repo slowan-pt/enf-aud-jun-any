@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Nome do Worker. Na conta Cloudflare exclusiva do projeto, mantenha
+  // "essencial-saude" (ver CLOUDFLARE.md).
+  "name": "essencial-saude",
+  "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "essencial-saude-db",
+      // Rodando localmente (wrangler dev / astro dev), este ID não importa —
+      // o D1 local usa um SQLite em .wrangler/state. Este é o ID real do
+      // banco criado na conta Cloudflare (wrangler d1 create), usado por
+      // wrangler dev --remote e por todo deploy em produção.
+      "database_id": "a3f71808-8fe6-4f36-8f8c-ef21ad21fca7",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // R2 para mídia. Localmente roda emulado (wrangler/astro dev), sem precisar
+  // de conta Cloudflare. Para produção, crie o bucket real antes do deploy:
+  //   wrangler r2 bucket create essencial-saude-media
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "essencial-saude-media" }],
+  "vars": {
+    "PUBLIC_SITE_URL": "https://essencialsaudeauditoria.com.br",
+  },
+}

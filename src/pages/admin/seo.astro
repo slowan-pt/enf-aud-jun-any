@@ -1,0 +1,427 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { listRedirects, createRedirect, deleteRedirect } from '../../lib/redirects';
+import { updateSetting } from '../../lib/settings';
+
+const db = getDB();
+let formError = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+  const userId = Astro.locals.user?.id;
+  const userName = Astro.locals.user?.name ?? '';
+
+  if (action === 'create-redirect') {
+    const from = String(form.get('from') ?? '').trim();
+    const to = String(form.get('to') ?? '').trim();
+    const code = form.get('code') === '302' ? 302 : 301;
+    if (!from.startsWith('/') || !to) {
+      formError = 'Origem deve começar com "/" e destino não pode ficar em branco.';
+    } else if (from === to) {
+      formError = 'Origem e destino não podem ser iguais.';
+    } else {
+      await createRedirect(db, { from, to, code });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'redirect.create',
+        target: `${from} → ${to}`,
+        ip,
+      });
+    }
+  } else if (action === 'delete-redirect') {
+    const id = Number(form.get('id'));
+    await deleteRedirect(db, id);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'redirect.delete',
+      target: `Redirecionamento #${id}`,
+      ip,
+    });
+  } else if (action === 'seo-technical') {
+    const gscVerification = String(form.get('gsc') ?? '').trim();
+    const gaId = String(form.get('ga') ?? '').trim();
+    const ogDefaultImage = String(form.get('og-default') ?? '').trim();
+    await updateSetting(db, 'seo', { gscVerification, gaId, ogDefaultImage }, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações: SEO técnico',
+      ip,
+    });
+  }
+
+  if (!formError) {
+    return Astro.redirect('/admin/seo?saved=1');
+  }
+}
+
+const redirects = await listRedirects(db);
+const { seo: seoSettings } = Astro.locals.settings;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+const services = Astro.locals.services;
+const posts = Astro.locals.posts;
+---
+
+<AdminLayout
+  title="SEO"
+  description="Metadados por página, controle de indexação, sitemap e redirecionamentos 301."
+  active="/admin/seo"
+>
+  <div slot="actions">
+    <a
+      href="/sitemap-index.xml"
+      class="btn btn--secondary btn--sm"
+      target="_blank"
+      rel="noopener"
+    >
+      <Icon name="external-link" size={16} />
+      Ver sitemap
+    </a>
+    <a href="/robots.txt" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
+      <Icon name="external-link" size={16} />
+      robots.txt
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Salvo.</span>
+      </div>
+    )
+  }
+  {
+    formError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{formError}</span>
+      </div>
+    )
+  }
+
+  <section class="panel" data-tabs>
+    <div class="tabs">
+      <button type="button" class="tab is-active" data-tab="metadados" aria-selected="true"
+        >Metadados</button
+      >
+      <button type="button" class="tab" data-tab="redirects" aria-selected="false"
+        >Redirecionamentos</button
+      >
+      <button type="button" class="tab" data-tab="tecnico" aria-selected="false"
+        >SEO técnico</button
+      >
+    </div>
+
+    <!-- METADADOS -->
+    <div data-tab-panel="metadados">
+      <div class="table-wrap">
+        <table class="table" id="tabela-seo">
+          <thead>
+            <tr>
+              <th>Página</th>
+              <th>SEO title</th>
+              <th>Meta description</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <span class="table__main">Home</span>
+                <span class="table__sub">/</span>
+              </td>
+              <td class="small" colspan="2">
+                Usa o título e a descrição padrão do site — ver aba "SEO técnico" e
+                Configurações.
+              </td>
+              <td>
+                <a
+                  class="row-btn"
+                  href="/"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Ver página"
+                >
+                  <Icon name="eye" size={16} />
+                </a>
+              </td>
+            </tr>
+            {
+              services.map((service) => (
+                <tr>
+                  <td>
+                    <span class="table__main">Serviço: {service.name}</span>
+                    <span class="table__sub">/servicos/{service.slug}</span>
+                  </td>
+                  <td class="small">{service.seo.title || '—'}</td>
+                  <td class="small desc-cell">{service.seo.description || '—'}</td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/servicos/${service.slug}`}
+                        aria-label="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/servicos/${service.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Ver página"
+                      >
+                        <Icon name="eye" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+            {
+              posts.map((post) => (
+                <tr>
+                  <td>
+                    <span class="table__main">Matéria: {post.title}</span>
+                    <span class="table__sub">/conteudos/{post.slug}</span>
+                  </td>
+                  <td class="small">{post.seo.title || '—'}</td>
+                  <td class="small desc-cell">{post.seo.description || '—'}</td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/conteudos/${post.slug}`}
+                        aria-label="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/conteudos/${post.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Ver página"
+                      >
+                        <Icon name="eye" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="panel__foot">
+        <span class="muted small">
+          Cada serviço e cada matéria possui bloco de SEO próprio na respectiva tela de edição.
+        </span>
+      </div>
+    </div>
+
+    <!-- REDIRECTS -->
+    <div data-tab-panel="redirects" hidden id="redirects">
+      <div class="panel__body">
+        <form method="post" class="form-grid form-grid--2" style="align-items:end">
+          <input type="hidden" name="_action" value="create-redirect" />
+          <div class="field">
+            <label class="label" for="red-origem">Origem</label>
+            <input
+              class="input"
+              id="red-origem"
+              name="from"
+              placeholder="/url-antiga"
+              required
+            />
+          </div>
+          <div class="field">
+            <label class="label" for="red-destino">Destino</label>
+            <input class="input" id="red-destino" name="to" placeholder="/url-nova" required />
+          </div>
+          <div class="field">
+            <label class="label" for="red-codigo">Código HTTP</label>
+            <select class="select" id="red-codigo" name="code">
+              <option value="301">301 — permanente</option>
+              <option value="302">302 — temporário</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn--sm">
+            <Icon name="plus" size={16} />
+            Criar redirecionamento
+          </button>
+        </form>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="tabela-redirects">
+          <thead>
+            <tr>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Código</th>
+              <th>Criado em</th>
+              <th>Acessos</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              redirects.map((redirect) => (
+                <tr>
+                  <td>
+                    <span class="kbd">{redirect.from}</span>
+                  </td>
+                  <td>
+                    <span class="kbd">{redirect.to}</span>
+                  </td>
+                  <td>
+                    <span class="badge badge--brand">{redirect.code}</span>
+                  </td>
+                  <td class="muted small">{redirect.createdAt.split(' ')[0]}</td>
+                  <td class="muted small">{redirect.hits}</td>
+                  <td>
+                    <div class="table__actions">
+                      <form method="post" style="display:contents">
+                        <input type="hidden" name="_action" value="delete-redirect" />
+                        <input type="hidden" name="id" value={redirect.id} />
+                        <button
+                          type="submit"
+                          class="row-btn row-btn--danger"
+                          aria-label="Excluir"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {
+        redirects.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="route" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhum redirecionamento cadastrado</h2>
+            <p>Crie um acima quando uma URL antiga precisar apontar para outra.</p>
+          </div>
+        )
+      }
+    </div>
+
+    <!-- TÉCNICO -->
+    <div class="panel__body" data-tab-panel="tecnico" hidden>
+      <div class="grid-2">
+        <div class="stack">
+          <h3 class="form-section__title">Sitemap e indexação</h3>
+          <ul class="list-clean">
+            <li class="list-row">
+              <span class="list-row__main">
+                <strong>Sitemap automático</strong>
+                <span>Publicados entram; rascunhos e /admin ficam fora</span>
+              </span>
+              <span class="badge badge--success">Ativo</span>
+            </li>
+            <li class="list-row">
+              <span class="list-row__main">
+                <strong>robots.txt</strong>
+                <span>Bloqueio de /admin e indicação do sitemap</span>
+              </span>
+              <span class="badge badge--success">Ativo</span>
+            </li>
+            <li class="list-row">
+              <span class="list-row__main">
+                <strong>Canonical por página</strong>
+                <span>Gerado a partir da URL publicada</span>
+              </span>
+              <span class="badge badge--success">Ativo</span>
+            </li>
+            <li class="list-row">
+              <span class="list-row__main">
+                <strong>Schema.org</strong>
+                <span>Organization, WebSite, Service, Article, BreadcrumbList</span>
+              </span>
+              <span class="badge badge--success">Ativo</span>
+            </li>
+            <li class="list-row">
+              <span class="list-row__main">
+                <strong>Redirecionamentos 301</strong>
+                <span>Aplicados de verdade no servidor a cada requisição</span>
+              </span>
+              <span class="badge badge--success">Ativo</span>
+            </li>
+          </ul>
+        </div>
+
+        <form class="stack" method="post">
+          <input type="hidden" name="_action" value="seo-technical" />
+          <h3 class="form-section__title">Verificação e medição</h3>
+          <div class="field">
+            <label class="label" for="gsc">Google Search Console — meta de verificação</label>
+            <input
+              class="input"
+              id="gsc"
+              name="gsc"
+              value={seoSettings.gscVerification}
+              placeholder="google-site-verification=…"
+            />
+            <span class="hint">Preencher quando o domínio próprio estiver conectado.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="ga">Google Analytics — ID de medição</label>
+            <input
+              class="input"
+              id="ga"
+              name="ga"
+              value={seoSettings.gaId}
+              placeholder="G-XXXXXXX"
+            />
+            <span class="hint">Opcional. O site funciona sem Analytics.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="og-default">Imagem Open Graph padrão</label>
+            <input
+              class="input"
+              id="og-default"
+              name="og-default"
+              value={seoSettings.ogDefaultImage}
+            />
+          </div>
+          <button type="submit" class="btn">
+            <Icon name="save" size={16} />
+            Salvar configurações
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .desc-cell {
+    max-width: 380px;
+  }
+</style>

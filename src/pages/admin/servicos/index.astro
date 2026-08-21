@@ -1,0 +1,230 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { findBySlug, updateService, type Service } from '../../../lib/services';
+
+const statusLabel: Record<Service['status'], string> = {
+  published: 'Publicado',
+  draft: 'Rascunho',
+  archived: 'Arquivado',
+};
+const statusTone: Record<Service['status'], string> = {
+  published: 'badge--success',
+  draft: 'badge--warning',
+  archived: 'badge--neutral',
+};
+
+if (Astro.request.method === 'POST') {
+  const db = getDB();
+  const form = await Astro.request.formData();
+  const slug = String(form.get('slug'));
+  const existing = findBySlug(Astro.locals.services, slug);
+  if (existing) {
+    await updateService(
+      db,
+      slug,
+      {
+        name: existing.name,
+        shortName: existing.shortName,
+        summary: existing.summary,
+        heroTitle: existing.heroTitle,
+        heroLead: existing.heroLead,
+        image: existing.image,
+        imageAlt: existing.imageAlt,
+        whatsappMessage: existing.whatsappMessage,
+        seoTitle: existing.seo.title,
+        seoDescription: existing.seo.description,
+        status: 'archived',
+        featured: existing.featured,
+        intro: existing.intro,
+        deliverables: existing.deliverables,
+        audience: existing.audience,
+      },
+      existing
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'service.archive',
+      target: `Serviço: ${existing.name}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+  }
+  return Astro.redirect('/admin/servicos');
+}
+
+const services = Astro.locals.services;
+
+function formatDate(iso: string): string {
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+---
+
+<AdminLayout
+  title="Serviços"
+  description="Cadastro dos serviços exibidos no site. Ordem, status, imagens, ícone, CTA e SEO por serviço."
+  active="/admin/servicos"
+>
+  <div slot="actions">
+    <button
+      type="button"
+      class="btn btn--sm"
+      data-toast-trigger="Criação de serviço será liberada na Etapa 2."
+    >
+      <Icon name="plus" size={16} />
+      Novo serviço
+    </button>
+  </div>
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar serviço"
+          aria-label="Buscar serviço"
+          data-table-search="tabela-servicos"
+        />
+      </label>
+      <select
+        class="select"
+        aria-label="Filtrar por status"
+        data-table-filter="tabela-servicos"
+      >
+        <option value="">Todos os status</option>
+        <option value="published">Publicado</option>
+        <option value="draft">Rascunho</option>
+        <option value="archived">Arquivado</option>
+      </select>
+      <span class="toolbar__count" data-table-count="tabela-servicos"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-servicos">
+        <thead>
+          <tr>
+            <th style="width:64px">Ordem</th>
+            <th>Serviço</th>
+            <th>Slug</th>
+            <th>Destaque</th>
+            <th>Status</th>
+            <th>Atualizado</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            services.map((service) => (
+              <tr data-status={service.status}>
+                <td>
+                  <span class="order">{service.order}</span>
+                </td>
+                <td>
+                  <div class="cell-service">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={service.icon} size={16} />
+                    </span>
+                    <div>
+                      <a class="table__main" href={`/admin/servicos/${service.slug}`}>
+                        {service.name}
+                      </a>
+                      <span class="table__sub">{service.summary.slice(0, 70)}…</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="kbd">/servicos/{service.slug}</span>
+                </td>
+                <td>
+                  {service.featured ? (
+                    <span class="badge badge--accent">Destaque</span>
+                  ) : (
+                    <span class="muted small">—</span>
+                  )}
+                </td>
+                <td>
+                  <span class:list={['badge', statusTone[service.status]]}>
+                    {statusLabel[service.status]}
+                  </span>
+                </td>
+                <td class="muted small">{formatDate(service.updatedAt)}</td>
+                <td>
+                  <div class="table__actions">
+                    <a
+                      class="row-btn"
+                      href={`/admin/servicos/${service.slug}`}
+                      aria-label="Editar"
+                    >
+                      <Icon name="edit" size={16} />
+                    </a>
+                    <a
+                      class="row-btn"
+                      href={`/servicos/${service.slug}`}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label="Ver no site"
+                    >
+                      <Icon name="eye" size={16} />
+                    </a>
+                    {service.status !== 'archived' && (
+                      <form method="post" style="display:contents">
+                        <input type="hidden" name="slug" value={service.slug} />
+                        <button
+                          type="submit"
+                          class="row-btn row-btn--danger"
+                          aria-label="Arquivar"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" data-table-empty="tabela-servicos" hidden>
+      <span class="empty-state__icon"><Icon name="search" size={22} /></span>
+      <h2 class="title-sm">Nenhum serviço encontrado</h2>
+      <p>Ajuste a busca ou o filtro de status.</p>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">{services.length} serviços cadastrados</span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .cell-service {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 260px;
+  }
+
+  .order {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-xs);
+    background: var(--c-ink-100);
+    color: var(--c-ink-600);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

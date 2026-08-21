@@ -1,0 +1,7 @@
+# Essencial Saúde Auditoria
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+
+Sitemap: https://essencialsaudeauditoria.com.br/sitemap-index.xml

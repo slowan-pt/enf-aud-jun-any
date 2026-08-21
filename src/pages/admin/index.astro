@@ -1,0 +1,383 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { dashboardStats } from '../../data/admin';
+import { publishedOnly as publishedPostsOnly } from '../../lib/posts';
+import { publishedOnly } from '../../lib/services';
+import { getDB, listAuditLogs } from '../../lib/db';
+import { listContacts, countContactsByStatus, type ContactStatus } from '../../lib/contacts';
+import { listMedia } from '../../lib/media';
+
+const statusLabels: Record<ContactStatus, string> = {
+  novo: 'Novo',
+  em_atendimento: 'Em atendimento',
+  respondido: 'Respondido',
+  arquivado: 'Arquivado',
+};
+const statusTone: Record<ContactStatus, string> = {
+  novo: 'badge--brand',
+  em_atendimento: 'badge--warning',
+  respondido: 'badge--success',
+  arquivado: 'badge--neutral',
+};
+
+const publishedServices = publishedOnly(Astro.locals.services);
+const db = getDB();
+const allContacts = await listContacts(db);
+const contactCounts = await countContactsByStatus(db);
+const recentContacts = allContacts.slice(0, 4);
+const publishedPosts = publishedPostsOnly(Astro.locals.posts);
+const recentPosts = publishedPosts.slice(0, 4);
+const draftPosts = Astro.locals.posts.filter((p) => p.status === 'draft').length;
+const recentUploads = (await listMedia(db)).slice(0, 4);
+const logs = await listAuditLogs(db, 4);
+
+const liveStats = [
+  {
+    label: 'Matérias publicadas',
+    value: String(publishedPosts.length),
+    hint: draftPosts > 0 ? `${draftPosts} rascunho(s) pendente(s)` : 'nenhum rascunho pendente',
+    icon: 'newspaper',
+    tone: 'accent',
+    href: '/admin/conteudos',
+  },
+  {
+    label: 'Serviços ativos',
+    value: String(publishedServices.length),
+    hint: `de ${Astro.locals.services.length} cadastrados`,
+    icon: 'layers',
+    tone: 'neutral',
+    href: '/admin/servicos',
+  },
+  dashboardStats[3]!,
+];
+
+function formatDate(iso: string): string {
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function logTone(action: string): string {
+  if (action.includes('delete') || action.includes('archive')) return 'warning';
+  if (action.includes('create')) return 'success';
+  return 'brand';
+}
+
+const shortcuts = [
+  { label: 'Nova matéria', href: '/admin/conteudos/nova', icon: 'plus' },
+  { label: 'Editar Home', href: '/admin/paginas/home', icon: 'edit' },
+  { label: 'Enviar mídia', href: '/admin/midia', icon: 'upload' },
+  { label: 'Ver contatos', href: '/admin/contatos', icon: 'inbox' },
+  { label: 'Configurações', href: '/admin/configuracoes', icon: 'settings' },
+];
+---
+
+<AdminLayout
+  title="Dashboard"
+  description="Visão geral do conteúdo do site, contatos recebidos e atividade recente do painel."
+>
+  <div slot="actions">
+    <a href="/admin/conteudos/nova" class="btn btn--sm">
+      <Icon name="plus" size={16} />
+      Nova matéria
+    </a>
+    <a href="/" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
+      <Icon name="external-link" size={16} />
+      Ver o site
+    </a>
+  </div>
+
+  <!-- cards -->
+  <section class="stat-grid">
+    <a class="stat" href="/admin/contatos">
+      <span class="stat__icon">
+        <Icon name="inbox" size={20} />
+      </span>
+      <span class="stat__label">Contatos novos</span>
+      <span class="stat__value">{contactCounts.novo}</span>
+      <span class="stat__hint">aguardando primeiro atendimento</span>
+    </a>
+    {
+      liveStats.map((stat) => (
+        <a class="stat" href={stat.href}>
+          <span class:list={['stat__icon', `stat__icon--${stat.tone}`]}>
+            <Icon name={stat.icon} size={20} />
+          </span>
+          <span class="stat__label">{stat.label}</span>
+          <span class="stat__value">{stat.value}</span>
+          <span class="stat__hint">{stat.hint}</span>
+        </a>
+      ))
+    }
+  </section>
+
+  <!-- atalhos -->
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Atalhos administrativos</h2>
+    </div>
+    <div class="panel__body shortcuts">
+      {
+        shortcuts.map((shortcut) => (
+          <a class="shortcut" href={shortcut.href}>
+            <span class="icon-badge icon-badge--sm">
+              <Icon name={shortcut.icon} size={18} />
+            </span>
+            {shortcut.label}
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <div class="grid-2 grid-2--wide">
+    <!-- contatos recentes -->
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Contatos recentes</h2>
+        <a href="/admin/contatos" class="link-arrow">
+          Ver todos
+          <Icon name="arrow-right" size={16} />
+        </a>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Nome / Empresa</th>
+              <th>Serviço</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              recentContacts.length === 0 && (
+                <tr>
+                  <td colspan="4" class="muted small">
+                    Nenhum contato recebido ainda.
+                  </td>
+                </tr>
+              )
+            }
+            {
+              recentContacts.map((contact) => (
+                <tr class:list={[{ table__unread: contact.status === 'novo' }]}>
+                  <td class="nowrap">{formatDate(contact.created_at)}</td>
+                  <td>
+                    <a class="table__main" href={`/admin/contatos/${contact.id}`}>
+                      {contact.name}
+                    </a>
+                    <span class="table__sub">{contact.company}</span>
+                  </td>
+                  <td>{contact.service}</td>
+                  <td>
+                    <span class:list={['badge', statusTone[contact.status]]}>
+                      {statusLabels[contact.status]}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- matérias -->
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Matérias recentes</h2>
+        <a href="/admin/conteudos" class="link-arrow">
+          Ver todas
+          <Icon name="arrow-right" size={16} />
+        </a>
+      </div>
+      <div class="panel__body">
+        <ul class="list-clean">
+          {
+            recentPosts.map((post) => (
+              <li class="list-row">
+                <span class="icon-badge icon-badge--sm">
+                  <Icon name="newspaper" size={16} />
+                </span>
+                <span class="list-row__main">
+                  <strong>{post.title}</strong>
+                  <span>
+                    Publicada em {post.publishedAt.split('-').reverse().join('/')} ·{' '}
+                    {post.readingMinutes} min
+                  </span>
+                </span>
+                <span class="badge badge--success">Publicada</span>
+                <a
+                  class="row-btn"
+                  href={`/admin/conteudos/${post.slug}`}
+                  aria-label={`Editar ${post.title}`}
+                >
+                  <Icon name="edit" size={16} />
+                </a>
+              </li>
+            ))
+          }
+          {
+            recentPosts.length === 0 && (
+              <li class="list-row">
+                <span class="list-row__main muted small">Nenhuma matéria publicada ainda.</span>
+              </li>
+            )
+          }
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2 grid-2--wide">
+    <!-- uploads -->
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Uploads recentes</h2>
+        <a href="/admin/midia" class="link-arrow">
+          Biblioteca
+          <Icon name="arrow-right" size={16} />
+        </a>
+      </div>
+      <div class="panel__body">
+        <div class="media-grid">
+          {
+            recentUploads.map((item) => (
+              <a class="media-item" href={`/admin/midia?item=${item.id}`}>
+                <img
+                  src={item.url}
+                  alt={item.altText}
+                  width="320"
+                  height="240"
+                  loading="lazy"
+                />
+                <span class="media-item__meta">
+                  <span class="media-item__name">{item.filename}</span>
+                  <span class="media-item__sub">{item.mimeType}</span>
+                </span>
+              </a>
+            ))
+          }
+          {
+            recentUploads.length === 0 && (
+              <p class="muted small">Nenhum arquivo enviado ainda.</p>
+            )
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- serviços + atividade -->
+    <div class="stack-panels">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Serviços ativos</h2>
+          <a href="/admin/servicos" class="link-arrow">
+            Gerenciar
+            <Icon name="arrow-right" size={16} />
+          </a>
+        </div>
+        <div class="panel__body">
+          <ul class="list-clean">
+            {
+              publishedServices.slice(0, 6).map((service) => (
+                <li class="list-row">
+                  <span class="icon-badge icon-badge--sm">
+                    <Icon name={service.icon} size={16} />
+                  </span>
+                  <span class="list-row__main">
+                    <strong>{service.name}</strong>
+                    <span>/servicos/{service.slug}</span>
+                  </span>
+                  <span class="badge badge--success">Publicado</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Atividade recente</h2>
+          <a href="/admin/logs" class="link-arrow">
+            Ver logs
+            <Icon name="arrow-right" size={16} />
+          </a>
+        </div>
+        <div class="panel__body">
+          <ul class="list-clean">
+            {
+              logs.map((log) => (
+                <li class="list-row">
+                  <span class:list={['badge', `badge--${logTone(log.action)}`]}>
+                    {log.action}
+                  </span>
+                  <span class="list-row__main">
+                    <strong>{log.target}</strong>
+                    <span>
+                      {log.user} · {log.at}
+                    </span>
+                  </span>
+                </li>
+              ))
+            }
+            {
+              logs.length === 0 && (
+                <li class="list-row muted small">Nenhuma ação registrada ainda.</li>
+              )
+            }
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  .shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 0.6rem 1rem 0.6rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-pill);
+    background: var(--c-white);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-strong);
+    text-decoration: none;
+    transition:
+      border-color var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+
+  .shortcut:hover {
+    border-color: var(--c-brand-300);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+  }
+
+  .nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+    align-content: start;
+  }
+</style>

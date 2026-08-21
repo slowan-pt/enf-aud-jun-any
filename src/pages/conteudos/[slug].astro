@@ -1,0 +1,446 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Breadcrumbs from '../../components/Breadcrumbs.astro';
+import Icon from '../../components/Icon.astro';
+import PostCard from '../../components/PostCard.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { getDB } from '../../lib/db';
+import { publishedOnly, formatDate } from '../../lib/posts';
+import { getAuthor } from '../../lib/authors';
+import { seo } from '../../data/site';
+
+const { company } = Astro.locals.settings;
+const post = Astro.locals.posts.find((p) => p.slug === Astro.params.slug);
+if (!post || post.status !== 'published') return Astro.rewrite('/404');
+const category = post.categoryName
+  ? { name: post.categoryName, slug: post.categorySlug }
+  : null;
+const author = post.authorId ? await getAuthor(getDB(), post.authorId) : null;
+const related = publishedOnly(Astro.locals.posts)
+  .filter((item) => item.slug !== post.slug)
+  .sort((a, b) => {
+    const aScore = a.categorySlug === post.categorySlug ? 0 : 1;
+    const bScore = b.categorySlug === post.categorySlug ? 0 : 1;
+    return aScore - bScore;
+  })
+  .slice(0, 3);
+
+const url = new URL(`/conteudos/${post.slug}`, seo.siteUrl).href;
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.title,
+  description: post.excerpt,
+  datePublished: post.publishedAt,
+  dateModified: post.updatedAt,
+  image: new URL(post.cover, seo.siteUrl).href,
+  mainEntityOfPage: url,
+  author: { '@type': 'Organization', name: author?.name ?? company.name },
+  publisher: { '@type': 'Organization', name: company.name, url: seo.siteUrl },
+  articleSection: category?.name,
+  inLanguage: 'pt-BR',
+};
+
+const headings = post.body.filter((block) => block.type === 'h2');
+---
+
+<BaseLayout
+  title={post.seo.title}
+  description={post.seo.description}
+  path={`/conteudos/${post.slug}`}
+  ogImage={post.cover}
+  ogType="article"
+  publishedTime={post.publishedAt}
+  modifiedTime={post.updatedAt}
+  jsonLd={[articleLd]}
+  whatsappMessage={`Olá! Vim pelo conteúdo "${post.title}" no site da Essencial Saúde e gostaria de saber mais.`}
+>
+  <article class="article">
+    <header class="article__head">
+      <div class="container container--narrow">
+        <Breadcrumbs
+          items={[{ label: 'Conteúdos', href: '/conteudos' }, { label: post.title }]}
+        />
+        <div class="article__meta">
+          {
+            category && (
+              <a class="badge badge--brand" href={`/conteudos#${category.slug}`}>
+                {category.name}
+              </a>
+            )
+          }
+          <span><Icon name="calendar" size={14} />{formatDate(post.publishedAt)}</span>
+          <span><Icon name="clock" size={14} />{post.readingMinutes} min de leitura</span>
+        </div>
+        <h1 class="title-lg">{post.title}</h1>
+        <p class="lead">{post.excerpt}</p>
+      </div>
+    </header>
+
+    <div class="container container--narrow">
+      <figure class="article__cover">
+        <img
+          src={post.cover}
+          alt={post.coverAlt}
+          width="1200"
+          height="900"
+          loading="eager"
+          decoding="async"
+        />
+      </figure>
+    </div>
+
+    <div class="container article__layout">
+      <aside class="article__aside">
+        {
+          headings.length > 0 && (
+            <nav class="toc" aria-label="Sumário do conteúdo">
+              <h2 class="toc__title">Neste conteúdo</h2>
+              <ol>
+                {headings.map((heading, index) => (
+                  <li>
+                    <a href={`#secao-${index + 1}`}>{heading.type === 'h2' && heading.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )
+        }
+        <div class="share">
+          <h2 class="toc__title">Compartilhar</h2>
+          <div class="share__links">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`${post.title} — ${url}`)}`}
+              target="_blank"
+              rel="noopener"
+              aria-label="Compartilhar no WhatsApp"
+            >
+              <Icon name="whatsapp" size={18} />
+            </a>
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}
+              target="_blank"
+              rel="noopener"
+              aria-label="Compartilhar no LinkedIn"
+            >
+              <Icon name="linkedin" size={18} />
+            </a>
+            <a
+              href={`mailto:?subject=${encodeURIComponent(post.title)}&body=${encodeURIComponent(url)}`}
+              aria-label="Compartilhar por e-mail"
+            >
+              <Icon name="mail" size={18} />
+            </a>
+            <button type="button" data-copy={url} aria-label="Copiar link do conteúdo">
+              <Icon name="link" size={18} />
+            </button>
+          </div>
+          <span class="share__feedback" role="status" data-copy-feedback></span>
+        </div>
+      </aside>
+
+      <div class="prose article__body">
+        {
+          post.body.map((block, index) => {
+            const headingIndex = post.body
+              .slice(0, index + 1)
+              .filter((item) => item.type === 'h2').length;
+
+            if (block.type === 'paragraph') return <p>{block.text}</p>;
+            if (block.type === 'h2') return <h2 id={`secao-${headingIndex}`}>{block.text}</h2>;
+            if (block.type === 'h3') return <h3>{block.text}</h3>;
+            if (block.type === 'quote') return <blockquote>{block.text}</blockquote>;
+            if (block.type === 'divider') return <hr />;
+            if (block.type === 'list' && block.ordered)
+              return (
+                <ol>
+                  {block.items.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ol>
+              );
+            if (block.type === 'list')
+              return (
+                <ul>
+                  {block.items.map((item) => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              );
+            if (block.type === 'image' && block.url)
+              return (
+                <figure class="article__inline-media">
+                  <img src={block.url} alt={block.alt} loading="lazy" decoding="async" />
+                </figure>
+              );
+            if (block.type === 'video' && block.url)
+              return (
+                <figure class="article__inline-media">
+                  <video src={block.url} controls preload="metadata" />
+                </figure>
+              );
+            return null;
+          })
+        }
+
+        {
+          author && (
+            <div class="author">
+              <span class="author__avatar">{author.initials}</span>
+              <div>
+                <strong>{author.name}</strong>
+                <span class="author__role">{author.role}</span>
+                <p>{author.bio}</p>
+              </div>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </article>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Continue lendo</p>
+        <h2 class="title-md">Conteúdos relacionados</h2>
+      </div>
+      <div class="grid grid--3">
+        {related.map((item) => <PostCard post={item} />)}
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    eyebrow="Fale com a Essencial"
+    title="Quer aplicar isso na sua operação?"
+    text="Converse com nossa equipe técnica sobre auditoria, gestão hospitalar e segurança assistencial."
+  />
+</BaseLayout>
+
+<style>
+  .article__head {
+    padding-block: clamp(2rem, 5vw, 3.5rem) var(--sp-6);
+    background: linear-gradient(180deg, var(--c-brand-50), var(--c-white));
+  }
+
+  .article__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3);
+    margin: var(--sp-5) 0 var(--sp-4);
+  }
+
+  .article__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+
+  .article__meta a {
+    text-decoration: none;
+  }
+
+  .article__head .lead {
+    margin-top: var(--sp-4);
+  }
+
+  .article__demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: var(--sp-5);
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--r-pill);
+    background: var(--c-warning-100);
+    color: var(--c-warning-600);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+
+  .article__cover {
+    margin: 0 0 clamp(2rem, 4vw, 3rem);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+
+  .article__cover img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
+  .article__layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: start;
+    padding-bottom: var(--section-y);
+  }
+
+  @media (min-width: 1040px) {
+    .article__layout {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+  }
+
+  .article__aside {
+    display: grid;
+    gap: var(--sp-6);
+  }
+
+  @media (min-width: 1040px) {
+    .article__aside {
+      position: sticky;
+      top: 120px;
+    }
+  }
+
+  .toc__title {
+    font-family: var(--font-text);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-brand-600);
+    margin-bottom: var(--sp-3);
+  }
+
+  .toc ol {
+    display: grid;
+    gap: var(--sp-2);
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  .toc a {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .toc a:hover {
+    color: var(--c-brand-600);
+    text-decoration: underline;
+  }
+
+  .toc li::marker {
+    color: var(--c-brand-300);
+    font-size: var(--fs-xs);
+  }
+
+  .share__links {
+    display: flex;
+    gap: var(--sp-2);
+  }
+
+  .share__links a,
+  .share__links button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--c-white);
+    color: var(--c-ink-600);
+    transition:
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .share__links a:hover,
+  .share__links button:hover {
+    border-color: var(--c-brand-300);
+    color: var(--c-brand-700);
+  }
+
+  .share__feedback {
+    display: block;
+    margin-top: var(--sp-2);
+    font-size: var(--fs-xs);
+    color: var(--c-accent-700);
+    min-height: 1.2em;
+  }
+
+  .article__body {
+    max-width: 72ch;
+  }
+
+  .article__inline-media {
+    margin: var(--sp-6) 0;
+  }
+
+  .article__inline-media img,
+  .article__inline-media video {
+    width: 100%;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+  }
+
+  .author {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-4);
+    align-items: start;
+    margin-top: var(--sp-12);
+    padding: var(--sp-5);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--line);
+    background: var(--c-ink-50);
+  }
+
+  .author__avatar {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--c-brand-700);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-sm);
+    letter-spacing: 0.04em;
+  }
+
+  .author strong {
+    display: block;
+    color: var(--text-strong);
+    font-size: var(--fs-sm);
+  }
+
+  .author__role {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    margin-bottom: var(--sp-2);
+  }
+
+  .author p {
+    font-size: var(--fs-sm);
+    margin: 0;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const feedback = document.querySelector<HTMLElement>('[data-copy-feedback]');
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy ?? '');
+        if (feedback) feedback.textContent = 'Link copiado!';
+      } catch {
+        if (feedback) feedback.textContent = 'Não foi possível copiar.';
+      }
+      window.setTimeout(() => {
+        if (feedback) feedback.textContent = '';
+      }, 2600);
+    });
+  });
+</script>

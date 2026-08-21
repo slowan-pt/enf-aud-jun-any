@@ -1,0 +1,739 @@
+---
+import Logo from './Logo.astro';
+import Icon from './Icon.astro';
+import { mainNav, headerCta, waLink } from '../data/site';
+
+const { company, whatsapp } = Astro.locals.settings;
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+function isActive(href: string): boolean {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+---
+
+<header class="site-header" id="site-header" data-header>
+  <div class="topbar">
+    <div class="container topbar__inner">
+      <span class="topbar__item">
+        <Icon name="map-pin" size={15} />
+        {company.address.city} - {company.address.state}
+      </span>
+      <div class="topbar__right">
+        <a class="topbar__item" href={`mailto:${company.email}`}>
+          <Icon name="mail" size={15} />
+          {company.email}
+        </a>
+        <a
+          class="topbar__item"
+          href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+          target="_blank"
+          rel="noopener"
+        >
+          <Icon name="whatsapp" size={15} />
+          {company.phoneDisplay}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="container bar__inner">
+      <a href="/" class="bar__logo" aria-label={`${company.name} — página inicial`}>
+        <Logo />
+      </a>
+
+      <nav class="nav" aria-label="Navegação principal">
+        <ul class="nav__list">
+          {
+            mainNav.map((item) =>
+              item.children ? (
+                <li class="nav__item nav__item--has-menu">
+                  <button
+                    type="button"
+                    class:list={[
+                      'nav__link',
+                      'nav__toggle',
+                      { 'is-active': isActive(item.href) },
+                    ]}
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    data-dropdown-toggle
+                  >
+                    {item.label}
+                    <Icon name="chevron-down" size={16} class="nav__chevron" />
+                  </button>
+                  <div class="dropdown" data-dropdown>
+                    <div class="dropdown__inner">
+                      <a href={item.href} class="dropdown__all">
+                        <span>Todos os serviços</span>
+                        <Icon name="arrow-right" size={16} class="icon--arrow" />
+                      </a>
+                      <ul class="dropdown__list">
+                        {item.children.map((child) => (
+                          <li>
+                            <a
+                              href={child.href}
+                              class:list={[
+                                'dropdown__link',
+                                { 'is-active': isActive(child.href) },
+                              ]}
+                            >
+                              <Icon name="chevron-right" size={14} />
+                              {child.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </li>
+              ) : (
+                <li class="nav__item">
+                  <a
+                    href={item.href}
+                    class:list={['nav__link', { 'is-active': isActive(item.href) }]}
+                    aria-current={isActive(item.href) ? 'page' : undefined}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              )
+            )
+          }
+        </ul>
+      </nav>
+
+      <div class="bar__actions">
+        <a href={headerCta.href} class="btn btn--sm bar__cta">
+          {headerCta.label}
+          <Icon name="arrow-right" size={16} class="icon--arrow" />
+        </a>
+        <button
+          type="button"
+          class="burger"
+          aria-label="Abrir menu de navegação"
+          aria-expanded="false"
+          aria-controls="mobile-drawer"
+          data-drawer-open
+        >
+          <Icon name="menu" size={24} />
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Drawer mobile -->
+<div class="drawer" id="mobile-drawer" data-drawer hidden>
+  <div class="drawer__backdrop" data-drawer-close aria-hidden="true"></div>
+  <div class="drawer__panel" role="dialog" aria-modal="true" aria-label="Menu de navegação">
+    <div class="drawer__head">
+      <Logo size="sm" />
+      <button type="button" class="drawer__close" aria-label="Fechar menu" data-drawer-close>
+        <Icon name="close" size={22} />
+      </button>
+    </div>
+
+    <nav class="drawer__nav" aria-label="Navegação principal (mobile)">
+      <ul class="drawer__list">
+        {
+          mainNav.map((item) =>
+            item.children ? (
+              <li class="drawer__group">
+                <button
+                  type="button"
+                  class="drawer__link drawer__accordion"
+                  aria-expanded="false"
+                  data-accordion
+                >
+                  {item.label}
+                  <Icon name="chevron-down" size={18} class="drawer__chevron" />
+                </button>
+                <ul class="drawer__sub" data-accordion-panel hidden>
+                  <li>
+                    <a href={item.href} class="drawer__sublink">
+                      Todos os serviços
+                    </a>
+                  </li>
+                  {item.children.map((child) => (
+                    <li>
+                      <a
+                        href={child.href}
+                        class:list={['drawer__sublink', { 'is-active': isActive(child.href) }]}
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ) : (
+              <li>
+                <a
+                  href={item.href}
+                  class:list={['drawer__link', { 'is-active': isActive(item.href) }]}
+                >
+                  {item.label}
+                </a>
+              </li>
+            )
+          )
+        }
+      </ul>
+    </nav>
+
+    <div class="drawer__foot">
+      <a href={headerCta.href} class="btn btn--block">{headerCta.label}</a>
+      <a
+        href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+        class="btn btn--secondary btn--block"
+        target="_blank"
+        rel="noopener"
+      >
+        <Icon name="whatsapp" size={18} />
+        {company.phoneDisplay}
+      </a>
+      <a href={`mailto:${company.email}`} class="drawer__mail">
+        <Icon name="mail" size={16} />
+        {company.email}
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    background: var(--c-white);
+    border-bottom: 1px solid var(--line);
+    transition: box-shadow var(--dur) var(--ease);
+  }
+
+  .site-header.is-stuck {
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ---------------- topbar ---------------- */
+  .topbar {
+    display: none;
+    background: var(--c-brand-900);
+    color: rgba(234, 243, 251, 0.82);
+    font-size: var(--fs-xs);
+  }
+
+  @media (min-width: 1000px) {
+    .topbar {
+      display: block;
+    }
+  }
+
+  .topbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+    gap: var(--sp-4);
+  }
+
+  .topbar__right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-6);
+  }
+
+  .topbar__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--dur) var(--ease);
+  }
+
+  a.topbar__item:hover {
+    color: var(--c-white);
+  }
+
+  /* ---------------- barra principal ---------------- */
+  .bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    min-height: 72px;
+  }
+
+  .bar__logo {
+    text-decoration: none;
+    flex: none;
+  }
+
+  .bar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+
+  .bar__cta {
+    display: none;
+  }
+
+  @media (min-width: 1100px) {
+    .bar__cta {
+      display: inline-flex;
+    }
+  }
+
+  /* ---------------- nav desktop ---------------- */
+  .nav {
+    display: none;
+  }
+
+  @media (min-width: 1000px) {
+    .nav {
+      display: block;
+    }
+  }
+
+  .nav__list {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav__item {
+    position: relative;
+  }
+
+  .nav__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.6rem 0.85rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--c-ink-700);
+    text-decoration: none;
+    border-radius: var(--r-sm);
+    transition:
+      color var(--dur) var(--ease),
+      background var(--dur) var(--ease);
+  }
+
+  .nav__link:hover {
+    color: var(--c-brand-700);
+    background: var(--c-brand-50);
+  }
+
+  .nav__link.is-active {
+    color: var(--c-brand-700);
+    font-weight: var(--fw-semibold);
+  }
+
+  .nav__chevron {
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .nav__toggle[aria-expanded='true'] .nav__chevron {
+    transform: rotate(180deg);
+  }
+
+  .dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translate(-50%, 8px);
+    width: min(560px, 78vw);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--dur) var(--ease),
+      transform var(--dur) var(--ease),
+      visibility var(--dur);
+  }
+
+  .nav__item--has-menu:hover .dropdown,
+  .nav__item--has-menu:focus-within .dropdown,
+  .dropdown.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+  }
+
+  .dropdown::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+  }
+
+  .dropdown__inner {
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-lg);
+    padding: var(--sp-3);
+  }
+
+  .dropdown__all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: 0.6rem 0.75rem;
+    margin-bottom: var(--sp-2);
+    border-radius: var(--r-sm);
+    background: var(--c-brand-50);
+    color: var(--c-brand-700);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .dropdown__all:hover {
+    background: var(--c-brand-100);
+  }
+
+  .dropdown__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dropdown__link {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    color: var(--c-ink-700);
+    text-decoration: none;
+    line-height: 1.35;
+    transition:
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .dropdown__link :global(.icon) {
+    color: var(--c-brand-300);
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .dropdown__link:hover {
+    background: var(--c-ink-50);
+    color: var(--c-brand-700);
+  }
+
+  .dropdown__link:hover :global(.icon) {
+    transform: translateX(2px);
+    color: var(--c-accent-500);
+  }
+
+  .dropdown__link.is-active {
+    color: var(--c-brand-700);
+    font-weight: var(--fw-semibold);
+    background: var(--c-brand-50);
+  }
+
+  /* ---------------- burger ---------------- */
+  .burger {
+    display: inline-grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    border-radius: var(--r-sm);
+    color: var(--c-brand-800);
+    border: 1px solid var(--line);
+  }
+
+  .burger:hover {
+    background: var(--c-brand-50);
+  }
+
+  @media (min-width: 1000px) {
+    .burger {
+      display: none;
+    }
+  }
+
+  /* ---------------- drawer mobile ---------------- */
+  .drawer {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-drawer);
+  }
+
+  .drawer[hidden] {
+    display: none;
+  }
+
+  .drawer__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 32, 58, 0.55);
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .drawer.is-open .drawer__backdrop {
+    opacity: 1;
+  }
+
+  .drawer__panel {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: min(380px, 88vw);
+    display: flex;
+    flex-direction: column;
+    background: var(--c-white);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    transition: transform var(--dur-slow) var(--ease-out);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .drawer.is-open .drawer__panel {
+    transform: none;
+  }
+
+  .drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    background: var(--c-white);
+    z-index: 1;
+  }
+
+  .drawer__close {
+    display: grid;
+    place-items: center;
+    width: var(--tap);
+    height: var(--tap);
+    border-radius: var(--r-sm);
+    color: var(--c-ink-600);
+  }
+
+  .drawer__close:hover {
+    background: var(--c-ink-100);
+    color: var(--c-brand-800);
+  }
+
+  .drawer__nav {
+    padding: var(--sp-3) var(--sp-4);
+    flex: 1;
+  }
+
+  .drawer__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .drawer__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0.75rem 0.75rem;
+    border-radius: var(--r-sm);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--c-ink-800);
+    text-decoration: none;
+    text-align: left;
+  }
+
+  .drawer__link:hover,
+  .drawer__link.is-active {
+    background: var(--c-brand-50);
+    color: var(--c-brand-700);
+  }
+
+  .drawer__chevron {
+    transition: transform var(--dur) var(--ease);
+    color: var(--c-ink-400);
+  }
+
+  .drawer__accordion[aria-expanded='true'] .drawer__chevron {
+    transform: rotate(180deg);
+  }
+
+  .drawer__sub {
+    list-style: none;
+    margin: 2px 0 var(--sp-2);
+    padding: 0 0 0 var(--sp-3);
+    display: grid;
+    gap: 1px;
+    border-left: 2px solid var(--c-brand-100);
+  }
+
+  .drawer__sub[hidden] {
+    display: none;
+  }
+
+  .drawer__sublink {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    color: var(--c-ink-600);
+    text-decoration: none;
+  }
+
+  .drawer__sublink:hover,
+  .drawer__sublink.is-active {
+    color: var(--c-brand-700);
+    background: var(--c-ink-50);
+  }
+
+  .drawer__foot {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-5);
+    border-top: 1px solid var(--line);
+    background: var(--c-ink-50);
+  }
+
+  .drawer__mail {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: var(--fs-xs);
+    color: var(--c-ink-600);
+    text-decoration: none;
+  }
+</style>
+
+<script>
+  // ---- sombra do header ao rolar --------------------------------------
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const onScroll = () => header?.classList.toggle('is-stuck', window.scrollY > 8);
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // ---- dropdown desktop (teclado + clique) -----------------------------
+  document.querySelectorAll<HTMLButtonElement>('[data-dropdown-toggle]').forEach((toggle) => {
+    const menu = toggle.parentElement?.querySelector<HTMLElement>('[data-dropdown]');
+    if (!menu) return;
+
+    const close = () => {
+      menu.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    };
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      if (open) {
+        close();
+      } else {
+        menu.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    toggle.parentElement?.addEventListener('focusout', (event) => {
+      const next = (event as FocusEvent).relatedTarget as Node | null;
+      if (!next || !toggle.parentElement?.contains(next)) close();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') close();
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!toggle.parentElement?.contains(event.target as Node)) close();
+    });
+  });
+
+  // ---- drawer mobile ---------------------------------------------------
+  const drawer = document.querySelector<HTMLElement>('[data-drawer]');
+  const openBtn = document.querySelector<HTMLButtonElement>('[data-drawer-open]');
+
+  function openDrawer() {
+    if (!drawer) return;
+    drawer.hidden = false;
+    // timeout (em vez de rAF) garante a transição mesmo quando a aba
+    // está em segundo plano e o navegador não compõe frames
+    window.setTimeout(() => drawer.classList.add('is-open'), 10);
+    document.body.style.overflow = 'hidden';
+    openBtn?.setAttribute('aria-expanded', 'true');
+    drawer.querySelector<HTMLElement>('.drawer__close')?.focus();
+  }
+
+  function closeDrawer() {
+    if (!drawer) return;
+    drawer.classList.remove('is-open');
+    document.body.style.overflow = '';
+    openBtn?.setAttribute('aria-expanded', 'false');
+    window.setTimeout(() => {
+      if (drawer && !drawer.classList.contains('is-open')) drawer.hidden = true;
+    }, 320);
+    openBtn?.focus();
+  }
+
+  openBtn?.addEventListener('click', openDrawer);
+  drawer?.querySelectorAll('[data-drawer-close]').forEach((el) => {
+    el.addEventListener('click', closeDrawer);
+  });
+  drawer?.querySelectorAll('a').forEach((el) => {
+    el.addEventListener('click', () => closeDrawer());
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && drawer && !drawer.hidden) closeDrawer();
+  });
+
+  // foco preso dentro do drawer enquanto aberto
+  drawer?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab' || !drawer || drawer.hidden) return;
+    const focusables = drawer.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusables.length) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  // ---- acordeão do submenu mobile --------------------------------------
+  document.querySelectorAll<HTMLButtonElement>('[data-accordion]').forEach((btn) => {
+    const panel = btn.parentElement?.querySelector<HTMLElement>('[data-accordion-panel]');
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      if (panel) panel.hidden = open;
+    });
+  });
+</script>

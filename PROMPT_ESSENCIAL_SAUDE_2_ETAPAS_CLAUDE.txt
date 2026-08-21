@@ -1,0 +1,2427 @@
+﻿PROMPT MESTRE — ESSENCIAL SAÚDE AUDITORIA
+DESENVOLVIMENTO OBRIGATÓRIO EM 2 ETAPAS — CLAUDE
+
+======================================================================
+REGRA MÁXIMA: EXECUÇÃO EM DUAS ETAPAS
+======================================================================
+
+Este projeto deve ser desenvolvido OBRIGATORIAMENTE em duas etapas independentes e sequenciais:
+
+ETAPA 1 — VISUAL / FRONTEND / ESQUELETO COMPLETO
+ETAPA 2 — BACKEND / CMS REAL / BANCO / AUTENTICAÇÃO / PERSISTÊNCIA / INFRAESTRUTURA
+
+A ETAPA 2 FICA EXPRESSAMENTE BLOQUEADA ATÉ APROVAÇÃO HUMANA DA ETAPA 1.
+
+Execute AGORA SOMENTE A ETAPA 1.
+
+Você só poderá iniciar a ETAPA 2 depois de o proprietário escrever de forma inequívoca algo equivalente a:
+
+- "Etapa 1 aprovada."
+- "Aprovado, pode iniciar a etapa 2."
+- "Pode fazer o backend."
+- "Pode seguir para a etapa 2."
+
+Até essa autorização, é proibido:
+- criar ou conectar Cloudflare D1;
+- criar banco de dados real;
+- criar APIs reais;
+- implementar persistência;
+- implementar autenticação real;
+- implementar sessões reais;
+- criar CMS funcional com gravação;
+- processar formulários no servidor;
+- criar upload real para R2;
+- criar Turnstile funcional;
+- armazenar contatos;
+- configurar backend de produção;
+- executar migrations;
+- publicar alterações de backend;
+- adiantar silenciosamente qualquer parte da ETAPA 2.
+
+A arquitetura da ETAPA 1 deve, entretanto, ser preparada para que o backend seja conectado depois sem reconstruir o visual aprovado.
+
+======================================================================
+ETAPA 1 — O QUE DEVE SER ENTREGUE AGORA
+======================================================================
+
+Na ETAPA 1, "visual" significa O SITE TODO, e não apenas cores ou uma Home.
+
+Entregue o frontend completo e navegável com:
+
+SITE PÚBLICO:
+- Home completa;
+- Quem Somos;
+- Serviços;
+- todas as páginas individuais de serviços;
+- Auditoria Concorrente em destaque;
+- Auditoria de Contas Hospitalares;
+- Gestão da Jornada do Paciente;
+- Gestão Hospitalar;
+- Qualificação da Rede Prestadora;
+- Segurança e Qualidade Assistencial;
+- Conteúdos/Blog;
+- página de artigo;
+- Contato;
+- Política de Privacidade;
+- página 404;
+- Header;
+- menus e submenus;
+- Footer;
+- WhatsApp flutuante;
+- CTAs;
+- diagramas;
+- imagens;
+- ícones;
+- responsividade;
+- microinterações;
+- estados visuais;
+- SEO estrutural de frontend.
+
+FORMULÁRIOS:
+- desenhar todos os formulários completos;
+- validar os campos no frontend;
+- mostrar estados de erro, preenchimento, carregamento e sucesso;
+- usar apenas simulação local para submissão nesta etapa;
+- NÃO enviar dados a servidor;
+- NÃO gravar dados.
+
+CMS / ADMIN — SOMENTE VISUAL:
+Crie também todo o esqueleto visual e navegável do futuro CMS:
+- /admin/login
+- Dashboard
+- Páginas
+- Serviços
+- Matérias
+- Categorias
+- Autores
+- Mídia
+- Contatos
+- SEO
+- Configurações
+- Usuários
+- Logs
+
+O CMS deve parecer um sistema real e profissional, mas nesta etapa deve usar exclusivamente dados mock/fixtures locais.
+
+Crie visualmente:
+- tabelas;
+- filtros;
+- formulários administrativos;
+- editor de conteúdo;
+- biblioteca de mídia;
+- listagem de contatos;
+- detalhe de contato;
+- telas de configurações;
+- campos SEO;
+- estados vazios;
+- modais;
+- toasts;
+- paginação;
+- busca;
+- cards de dashboard.
+
+Não persistir nenhuma dessas ações.
+
+======================================================================
+DADOS MOCK DA ETAPA 1
+======================================================================
+
+Use arquivos locais estruturados para simular conteúdos dinâmicos.
+
+Exemplos conceituais:
+- site data;
+- services data;
+- posts data;
+- contacts mock;
+- admin dashboard mock.
+
+Esses dados são temporários e serão substituídos pelo D1/CMS real somente na ETAPA 2.
+
+Nunca apresente números mock como resultados reais da Essencial Saúde.
+
+Quando precisar demonstrar números no CMS, marque-os claramente como dados de demonstração.
+
+======================================================================
+QA DA ETAPA 1
+======================================================================
+
+Antes de pedir aprovação:
+
+- execute lint;
+- execute typecheck;
+- execute build;
+- teste navegação;
+- teste menus;
+- teste responsividade;
+- teste links;
+- teste WhatsApp;
+- teste formulários simulados;
+- teste visual do CMS;
+- teste 404;
+- inspecione visualmente TODAS as páginas principais.
+
+Teste aproximadamente:
+320px, 360px, 375px, 390px, 412px, 430px, 768px, 1024px, 1280px, 1440px e 1920px.
+
+Corrija antes de apresentar:
+- scroll horizontal;
+- texto cortado;
+- imagens mal recortadas;
+- cards desalinhados;
+- menu quebrado;
+- footer quebrado;
+- WhatsApp sobreposto;
+- formulário ruim no celular;
+- inconsistência visual;
+- espaçamento inadequado.
+
+======================================================================
+ENCERRAMENTO OBRIGATÓRIO DA ETAPA 1
+======================================================================
+
+Quando terminar a Etapa 1, apresente:
+
+1. O que foi desenvolvido.
+2. Todas as páginas públicas criadas.
+3. Todas as telas do CMS visual criadas.
+4. Stack escolhida.
+5. Principais decisões de UX/UI.
+6. Como testar localmente ou URL de preview temporário, quando disponível.
+7. Testes realizados e resultados.
+8. Pendências que pertencem exclusivamente à Etapa 2.
+9. O plano objetivo da Etapa 2.
+
+Depois escreva exatamente:
+
+"ETAPA 1 CONCLUÍDA. AGUARDANDO SUA APROVAÇÃO PARA INICIAR A ETAPA 2."
+
+E PARE.
+
+Não continue desenvolvendo backend.
+
+======================================================================
+ETAPA 2 — SOMENTE DEPOIS DA APROVAÇÃO
+======================================================================
+
+Após aprovação explícita, implemente a ETAPA 2 usando o visual aprovado como contrato.
+
+A ETAPA 2 deve implementar:
+- backend real;
+- CMS próprio funcional;
+- Cloudflare D1;
+- migrations;
+- autenticação;
+- sessões;
+- RBAC;
+- APIs/ações do servidor;
+- persistência;
+- formulários reais;
+- Cloudflare Turnstile;
+- rate limiting;
+- contatos no CMS;
+- upload e biblioteca de mídia reais;
+- Cloudflare R2 quando necessário;
+- configurações persistentes;
+- páginas/serviços/matérias dinâmicos;
+- autores;
+- categorias;
+- SEO administrável;
+- sitemap dinâmico;
+- redirects 301;
+- audit logs;
+- soft delete;
+- segurança;
+- backup;
+- documentação;
+- integração Cloudflare;
+- deploy oficial.
+
+REGRA DE PRESERVAÇÃO:
+A Etapa 2 NÃO é uma segunda rodada de redesign.
+Conecte o backend ao frontend aprovado.
+Não altere arbitrariamente layout, identidade, navegação, componentes ou composição visual aprovados.
+
+======================================================================
+AMBIENTES
+======================================================================
+
+O projeto terá SOMENTE UM AMBIENTE PERSISTENTE: PRODUÇÃO.
+
+Não criar homologação/staging permanente.
+
+Durante a Etapa 1 e durante o desenvolvimento da Etapa 2, pode usar:
+- ambiente local;
+- branch de desenvolvimento;
+- preview técnico temporário.
+
+Mas não criar infraestrutura permanente de homologação.
+
+======================================================================
+IMPORTANTE
+======================================================================
+
+Todas as demais especificações abaixo continuam obrigatórias.
+
+Quando alguma instrução abaixo disser para criar banco, CMS real, backend, autenticação, R2, D1, Turnstile, persistência ou infraestrutura, interprete-a como requisito da ETAPA 2 e NÃO como autorização para executá-la durante a ETAPA 1.
+
+======================================================================
+ESPECIFICAÇÃO COMPLETA DO PROJETO
+======================================================================
+
+PROMPT MESTRE — ESSENCIAL SAÚDE AUDITORIA
+DESENVOLVIMENTO COMPLETO DO SITE + CMS PRÓPRIO
+RESPONSÁVEL PELO DESENVOLVIMENTO: CLAUDE
+
+======================================================================
+0. OBJETIVO GERAL
+======================================================================
+
+Atue simultaneamente como:
+
+- Arquiteto de Software Sênior
+- Product Designer / UX/UI Designer Sênior
+- Desenvolvedor Full-Stack Sênior
+- Especialista em Cloudflare
+- Especialista em CMS
+- Especialista em SEO Técnico
+- Especialista em Acessibilidade Web
+- Especialista em Segurança Web
+- Especialista em Performance e Core Web Vitals
+- Especialista em Git/GitHub
+- Especialista em arquitetura de sistemas de custo zero
+
+Sua missão é PROJETAR, DESENVOLVER, TESTAR E PUBLICAR o site completo e o CMS próprio da empresa:
+
+ESSENCIAL SAÚDE AUDITORIA
+
+IMPORTANTE:
+Quando este prompt fala em "layout", significa o SITE INTEIRO:
+- arquitetura visual
+- identidade
+- páginas
+- seções
+- componentes
+- navegação
+- imagens
+- ícones
+- formulários
+- responsividade
+- experiência do visitante
+- experiência administrativa
+- CMS
+- apresentação final
+- microinterações
+- comportamento mobile/desktop
+
+Você será responsável por conceber e implementar o site completo.
+
+NÃO quero:
+- apenas uma landing page
+- apenas um layout estático
+- apenas páginas HTML soltas
+- apenas um painel acoplado a um site
+- dependência futura de IA para editar conteúdo
+
+O projeto deve ser concebido como:
+
+CMS PRÓPRIO DA ESSENCIAL SAÚDE
++
+SITE PÚBLICO PROFISSIONAL
+
+O CMS será o núcleo de gerenciamento.
+O site público será a camada de apresentação.
+
+======================================================================
+1. MATERIAL INSTITUCIONAL
+======================================================================
+
+Leia INTEGRALMENTE o PDF institucional fornecido junto com este prompt antes de estruturar conteúdo, serviços e páginas.
+
+O PDF é a fonte principal das informações institucionais da Essencial Saúde.
+
+Preserve o sentido do material.
+
+NÃO invente:
+- clientes
+- hospitais atendidos
+- quantidade de pacientes
+- economia financeira
+- percentuais
+- números
+- indicadores
+- cases
+- certificações
+- acreditações
+- premiações
+- anos de experiência
+- depoimentos
+- contratos
+- parceiros
+
+Se alguma informação não estiver disponível:
+- não invente
+- deixe o CMS preparado para cadastrá-la posteriormente
+- mantenha o componente oculto ou não publicado até existirem dados reais
+
+======================================================================
+2. EMPRESA E POSICIONAMENTO
+======================================================================
+
+Nome:
+ESSENCIAL SAÚDE AUDITORIA
+
+Segmento:
+Gestão e Auditoria em Saúde / Gestão Hospitalar.
+
+A Essencial Saúde atua como elo estratégico entre:
+- operadoras de saúde / fontes pagadoras
+- prestadores de serviços
+- beneficiários / pacientes
+
+A proposta institucional deve transmitir:
+- cuidado centrado no paciente
+- qualidade e segurança assistencial
+- auditoria especializada
+- gestão hospitalar
+- rigor e assertividade técnica
+- eficiência operacional
+- eficiência financeira
+- sustentabilidade
+- transparência
+- prevenção de desperdícios
+- melhoria contínua
+- parceria colaborativa
+- inteligência técnica
+- acompanhamento da jornada assistencial
+- resolutividade
+- prevenção de riscos
+- conformidade
+
+A empresa NÃO deve parecer:
+- clínica médica
+- consultório
+- hospital
+- empresa genérica de tecnologia
+
+O posicionamento deve ser claramente:
+EMPRESA B2B ESPECIALIZADA EM GESTÃO HOSPITALAR E AUDITORIA EM SAÚDE.
+
+======================================================================
+3. REFERÊNCIAS VISUAIS
+======================================================================
+
+Antes de desenvolver, analise cuidadosamente:
+
+REFERÊNCIA PRINCIPAL:
+https://www.murtaconsultoria.com.br/
+
+REFERÊNCIAS COMPLEMENTARES:
+https://maida.health/
+https://drbrunoarruda.com.br/
+
+A referência mais importante é a MURTA CONSULTORIA.
+
+Quero uma experiência de site alinhada ao nível profissional desses exemplos, principalmente da Murta.
+
+Utilize-os como inspiração para:
+- arquitetura visual
+- organização das páginas
+- apresentação institucional
+- disposição das seções
+- ritmo visual
+- serviços
+- uso de imagens
+- ícones
+- CTAs
+- formulários
+- navegação
+- contato
+- responsividade
+- densidade de conteúdo
+- linguagem corporativa
+
+NÃO copiar:
+- código
+- HTML
+- CSS
+- textos
+- imagens
+- logotipos
+- identidade visual
+- ilustrações proprietárias
+- componentes proprietários
+
+Crie identidade própria para a Essencial Saúde.
+
+======================================================================
+4. INDEPENDÊNCIA DA IA
+======================================================================
+
+Claude será utilizado para DESENVOLVER o sistema.
+
+O sistema final NÃO poderá depender de:
+- Claude
+- ChatGPT
+- Codex
+- OpenAI
+- Gemini
+- APIs de IA
+- geração automática por IA
+- qualquer IA
+
+Depois que o projeto estiver pronto, operações normais deverão ser feitas diretamente pelo CMS.
+
+Exemplos:
+- publicar matéria
+- editar matéria
+- cadastrar serviço
+- editar serviço
+- trocar imagens
+- trocar ícones
+- alterar telefone
+- alterar WhatsApp
+- alterar e-mail
+- alterar endereço
+- alterar textos
+- alterar missão, visão e valores
+- alterar SEO
+- alterar CTAs
+- visualizar contatos
+- alterar páginas
+- ativar/desativar conteúdos
+- ordenar itens
+
+======================================================================
+5. AMBIENTE ÚNICO: PRODUÇÃO
+======================================================================
+
+O projeto terá somente UM ambiente persistente:
+
+PRODUÇÃO
+
+NÃO criar infraestrutura permanente de:
+- homologação
+- staging
+- QA
+- pré-produção
+
+Durante o desenvolvimento você pode:
+- executar localmente
+- usar preview temporário de desenvolvimento
+- testar branches
+- validar build
+- gerar previews técnicos temporários
+
+Mas NÃO criar um segundo ambiente persistente.
+
+Antes de publicar produção:
+- lint
+- typecheck
+- testes
+- build
+- validação visual
+- validação funcional
+- validação mobile
+- validação de formulários
+- validação do CMS
+
+======================================================================
+6. CONTA CLOUDFLARE EXCLUSIVA PARA ESTE PROJETO
+======================================================================
+
+O proprietário criará uma CONTA CLOUDFLARE EXCLUSIVA PARA A ESSENCIAL SAÚDE.
+
+Toda a infraestrutura Cloudflare deste projeto deverá ficar nessa conta.
+
+Não misturar com:
+- outros projetos
+- outros sites
+- outros bancos
+- outros Workers
+- outros buckets
+- outras credenciais
+
+A conta Cloudflare exclusiva deverá concentrar, quando utilizados:
+- aplicação
+- Workers
+- Pages
+- D1
+- R2
+- Turnstile
+- DNS futuramente
+- domínio futuramente
+- configurações de segurança
+- métricas
+- logs disponíveis no plano gratuito
+
+Use nomes claros para recursos.
+
+Exemplos:
+essencial-saude
+essencial-saude-db
+essencial-saude-media
+essencial-saude-turnstile
+
+Nunca usar nomes genéricos como:
+project1
+database
+bucket1
+worker-test
+
+Documentar todos os recursos Cloudflare em:
+CLOUDFLARE.md
+
+Esse documento deve explicar:
+- qual recurso existe
+- para que serve
+- nome do recurso
+- como está conectado ao projeto
+- quais secrets/variáveis são necessários
+- como recriar a infraestrutura
+- como fazer deploy
+- como conectar domínio futuramente
+
+======================================================================
+7. CUSTO ZERO
+======================================================================
+
+REQUISITO CRÍTICO:
+
+A primeira versão deverá operar com:
+
+CUSTO RECORRENTE DE INFRAESTRUTURA = R$ 0
+
+Enquanto permanecer dentro das franquias gratuitas disponíveis.
+
+Isso inclui:
+- hospedagem
+- frontend
+- backend
+- banco de dados
+- CDN
+- HTTPS
+- formulários
+- CMS
+- proteção antispam
+- armazenamento necessário
+- deploy
+- infraestrutura principal
+
+Não contratar plano pago.
+
+Não habilitar recursos pagos automaticamente.
+
+Não fazer upgrade automático.
+
+Antes de definir infraestrutura final, consulte a documentação oficial e ATUAL da Cloudflare e registre os limites do plano gratuito.
+
+Criar:
+FREE_TIER.md
+
+Documentando para cada serviço:
+- nome
+- finalidade
+- limite gratuito atual
+- consumo esperado
+- risco de ultrapassagem
+- estratégia caso o limite seja atingido
+
+Se algum limite for atingido:
+1. não contratar automaticamente
+2. informar o proprietário
+3. explicar o motivo
+4. apresentar alternativas gratuitas
+5. somente sugerir plano pago se realmente necessário
+6. aguardar autorização expressa
+
+======================================================================
+8. INFRAESTRUTURA PREFERENCIAL
+======================================================================
+
+Priorizar Cloudflare.
+
+Avaliar e usar somente o necessário:
+- Cloudflare Pages ou Workers
+- Cloudflare Workers
+- Cloudflare D1
+- Cloudflare R2
+- Cloudflare Turnstile
+- Cloudflare CDN
+- HTTPS Cloudflare
+- DNS futuramente
+
+Preferência:
+- D1 para banco SQL
+- R2 para uploads de mídia quando necessário
+- Turnstile para antispam
+
+Não criar microserviços desnecessários.
+Preferir aplicação modular, simples, segura e de fácil manutenção.
+
+======================================================================
+9. BANCO DE DADOS
+======================================================================
+
+Preferência:
+CLOUDFLARE D1
+
+O banco deverá permanecer gratuito dentro do free tier.
+
+Não armazenar arquivos binários no D1.
+
+O D1 deve armazenar:
+- usuários
+- permissões
+- páginas
+- seções
+- serviços
+- matérias
+- categorias
+- autores
+- contatos
+- configurações
+- SEO
+- referências de mídia
+- logs administrativos
+- redirecionamentos
+
+Criar migrations versionadas.
+
+Nunca depender de criação manual de tabelas em produção.
+
+Evitar:
+- consultas N+1
+- gravações redundantes
+- polling
+- logs excessivos
+- duplicação desnecessária
+
+======================================================================
+10. GITHUB
+======================================================================
+
+Utilizar GitHub na conta do proprietário.
+
+O GitHub será a FONTE OFICIAL DO CÓDIGO.
+
+Sugestão de repositório:
+essencial-saude-site
+
+Preferencialmente privado.
+
+Não deixar código importante somente:
+- no computador
+- no Claude
+- na Cloudflare
+- em arquivos temporários
+
+Tudo deve estar versionado.
+
+======================================================================
+11. GIT E BRANCHES
+======================================================================
+
+Branch principal:
+main
+
+Branches de trabalho:
+feature/nome-da-funcionalidade
+fix/nome-da-correcao
+hotfix/nome-da-correcao
+
+Exemplos:
+feature/home
+feature/cms
+feature/auditoria-concorrente
+feature/contact-form
+fix/mobile-menu
+
+Não desenvolver diretamente na main para mudanças relevantes.
+
+======================================================================
+12. CI/CD
+======================================================================
+
+Configurar GitHub Actions, quando viável dentro do plano gratuito.
+
+Pipeline:
+- instalação
+- lint
+- typecheck
+- testes
+- build
+- deploy produção
+
+Produção só recebe código quando checks críticos estiverem aprovados.
+
+Criar quando apropriado:
+.github/workflows/ci.yml
+.github/workflows/deploy-production.yml
+
+Não usar runners pagos.
+
+======================================================================
+13. SEGREDOS
+======================================================================
+
+Nunca versionar:
+- senha
+- token
+- API key
+- secret
+- credencial Cloudflare
+
+Utilizar:
+- GitHub Secrets
+- Cloudflare Secrets
+- variáveis de ambiente
+
+Criar:
+.env.example
+
+Sem valores sensíveis reais.
+
+======================================================================
+14. STACK
+======================================================================
+
+Escolha stack moderna, madura e compatível com Cloudflare.
+
+Critérios:
+1. custo zero
+2. TypeScript
+3. Cloudflare
+4. SEO excelente
+5. SSR/SSG quando adequado
+6. segurança
+7. manutenção simples
+8. performance
+9. CMS próprio
+10. baixo JavaScript no site público
+11. migração futura possível
+
+Documentar a decisão em:
+ARCHITECTURE.md
+
+======================================================================
+15. CMS PRÓPRIO — REQUISITO CENTRAL
+======================================================================
+
+O sistema será um CMS PRÓPRIO DA ESSENCIAL SAÚDE.
+
+NÃO utilizar como CMS principal:
+- WordPress
+- Joomla
+- Drupal
+- Strapi
+- Contentful
+- Sanity
+- Webflow CMS
+- Wix
+- Squarespace
+- outro CMS SaaS
+
+Arquitetura:
+SITE PÚBLICO
++
+/admin
++
+BACKEND
++
+D1
++
+ARMAZENAMENTO DE MÍDIA
+
+======================================================================
+16. OBJETIVO DO CMS
+======================================================================
+
+Após a entrega, o proprietário deverá administrar o site sem:
+- VS Code
+- terminal
+- Git
+- Claude
+- programador para tarefas editoriais simples
+
+O CMS deve permitir gerenciar praticamente todo o conteúdo editorial.
+
+======================================================================
+17. CMS — DASHBOARD
+======================================================================
+
+Criar:
+/admin
+
+Dashboard com:
+- contatos novos
+- contatos recentes
+- matérias publicadas
+- rascunhos
+- serviços ativos
+- páginas
+- uploads recentes
+- atalhos administrativos
+
+======================================================================
+18. CMS — MENU
+======================================================================
+
+Sugestão:
+
+Dashboard
+
+Conteúdo
+- Páginas
+- Serviços
+- Matérias
+- Categorias
+- Autores
+
+Mídia
+
+Contatos
+
+SEO
+- Metadados
+- Redirecionamentos
+
+Configurações
+- Empresa
+- Site
+- WhatsApp
+- Redes sociais
+
+Usuários
+
+Logs
+
+======================================================================
+19. USUÁRIOS E PERMISSÕES
+======================================================================
+
+Criar usuários com:
+- id
+- nome
+- e-mail
+- password_hash
+- role_id
+- status
+- last_login_at
+- created_at
+- updated_at
+
+Criar RBAC.
+
+Perfis iniciais:
+ADMINISTRADOR
+EDITOR
+
+Nunca armazenar senha em texto simples.
+
+======================================================================
+20. LOGIN
+======================================================================
+
+Criar:
+/admin/login
+
+Campos:
+- e-mail
+- senha
+
+Aplicar:
+- rate limiting
+- password hashing seguro
+- sessões seguras
+- cookies HttpOnly
+- Secure
+- SameSite
+- expiração
+- proteção contra brute force
+
+======================================================================
+21. PÁGINAS ADMINISTRÁVEIS
+======================================================================
+
+Criar módulo PÁGINAS.
+
+Administrar:
+- Home
+- Quem Somos
+- Contato
+- Política de Privacidade
+- páginas futuras
+
+Campos:
+- título
+- slug
+- conteúdo
+- imagem
+- status
+- SEO
+- data de atualização
+
+======================================================================
+22. HOME ADMINISTRÁVEL
+======================================================================
+
+Não criar page builder complexo.
+
+Criar seções estruturadas.
+
+Permitir editar:
+HERO
+- título
+- subtítulo
+- imagem
+- CTA primário
+- URL
+- CTA secundário
+- URL
+- ativo
+
+PROPOSTA DE VALOR
+- título
+- texto
+- imagem
+
+AUDITORIA CONCORRENTE
+- título
+- texto
+- imagem
+- CTA
+
+GESTÃO HOSPITALAR
+- título
+- texto
+- imagem
+- CTA
+
+BENEFÍCIOS
+- adicionar
+- editar
+- excluir
+- ordenar
+
+MISSÃO
+VISÃO
+VALORES
+
+CONTEÚDOS RECENTES
+
+CTA FINAL
+
+CONTATO
+
+======================================================================
+23. SERVIÇOS
+======================================================================
+
+Criar módulo SERVIÇOS.
+
+Permitir:
+- criar
+- editar
+- duplicar
+- publicar
+- despublicar
+- arquivar
+- excluir
+- ordenar
+
+Campos:
+- nome
+- slug
+- resumo
+- conteúdo
+- imagem principal
+- imagem secundária
+- ícone
+- CTA
+- SEO title
+- meta description
+- Open Graph image
+- status
+- ordem
+
+======================================================================
+24. BLOG / MATÉRIAS
+======================================================================
+
+Criar módulo completo de CONTEÚDOS.
+
+Permitir:
+- criar
+- editar
+- salvar rascunho
+- preview
+- publicar
+- atualizar
+- despublicar
+- arquivar
+- excluir
+
+Status mínimos:
+draft
+published
+archived
+
+======================================================================
+25. EDITOR DE CONTEÚDO
+======================================================================
+
+Criar editor moderno e amigável.
+
+Suportar:
+- título
+- parágrafo
+- H2
+- H3
+- negrito
+- itálico
+- links
+- listas
+- citações
+- imagens
+- separadores
+
+Não permitir HTML arbitrário inseguro.
+Sanitizar conteúdo.
+
+======================================================================
+26. CATEGORIAS
+======================================================================
+
+Criar módulo CATEGORIAS.
+
+Sugestões:
+- Auditoria Concorrente
+- Gestão Hospitalar
+- Auditoria em Saúde
+- Segurança do Paciente
+- Saúde Suplementar
+- Gestão Assistencial
+- Contas Hospitalares
+
+======================================================================
+27. AUTORES
+======================================================================
+
+Criar módulo AUTORES.
+
+Campos:
+- nome
+- função
+- biografia
+- foto
+- status
+
+======================================================================
+28. MÍDIA
+======================================================================
+
+Criar biblioteca de mídia.
+
+Permitir:
+- upload
+- busca
+- visualização
+- seleção
+- alt text
+- título
+- exclusão segura
+- reutilização
+
+Preferir R2 para uploads do CMS.
+
+Validar:
+- tipo
+- MIME
+- tamanho
+- extensão
+- nome seguro
+
+Não permitir upload arbitrário executável.
+
+======================================================================
+29. CONFIGURAÇÕES DA EMPRESA
+======================================================================
+
+Criar:
+CONFIGURAÇÕES > EMPRESA
+
+Campos:
+- nome fantasia
+- razão social quando fornecida
+- telefone
+- WhatsApp
+- e-mail
+- endereço
+- cidade
+- estado
+- CEP
+- redes sociais
+- logo
+- logo alternativa
+- favicon
+
+Dados atuais:
+
+Nome:
+Essencial Saúde Auditoria
+
+E-mail:
+essencialsaude2026@gmail.com
+
+Telefone / WhatsApp:
++55 61 98244-4083
+
+Endereço:
+Setor Bancário Norte
+Q. 02 Bloco F
+Edifício Via Capital
+Sala 509
+Asa Norte
+Brasília - DF
+CEP 70.041-906
+
+Centralizar esses dados.
+Não hardcode em vários componentes.
+
+======================================================================
+30. WHATSAPP FLUTUANTE
+======================================================================
+
+Adicionar em todas as páginas públicas.
+
+Número:
++55 61 98244-4083
+
+Mensagem padrão:
+"Olá! Vim pelo site da Essencial Saúde e gostaria de saber mais sobre os serviços de gestão e auditoria em saúde."
+
+Tooltip:
+Fale com a Essencial Saúde
+
+Usar wa.me.
+
+Deve funcionar em:
+- Android
+- iPhone
+- desktop
+- WhatsApp Web
+
+No CMS permitir alterar:
+- número
+- mensagem
+- tooltip
+- ativo/inativo
+
+======================================================================
+31. WHATSAPP CONTEXTUAL
+======================================================================
+
+Permitir mensagens específicas por serviço.
+
+Exemplo:
+Auditoria Concorrente:
+"Olá! Vim pela página de Auditoria Concorrente da Essencial Saúde e gostaria de receber mais informações."
+
+Centralizar no CMS/configuração.
+
+======================================================================
+32. DESIGN DO SITE INTEIRO
+======================================================================
+
+Você será responsável por criar TODO O SITE VISUALMENTE.
+
+Não quero um template genérico.
+
+Não quero repetição monótona de:
+título
+texto
+card
+texto
+card
+
+Crie composição corporativa moderna e visualmente rica.
+
+Combinar:
+- tipografia
+- fotografia
+- ícones
+- cards
+- fundos
+- formas
+- diagramas
+- linhas
+- CTAs
+- seções editoriais
+- espaços em branco
+- elementos de conexão
+- microinterações
+
+======================================================================
+33. IDENTIDADE VISUAL
+======================================================================
+
+Utilizar logo e assets fornecidos.
+
+Extrair paleta coerente.
+
+Direção:
+- branco
+- azul institucional
+- azul profundo
+- tons intermediários
+- cinzas claros
+- cor complementar discreta
+
+Transmitir:
+SAÚDE + GESTÃO + SEGURANÇA + TECNOLOGIA + CONFIANÇA
+
+Evitar:
+- excesso de cores
+- neon
+- gradientes exagerados
+- sombra pesada
+- aparência infantil
+- aparência genérica
+- visual de consultório
+
+======================================================================
+34. DESIGN SYSTEM
+======================================================================
+
+Definir:
+- cores
+- tipografia
+- spacing
+- containers
+- breakpoints
+- radius
+- sombras
+- botões
+- links
+- cards
+- inputs
+- tabelas
+- modais
+- toasts
+- badges
+
+Criar tokens reutilizáveis.
+
+======================================================================
+35. IMAGENS
+======================================================================
+
+Imagens são requisito.
+
+Usar estrategicamente em:
+- Hero
+- Quem Somos
+- Serviços
+- Auditoria Concorrente
+- Gestão Hospitalar
+- Jornada do Paciente
+- Qualificação da Rede
+- Contato
+- Matérias
+
+Composições:
+- texto + imagem
+- imagem + texto
+- imagem ampla
+- imagem parcial
+- cards sobrepostos
+- mosaicos
+- máscaras
+- imagem + ícone
+- imagem + destaque editorial
+
+Todas devem ser substituíveis pelo CMS quando apropriado.
+
+======================================================================
+36. ÍCONES
+======================================================================
+
+Utilizar uma única família consistente de ícones vetoriais.
+
+Preferir SVG.
+
+Não usar emojis como ícones principais.
+
+Ícones devem ser consistentes em:
+- traço
+- peso
+- tamanho
+- alinhamento
+
+======================================================================
+37. RESPONSIVIDADE
+======================================================================
+
+Mobile-first.
+
+Testar aproximadamente:
+320px
+360px
+375px
+390px
+412px
+430px
+768px
+1024px
+1280px
+1440px
+1920px
+
+Não permitir:
+- scroll horizontal indevido
+- texto cortado
+- card quebrado
+- imagem mal posicionada
+- menu sobreposto
+- formulário deformado
+- WhatsApp cobrindo conteúdo
+- botões inacessíveis
+
+======================================================================
+38. HEADER
+======================================================================
+
+Itens:
+- Logo
+- Início
+- Quem Somos
+- Serviços
+- Conteúdos
+- Contato
+
+CTA:
+FALE COM A ESSENCIAL
+
+Serviços pode ter submenu.
+
+Mobile:
+- menu hamburger
+- acessível
+- sem bugs de scroll
+- foco adequado
+
+======================================================================
+39. MAPA DO SITE
+======================================================================
+
+Criar inicialmente:
+
+/
+ /quem-somos
+ /servicos
+ /servicos/auditoria-concorrente
+ /servicos/auditoria-de-contas-hospitalares
+ /servicos/gestao-da-jornada-do-paciente
+ /servicos/gestao-hospitalar
+ /servicos/qualificacao-da-rede-prestadora
+ /servicos/seguranca-e-qualidade-assistencial
+ /conteudos
+ /conteudos/[slug]
+ /contato
+ /politica-de-privacidade
+
+CMS:
+ /admin
+ /admin/login
+ /admin/paginas
+ /admin/servicos
+ /admin/conteudos
+ /admin/categorias
+ /admin/autores
+ /admin/midia
+ /admin/contatos
+ /admin/seo
+ /admin/configuracoes
+ /admin/usuarios
+ /admin/logs
+
+======================================================================
+40. HOME
+======================================================================
+
+Estrutura sugerida:
+
+1. Header
+2. Hero
+3. Proposta de valor
+4. Essencial como elo estratégico
+5. Serviços
+6. Auditoria Concorrente
+7. Gestão Hospitalar
+8. Benefícios
+9. Como Atuamos
+10. Qualificação da Rede
+11. Missão, Visão e Valores
+12. Conteúdos recentes
+13. CTA final
+14. Formulário
+15. Footer
+16. WhatsApp flutuante
+
+A ordem pode ser ajustada se houver solução melhor de UX.
+
+======================================================================
+41. HERO
+======================================================================
+
+Headline base:
+"Gestão e Auditoria em Saúde com foco na segurança do paciente e na sustentabilidade do sistema."
+
+Pode melhorar a redação preservando o posicionamento.
+
+CTAs:
+CONHEÇA NOSSAS SOLUÇÕES
+FALE COM UM ESPECIALISTA
+
+Criar hero:
+- moderno
+- forte
+- corporativo
+- responsivo
+- com imagem profissional
+- rápido
+
+======================================================================
+42. DIAGRAMA DO MODELO ESSENCIAL
+======================================================================
+
+Criar componente visual com:
+
+OPERADORA / FONTE PAGADORA
+ESSENCIAL SAÚDE
+PRESTADOR
+
+PACIENTE no centro.
+
+Preferir:
+HTML + CSS + SVG
+
+Não depender de imagem estática.
+
+No mobile reorganizar verticalmente.
+
+======================================================================
+43. SERVIÇOS INICIAIS
+======================================================================
+
+Com base no documento:
+
+1. Auditoria Concorrente
+2. Auditoria de Contas Hospitalares
+3. Gestão da Jornada do Paciente
+4. Gestão Hospitalar
+5. Qualificação da Rede Prestadora
+6. Segurança e Qualidade Assistencial
+
+Cada serviço:
+- ícone
+- resumo
+- imagem quando adequada
+- CTA
+- página própria
+- SEO próprio
+
+======================================================================
+44. AUDITORIA CONCORRENTE
+======================================================================
+
+Dar grande destaque.
+
+Página:
+/servicos/auditoria-concorrente
+
+Abordar, com base no documento:
+- acompanhamento durante internação
+- visita técnica
+- beira-leito
+- interação com equipe assistencial
+- contato com médico assistente
+- pertinência da internação
+- adequação terapêutica
+- permanência
+- identificação precoce de desvios
+- segurança do paciente
+- transição de cuidado
+- desospitalização
+- prevenção de riscos
+- resolutividade
+
+======================================================================
+45. AUDITORIA DE CONTAS
+======================================================================
+
+Página:
+/servicos/auditoria-de-contas-hospitalares
+
+Abordar:
+- revisão técnica
+- coerência entre assistência e faturamento
+- prontuário
+- materiais
+- medicamentos
+- taxas
+- procedimentos
+- justificativa técnica
+- inconsistências
+- sustentabilidade contratual
+
+======================================================================
+46. GESTÃO DA JORNADA DO PACIENTE
+======================================================================
+
+Abordar:
+- jornada assistencial
+- tratamento adequado
+- permanência
+- nível de atenção
+- continuidade
+- desospitalização
+- transferência
+- segurança
+- resolutividade
+
+======================================================================
+47. GESTÃO HOSPITALAR
+======================================================================
+
+Página:
+/servicos/gestao-hospitalar
+
+Deixar claro que a Essencial vai além de conferência de contas.
+
+Abordar:
+- processos
+- qualidade
+- segurança
+- eficiência
+- gestão assistencial
+- integração
+- melhoria contínua
+- sustentabilidade
+
+======================================================================
+48. QUALIFICAÇÃO DA REDE
+======================================================================
+
+Página:
+/servicos/qualificacao-da-rede-prestadora
+
+Abordar:
+- qualificação
+- evidências
+- qualidade
+- não conformidades
+- comunicação de incidentes
+- análise de causa raiz
+- planos de ação
+- melhoria contínua
+- eventos adversos
+- desenvolvimento da rede
+
+======================================================================
+49. COMO ATUAMOS
+======================================================================
+
+Criar seção visual de processo.
+
+Exemplo:
+1. Avaliação
+2. Monitoramento
+3. Comunicação
+4. Atuação técnica
+5. Acompanhamento
+6. Melhoria/resultado assistencial
+
+Representar com:
+- timeline
+- stepper
+- cards conectados
+- SVG
+
+Mobile:
+fluxo vertical.
+
+======================================================================
+50. MISSÃO, VISÃO E VALORES
+======================================================================
+
+Utilizar o material institucional.
+
+Apresentar de forma visual.
+
+Cada valor deve ter ícone.
+
+Tudo editável pelo CMS.
+
+======================================================================
+51. BLOG / CONTEÚDOS
+======================================================================
+
+Criar:
+/conteudos
+
+Objetivo:
+- autoridade institucional
+- educação
+- SEO
+- geração de interesse
+- atualização do site
+
+Home deve mostrar conteúdos recentes.
+
+Cada matéria:
+/conteudos/[slug]
+
+======================================================================
+52. FORMULÁRIOS — TODOS FUNCIONAIS
+======================================================================
+
+Use especialmente a Murta Consultoria como referência de experiência de formulário.
+
+NÃO criar formulários apenas visuais.
+
+Todo formulário deve possuir:
+
+FRONTEND
++
+VALIDAÇÃO CLIENTE
++
+VALIDAÇÃO SERVIDOR
++
+TURNSTILE
++
+ANTISPAM
++
+PERSISTÊNCIA D1
++
+MENSAGEM DE SUCESSO/ERRO
++
+VISUALIZAÇÃO NO CMS
+
+======================================================================
+53. FORMULÁRIO PRINCIPAL
+======================================================================
+
+Campos:
+
+Nome completo
+Empresa / Organização
+Cargo
+E-mail
+Telefone / WhatsApp
+Tipo de organização
+Serviço de interesse
+Assunto
+Mensagem
+Consentimento LGPD
+
+Tipo de organização:
+- Operadora de Saúde
+- Hospital
+- Clínica
+- Autogestão
+- Seguradora
+- Empresa
+- Órgão Público
+- Embaixada / Consulado
+- Seguradora Internacional
+- Paciente Particular
+- Outro
+
+Serviço de interesse deve vir do cadastro de serviços do CMS.
+
+======================================================================
+54. FORMULÁRIO COMERCIAL
+======================================================================
+
+Criar também formulário de:
+
+SOLICITE UMA APRESENTAÇÃO
+ou
+FALE COM UM ESPECIALISTA
+
+Campos:
+- nome
+- empresa
+- cargo
+- telefone
+- e-mail
+- tipo de organização
+- serviço
+- mensagem
+
+Pode reutilizar componente central.
+
+Registrar a página de origem.
+
+======================================================================
+55. PROCESSAMENTO DOS FORMULÁRIOS
+======================================================================
+
+Fluxo:
+
+Usuário
+→ validação frontend
+→ servidor
+→ Turnstile
+→ rate limiting
+→ sanitização
+→ D1
+→ confirmação
+→ CMS /admin/contatos
+
+Impedir submissão duplicada.
+
+======================================================================
+56. CONTATOS NO CMS
+======================================================================
+
+Criar:
+/admin/contatos
+
+Tabela:
+- Data
+- Nome
+- Empresa
+- Contato
+- Serviço
+- Origem
+- Status
+
+Status:
+- Novo
+- Em atendimento
+- Respondido
+- Arquivado
+
+Permitir:
+- visualizar
+- buscar
+- filtrar
+- ordenar
+- paginar
+- alterar status
+- arquivar
+
+======================================================================
+57. DETALHE DO CONTATO
+======================================================================
+
+Criar:
+/admin/contatos/[id]
+
+Mostrar:
+- nome
+- empresa
+- cargo
+- e-mail
+- telefone
+- serviço
+- assunto
+- mensagem
+- origem
+- data
+- status
+
+Ações:
+- Abrir WhatsApp
+- Enviar e-mail
+- Marcar como respondido
+
+Não é necessário sistema de e-mail interno completo na V1.
+
+======================================================================
+58. SEO
+======================================================================
+
+SEO é requisito desde o início.
+
+Implementar:
+- HTML semântico
+- SSR/SSG quando adequado
+- title
+- meta description
+- canonical
+- Open Graph
+- sitemap.xml
+- robots.txt
+- breadcrumbs
+- headings corretos
+- alt
+- Schema.org
+- links internos
+- página 404
+- redirects 301
+- URLs amigáveis
+
+======================================================================
+59. TEMAS DE SEO
+======================================================================
+
+Estruturar naturalmente conteúdos relacionados a:
+
+- auditoria em saúde
+- auditoria hospitalar
+- auditoria concorrente
+- auditoria concorrente hospitalar
+- auditoria de contas hospitalares
+- gestão hospitalar
+- gestão em saúde
+- empresa de auditoria em saúde
+- auditoria para operadoras de saúde
+- auditoria médica
+- auditoria de enfermagem
+- segurança do paciente
+- gestão de internação hospitalar
+- gestão assistencial
+- qualificação da rede hospitalar
+- auditoria hospitalar Brasília
+- gestão hospitalar Brasília
+- auditoria em saúde Brasília DF
+
+Não fazer keyword stuffing.
+
+======================================================================
+60. SEO LOCAL
+======================================================================
+
+Utilizar corretamente:
+Brasília - DF
+
+Dados:
+Essencial Saúde Auditoria
+Setor Bancário Norte
+Q. 02 Bloco F
+Edifício Via Capital
+Sala 509
+Asa Norte
+Brasília - DF
+CEP 70.041-906
+
+Aplicar Schema.org apropriado quando semanticamente correto.
+
+======================================================================
+61. SCHEMA.ORG
+======================================================================
+
+Avaliar:
+- Organization
+- WebSite
+- Service
+- Article
+- BreadcrumbList
+- LocalBusiness quando semanticamente correto
+
+Não inserir propriedades fictícias.
+
+======================================================================
+62. SEO NO CMS
+======================================================================
+
+Cada:
+- página
+- serviço
+- matéria
+
+deve possuir seção SEO com:
+
+- SEO Title
+- Meta Description
+- Canonical
+- Open Graph Title
+- Open Graph Description
+- Open Graph Image
+- Indexar?
+
+Criar defaults coerentes.
+
+======================================================================
+63. SLUGS E REDIRECIONAMENTOS
+======================================================================
+
+Gerar slug automaticamente.
+
+Permitir edição.
+
+Garantir unicidade.
+
+Se URL publicada mudar:
+- registrar URL antiga
+- criar 301 para nova
+
+Criar módulo/tabela redirects.
+
+======================================================================
+64. SITEMAP AUTOMÁTICO
+======================================================================
+
+Quando conteúdo é publicado:
+entra no sitemap.
+
+Quando despublicado:
+sai do sitemap.
+
+Rascunhos:
+não entram.
+
+Admin:
+não entra.
+
+======================================================================
+65. GOOGLE
+======================================================================
+
+Preparar para:
+- Google Search Console
+- Google Analytics
+
+Não exigir Analytics para o site funcionar.
+
+Quando domínio próprio for adquirido:
+- conectar sem reconstruir
+- atualizar canonical
+- sitemap
+- Search Console
+- metadata necessária
+
+======================================================================
+66. PERFORMANCE
+======================================================================
+
+Buscar Lighthouse elevado e Core Web Vitals saudáveis.
+
+Aplicar:
+- otimização de imagens
+- AVIF/WebP
+- lazy loading
+- responsive images
+- font optimization
+- code splitting
+- CDN
+- cache
+- mínimo JS
+- minificação
+
+Evitar bibliotecas grandes para funções simples.
+
+======================================================================
+67. ACESSIBILIDADE
+======================================================================
+
+Seguir WCAG 2.2 AA quando aplicável.
+
+Garantir:
+- contraste
+- teclado
+- focus
+- labels
+- alt
+- semantic HTML
+- touch targets
+- reduced motion
+- estados de erro acessíveis
+
+======================================================================
+68. SEGURANÇA
+======================================================================
+
+Implementar:
+- validação server-side
+- sanitização
+- proteção XSS
+- CSRF quando aplicável
+- rate limiting
+- CSP
+- HSTS quando apropriado
+- X-Content-Type-Options
+- Referrer-Policy
+- Permissions-Policy
+- autenticação segura
+- sessão segura
+- hash de senha
+- proteção brute force
+- upload seguro
+
+======================================================================
+69. LGPD
+======================================================================
+
+Criar Política de Privacidade.
+
+Formulários devem ter consentimento apropriado.
+
+Não armazenar:
+- prontuários
+- diagnósticos
+- informações clínicas de pacientes
+- dados sensíveis desnecessários
+
+Este site institucional não deve virar prontuário eletrônico.
+
+======================================================================
+70. LOGS ADMINISTRATIVOS
+======================================================================
+
+Criar audit log simples para ações relevantes:
+
+- publicar conteúdo
+- alterar configurações
+- excluir conteúdo
+- alterar usuário
+
+Não armazenar dados sensíveis desnecessários.
+
+======================================================================
+71. SOFT DELETE
+======================================================================
+
+Para conteúdo importante, preferir soft delete.
+
+Usar deleted_at quando apropriado.
+
+Permitir recuperação quando útil.
+
+======================================================================
+72. PREVIEW DE CONTEÚDO
+======================================================================
+
+Rascunhos devem permitir preview seguro.
+
+Preview:
+- não indexado
+- protegido
+- não entra no sitemap
+
+======================================================================
+73. CACHE
+======================================================================
+
+Definir estratégia de cache compatível com CMS.
+
+Quando conteúdo publicado for atualizado:
+- refletir no site corretamente
+- invalidar/revalidar cache
+- não deixar versão antiga indefinidamente
+
+======================================================================
+74. FOOTER
+======================================================================
+
+Criar footer profissional com:
+- logo
+- resumo institucional
+- serviços
+- links rápidos
+- conteúdos
+- telefone
+- WhatsApp
+- e-mail
+- endereço
+- política de privacidade
+- copyright
+
+Não colocar créditos desnecessários do framework.
+
+======================================================================
+75. 404
+======================================================================
+
+Criar página 404 personalizada.
+
+Deve:
+- manter identidade
+- oferecer links
+- não parecer erro técnico bruto
+
+======================================================================
+76. DOCUMENTAÇÃO
+======================================================================
+
+Criar:
+
+README.md
+ARCHITECTURE.md
+CLOUDFLARE.md
+DEPLOY.md
+ADMIN.md
+SEO.md
+FREE_TIER.md
+BACKUP.md
+CHANGELOG.md
+
+README:
+como rodar.
+
+ARCHITECTURE:
+arquitetura.
+
+CLOUDFLARE:
+recursos da conta exclusiva.
+
+DEPLOY:
+publicação.
+
+ADMIN:
+como usar CMS.
+
+SEO:
+estrutura e manutenção.
+
+FREE_TIER:
+limites gratuitos.
+
+BACKUP:
+backup/restauração.
+
+CHANGELOG:
+mudanças relevantes.
+
+======================================================================
+77. BACKUP
+======================================================================
+
+Documentar:
+- exportação do D1
+- backup de conteúdo
+- backup de mídia R2 quando aplicável
+- restauração
+
+Deploy não pode apagar dados do CMS.
+
+======================================================================
+78. ROLLBACK
+======================================================================
+
+Documentar rollback de código.
+
+Se nova versão falhar:
+- identificar última versão estável
+- restaurar rapidamente
+
+Evitar migrations destrutivas.
+
+======================================================================
+79. TESTES
+======================================================================
+
+Antes de considerar o projeto concluído:
+
+- lint
+- typecheck
+- build
+- testes unitários relevantes
+- testes de integração
+- testes de formulário
+- testes de login
+- testes de CMS
+- testes de upload
+- testes de SEO
+- testes de links
+- testes de 404
+- testes de WhatsApp
+- testes de responsividade
+
+======================================================================
+80. QA VISUAL
+======================================================================
+
+Abra e inspecione visualmente o site.
+
+Não confie apenas em testes automáticos.
+
+Validar:
+- Home
+- Header
+- menu mobile
+- páginas de serviço
+- artigos
+- formulários
+- CMS
+- imagens
+- ícones
+- footer
+- WhatsApp
+
+Testar desktop, tablet e celular.
+
+======================================================================
+81. NÃO INVENTAR DADOS
+======================================================================
+
+Reforço final:
+
+NÃO INVENTAR:
+- clientes
+- estatísticas
+- depoimentos
+- cases
+- resultados
+- números
+- certificações
+- experiência
+- parceiros
+
+Quando necessário:
+- criar estrutura no CMS
+- manter oculta
+- aguardar dados reais
+
+======================================================================
+82. PRIMEIRA EXECUÇÃO
+======================================================================
+
+Antes de começar:
+
+1. Examine todos os arquivos recebidos.
+2. Leia integralmente o PDF institucional.
+3. Identifique logo e assets.
+4. Analise os três sites de referência.
+5. Dê atenção especial à Murta Consultoria.
+6. Analise seus formulários e estrutura.
+7. Defina stack.
+8. Defina arquitetura.
+9. Defina schema D1.
+10. Defina estratégia de mídia.
+11. Defina design system.
+12. Defina mapa do site.
+13. Defina recursos da conta Cloudflare exclusiva.
+14. Documente tudo.
+15. INICIE A IMPLEMENTAÇÃO.
+
+NÃO pare apenas no planejamento.
+
+======================================================================
+83. ORDEM DE IMPLEMENTAÇÃO
+======================================================================
+
+Sugestão:
+
+FASE 1
+- setup
+- GitHub
+- stack
+- Cloudflare
+- estrutura
+
+FASE 2
+- design system
+- componentes base
+- header/footer
+- responsividade base
+
+FASE 3
+- Home completa
+- imagens
+- ícones
+- WhatsApp
+- formulários
+
+FASE 4
+- páginas institucionais
+- serviços
+- auditoria concorrente
+- gestão hospitalar
+
+FASE 5
+- banco D1
+- autenticação
+- CMS base
+
+FASE 6
+- páginas
+- serviços
+- matérias
+- categorias
+- autores
+- mídia
+
+FASE 7
+- contatos
+- formulários no backend
+- Turnstile
+- filtros/admin
+
+FASE 8
+- SEO
+- sitemap
+- schemas
+- redirects
+- Open Graph
+
+FASE 9
+- segurança
+- performance
+- acessibilidade
+
+FASE 10
+- testes
+- QA visual
+- documentação
+- deploy produção
+
+======================================================================
+84. RESULTADO FINAL
+======================================================================
+
+Entregar para a ESSENCIAL SAÚDE AUDITORIA:
+
+- site público completo
+- layout profissional
+- identidade própria
+- responsividade total
+- CMS próprio
+- banco gratuito
+- Cloudflare gratuita enquanto dentro do free tier
+- conta Cloudflare exclusiva do projeto
+- GitHub na conta do proprietário
+- administração sem IA
+- blog
+- serviços
+- formulários realmente funcionais
+- contatos no CMS
+- WhatsApp flutuante
+- biblioteca de mídia
+- SEO técnico
+- SEO local
+- segurança
+- acessibilidade
+- performance
+- documentação
+- deploy de produção
+
+O visitante deverá entender rapidamente:
+
+1. quem é a Essencial Saúde
+2. o que ela faz
+3. como atua
+4. para quem atua
+5. quais serviços oferece
+6. quais benefícios busca gerar
+7. como entrar em contato
+
+O administrador deverá conseguir manter o conteúdo do site por conta própria através do CMS.
+
+PRINCÍPIOS FINAIS:
+
+- Custo inicial recorrente de infraestrutura: R$ 0
+- Apenas ambiente de produção
+- Conta Cloudflare exclusiva para este projeto
+- GitHub como fonte oficial do código
+- D1 como banco preferencial
+- CMS próprio
+- Site independente de IA
+- Layout completo desenvolvido por Claude
+- Conteúdo baseado no PDF institucional
+- Não inventar dados
+- SEO desde o início
+- Segurança e responsividade como requisitos obrigatórios

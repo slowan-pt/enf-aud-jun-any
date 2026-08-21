@@ -1,0 +1,246 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import PostCard from '../../components/PostCard.astro';
+import Icon from '../../components/Icon.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { getDB } from '../../lib/db';
+import { publishedOnly } from '../../lib/posts';
+import { listCategories } from '../../lib/categories';
+
+const categories = await listCategories(getDB());
+const publishedPosts = publishedOnly(Astro.locals.posts);
+const [featured, ...rest] = publishedPosts;
+/** Os chips filtram a grade (que não inclui o destaque), então as contagens
+ *  são calculadas sobre `rest` e categorias sem itens na grade ficam de fora. */
+const countByCategory = (slug: string) =>
+  rest.filter((post) => post.categorySlug === slug).length;
+const usedCategories = categories.filter((category) => countByCategory(category.slug) > 0);
+---
+
+<BaseLayout
+  title="Conteúdos"
+  description="Artigos técnicos sobre auditoria em saúde, auditoria concorrente, contas hospitalares, gestão hospitalar e segurança do paciente."
+  path="/conteudos"
+>
+  <PageHero
+    eyebrow="Conteúdos"
+    title="Conhecimento técnico sobre gestão e auditoria em saúde"
+    lead="Publicações da equipe da Essencial Saúde sobre auditoria, gestão hospitalar, jornada do paciente e segurança assistencial."
+    crumbs={[{ label: 'Conteúdos' }]}
+    align="center"
+  />
+
+  {
+    featured && (
+      <section class="section section--tight" data-featured>
+        <div class="container">
+          <p class="eyebrow" data-reveal>
+            Em destaque
+          </p>
+          <PostCard post={featured} featured />
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section section--tight">
+    <div class="container">
+      <div class="filters" data-reveal>
+        <div class="filters__chips" role="group" aria-label="Filtrar por categoria">
+          <button type="button" class="chip is-active" data-filter="all">
+            Todos
+            <span class="chip__count">{rest.length}</span>
+          </button>
+          {
+            usedCategories.map((category) => (
+              <button type="button" class="chip" data-filter={category.slug}>
+                {category.name}
+                <span class="chip__count">{countByCategory(category.slug)}</span>
+              </button>
+            ))
+          }
+        </div>
+        <label class="filters__search">
+          <Icon name="search" size={16} />
+          <input
+            type="search"
+            class="input"
+            placeholder="Buscar por título"
+            aria-label="Buscar conteúdos por título"
+            data-search
+          />
+        </label>
+      </div>
+
+      <div class="grid grid--3 posts" data-posts>
+        {
+          rest.map((post) => (
+            <div data-category={post.categorySlug} data-title={post.title.toLowerCase()}>
+              <PostCard post={post} />
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="empty" data-empty hidden>
+        <span class="icon-badge"><Icon name="search" size={22} /></span>
+        <h2 class="title-sm">Nenhum conteúdo encontrado</h2>
+        <p class="muted small">Ajuste o filtro de categoria ou tente outro termo de busca.</p>
+        <button type="button" class="btn btn--secondary btn--sm" data-clear>
+          <Icon name="refresh" size={16} />
+          Limpar filtros
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    eyebrow="Fale com a Essencial"
+    title="Precisa discutir um cenário específico?"
+    text="Nossa equipe técnica pode avaliar o contexto da sua operação e apresentar caminhos possíveis."
+  />
+</BaseLayout>
+
+<style>
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-8);
+    padding-bottom: var(--sp-5);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .filters__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 38px;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    color: var(--text-muted);
+    transition:
+      border-color var(--dur) var(--ease),
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .chip:hover {
+    border-color: var(--c-brand-300);
+    color: var(--c-brand-700);
+  }
+
+  .chip.is-active {
+    background: var(--c-brand-700);
+    border-color: var(--c-brand-700);
+    color: #fff;
+  }
+
+  .chip__count {
+    font-size: 0.6875rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--r-pill);
+    background: var(--c-ink-100);
+    color: var(--c-ink-600);
+  }
+
+  .chip.is-active .chip__count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  .filters__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: min(280px, 100%);
+  }
+
+  .filters__search :global(.icon) {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--c-ink-400);
+    pointer-events: none;
+  }
+
+  .filters__search .input {
+    padding-left: 2.35rem;
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-3);
+    text-align: center;
+    padding: clamp(2rem, 6vw, 4rem);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-lg);
+    background: var(--c-ink-50);
+  }
+
+  .empty[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  const chips = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+  const search = document.querySelector<HTMLInputElement>('[data-search]');
+  const grid = document.querySelector<HTMLElement>('[data-posts]');
+  const empty = document.querySelector<HTMLElement>('[data-empty]');
+  const clear = document.querySelector<HTMLButtonElement>('[data-clear]');
+  const items = Array.from(grid?.querySelectorAll<HTMLElement>('[data-category]') ?? []);
+
+  let activeCategory = 'all';
+
+  const featuredSection = document.querySelector<HTMLElement>('[data-featured]');
+
+  function apply() {
+    const term = (search?.value ?? '').trim().toLowerCase();
+    let visible = 0;
+
+    items.forEach((item) => {
+      const matchCategory =
+        activeCategory === 'all' || item.dataset.category === activeCategory;
+      const matchTerm = !term || (item.dataset.title ?? '').includes(term);
+      const show = matchCategory && matchTerm;
+      item.hidden = !show;
+      if (show) visible += 1;
+    });
+
+    if (empty) empty.hidden = visible > 0;
+    // o destaque não participa da filtragem: some enquanto houver filtro ativo
+    if (featuredSection) featuredSection.hidden = activeCategory !== 'all' || term !== '';
+  }
+
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((other) => other.classList.toggle('is-active', other === chip));
+      activeCategory = chip.dataset.filter ?? 'all';
+      apply();
+    });
+  });
+
+  search?.addEventListener('input', apply);
+
+  clear?.addEventListener('click', () => {
+    activeCategory = 'all';
+    if (search) search.value = '';
+    chips.forEach((chip) => chip.classList.toggle('is-active', chip.dataset.filter === 'all'));
+    apply();
+  });
+</script>

@@ -1,0 +1,125 @@
+---
+import { seo, flags } from '../data/site';
+
+const { company, seo: seoSettings } = Astro.locals.settings;
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Caminho canônico. Se omitido, usa a URL atual. */
+  path?: string;
+  ogImage?: string;
+  ogType?: 'website' | 'article';
+  noindex?: boolean;
+  /** Blocos JSON-LD já montados pela página. */
+  jsonLd?: Record<string, unknown>[];
+  publishedTime?: string;
+  modifiedTime?: string;
+}
+
+const {
+  title,
+  description = seo.defaultDescription,
+  path,
+  ogImage = seoSettings.ogDefaultImage,
+  ogType = 'website',
+  noindex = false,
+  jsonLd = [],
+  publishedTime,
+  modifiedTime,
+} = Astro.props;
+
+const fullTitle = title ? seo.titleTemplate.replace('%s', title) : seo.defaultTitle;
+const canonicalPath = path ?? Astro.url.pathname;
+const canonical = new URL(canonicalPath, seo.siteUrl).href.replace(/(.+)\/$/, '$1');
+const ogImageUrl = new URL(ogImage, seo.siteUrl).href;
+
+/** Organização — apenas propriedades confirmadas. Nada fictício. */
+const organizationLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: company.name,
+  url: seo.siteUrl,
+  email: company.email,
+  telephone: company.phone,
+  description: company.description,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: `${company.address.line1}, ${company.address.line2}`,
+    addressLocality: company.address.city,
+    addressRegion: company.address.state,
+    postalCode: company.address.zip,
+    addressCountry: company.address.country,
+  },
+  areaServed: 'BR',
+};
+
+const websiteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: seo.siteName,
+  url: seo.siteUrl,
+  inLanguage: 'pt-BR',
+};
+
+const blocks = [organizationLd, websiteLd, ...jsonLd];
+
+// Só habilita o GA se o ID informado em Configurações seguir o formato
+// esperado (G-XXXXXXXXXX) — evita injetar valor inválido no script inline.
+const gaId = /^G-[A-Z0-9]{4,12}$/.test(seoSettings.gaId) ? seoSettings.gaId : '';
+const gaInlineScript = gaId
+  ? `window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments)};gtag('js',new Date());gtag('config',${JSON.stringify(gaId)});`
+  : '';
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+<meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow'} />
+<meta name="author" content={company.name} />
+<meta name="theme-color" content={seo.themeColor} />
+<meta name="generator" content={Astro.generator} />
+{
+  seoSettings.gscVerification && (
+    <meta name="google-site-verification" content={seoSettings.gscVerification} />
+  )
+}
+
+<!-- Open Graph -->
+<meta property="og:site_name" content={seo.siteName} />
+<meta property="og:type" content={ogType} />
+<meta property="og:locale" content={seo.locale} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogImageUrl} />
+{publishedTime && <meta property="article:published_time" content={publishedTime} />}
+{modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImageUrl} />
+
+<!-- Ícones -->
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+{
+  flags.stage === 1 && (
+    <meta name="x-etapa" content="Etapa 1 — frontend/visual. Sem backend, sem persistência." />
+  )
+}
+
+{
+  blocks.map((block) => (
+    <script type="application/ld+json" set:html={JSON.stringify(block)} is:inline />
+  ))
+}
+
+{gaId && <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />}
+{gaId && <script is:inline set:html={gaInlineScript} />}

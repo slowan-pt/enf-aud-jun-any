@@ -1,0 +1,148 @@
+---
+/**
+ * MARCA OFICIAL — extraída do material institucional fornecido
+ * ("Resumo da Essencial Saúde Auditoria.pdf").
+ *
+ * O ícone (prancheta + gráfico + lupa com leito hospitalar) é a arte
+ * original enviada, recortada em alta resolução com fundo transparente
+ * (ver public/logo/essencial-saude-mark.png). O wordmark ao lado é
+ * tipografado em Sora — a mesma fonte de título do site — para permanecer
+ * nítido em qualquer tamanho e legível tanto sobre fundo claro quanto
+ * sobre fundo escuro (o lockup original é todo em azul-marinho e perde
+ * contraste sobre o rodapé/sidebar escuros).
+ *
+ * ETAPA 2: se a Essencial Saúde fornecer uma versão vetorial (SVG) do
+ * logotipo, ela substitui diretamente o arquivo em public/logo/.
+ */
+interface Props {
+  variant?: 'default' | 'inverse';
+  size?: 'sm' | 'md' | 'lg';
+  class?: string;
+  /** Mostra apenas o ícone (uso em favicon, avatar, mobile compacto). */
+  markOnly?: boolean;
+}
+
+const {
+  variant = 'default',
+  size = 'md',
+  class: className = '',
+  markOnly = false,
+} = Astro.props;
+
+const { brand } = Astro.locals.settings;
+---
+
+<span class={`logo logo--${variant} logo--${size} ${className}`.trim()}>
+  <span class="logo__plate">
+    <img
+      class="logo__mark"
+      src={brand.markUrl}
+      width="534"
+      height="403"
+      alt="Essencial Saúde Auditoria"
+      loading="eager"
+      decoding="async"
+    />
+  </span>
+  {
+    !markOnly && (
+      <span class="logo__type">
+        <span class="logo__name">Essencial</span>
+        <span class="logo__sub">Saúde Auditoria</span>
+      </span>
+    )
+  }
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    line-height: 1;
+  }
+
+  .logo__plate {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--r-sm);
+    padding: 2px;
+    /* transparente sobre fundo claro: o ícone (azul-marinho) já contrasta */
+    background: transparent;
+    transition: background var(--dur) var(--ease);
+  }
+
+  .logo__mark {
+    display: block;
+    width: 40px;
+    height: auto;
+  }
+
+  /* sobre fundo escuro (rodapé, sidebar do CMS, login) o ícone original —
+     todo em azul-marinho — perde contraste; uma placa clara por trás
+     devolve a legibilidade sem alterar a arte fornecida. */
+  .logo--inverse .logo__plate {
+    background: #fff;
+    padding: 4px;
+  }
+
+  .logo__type {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .logo__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+    color: var(--c-brand-900);
+  }
+
+  .logo__sub {
+    font-family: var(--font-text);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-ink-500);
+  }
+
+  /* variante para fundos escuros (rodapé, sidebar do CMS) */
+  .logo--inverse .logo__name {
+    color: #fff;
+  }
+
+  .logo--inverse .logo__sub {
+    color: rgba(234, 243, 251, 0.7);
+  }
+
+  /* tamanhos */
+  .logo--sm .logo__mark {
+    width: 32px;
+  }
+
+  .logo--sm .logo__name {
+    font-size: 0.95rem;
+  }
+
+  .logo--sm .logo__sub {
+    font-size: 0.5rem;
+  }
+
+  .logo--lg .logo__mark {
+    width: 56px;
+  }
+
+  .logo--lg .logo__name {
+    font-size: 1.375rem;
+  }
+
+  .logo--lg .logo__sub {
+    font-size: 0.6875rem;
+  }
+</style>

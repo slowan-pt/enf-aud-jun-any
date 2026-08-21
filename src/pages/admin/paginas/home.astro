@@ -1,0 +1,954 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { homeSections } from '../../../data/admin';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { getHomeContent, updateHomeContent } from '../../../lib/pages';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const current = await getHomeContent(db);
+  const form = await Astro.request.formData();
+  const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+  const lines = (key: string, fallback: string[]) =>
+    String(form.get(key) ?? fallback.join('\n'))
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+  const updatedBenefits = current.benefits.items.map((item, index) => ({
+    ...item,
+    title: text(`benefit_title_${index}`, item.title),
+    text: text(`benefit_text_${index}`, item.text),
+  }));
+
+  const updatedVpPoints = current.valueProposition.points.map((item, index) => ({
+    ...item,
+    title: text(`vp_point_title_${index}`, item.title),
+    text: text(`vp_point_text_${index}`, item.text),
+  }));
+
+  const updatedEloNodes = current.elo.nodes.map((node, index) => ({
+    ...node,
+    label: text(`elo_node_label_${index}`, node.label),
+    text: text(`elo_node_text_${index}`, node.text),
+  }));
+
+  const updatedSteps = current.howWeWork.steps.map((step, index) => ({
+    ...step,
+    title: text(`how_step_title_${index}`, step.title),
+    text: text(`how_step_text_${index}`, step.text),
+  }));
+
+  const updatedValues = current.missionVisionValues.values.map((value, index) => ({
+    ...value,
+    title: text(`mvv_value_title_${index}`, value.title),
+    text: text(`mvv_value_text_${index}`, value.text),
+  }));
+
+  const updatedSegmentItems = current.clientSegments.items.map((item, index) => ({
+    ...item,
+    label: text(`seg_item_label_${index}`, item.label),
+    detail: text(`seg_item_detail_${index}`, item.detail),
+    behavior: text(`seg_item_behavior_${index}`, item.behavior),
+  }));
+
+  const updated = {
+    hero: {
+      ...current.hero,
+      eyebrow: text('hero_eyebrow', current.hero.eyebrow),
+      title: text('hero_title', current.hero.title),
+      titleHighlight: text('hero_title2', current.hero.titleHighlight),
+      lead: text('hero_lead', current.hero.lead),
+      primaryCta: {
+        label: text('cta1', current.hero.primaryCta.label),
+        href: text('cta1url', current.hero.primaryCta.href),
+      },
+      secondaryCta: {
+        label: text('cta2', current.hero.secondaryCta.label),
+        href: text('cta2url', current.hero.secondaryCta.href),
+      },
+      image: text('hero_image', current.hero.image),
+      imageAlt: text('hero_alt', current.hero.imageAlt),
+      pillars: lines('pillars', current.hero.pillars),
+    },
+    valueProposition: {
+      ...current.valueProposition,
+      eyebrow: text('vp_eyebrow', current.valueProposition.eyebrow),
+      title: text('vp_title', current.valueProposition.title),
+      text: text('vp_text', current.valueProposition.text),
+      image: text('vp_image', current.valueProposition.image),
+      imageAlt: text('vp_alt', current.valueProposition.imageAlt),
+      points: updatedVpPoints,
+    },
+    elo: {
+      ...current.elo,
+      eyebrow: text('elo_eyebrow', current.elo.eyebrow),
+      title: text('elo_title', current.elo.title),
+      text: text('elo_text', current.elo.text),
+      nodes: updatedEloNodes,
+    },
+    benefits: { ...current.benefits, items: updatedBenefits },
+    howWeWork: {
+      ...current.howWeWork,
+      eyebrow: text('how_eyebrow', current.howWeWork.eyebrow),
+      title: text('how_title', current.howWeWork.title),
+      text: text('how_text', current.howWeWork.text),
+      steps: updatedSteps,
+    },
+    missionVisionValues: {
+      ...current.missionVisionValues,
+      eyebrow: text('mvv_eyebrow', current.missionVisionValues.eyebrow),
+      title: text('mvv_title', current.missionVisionValues.title),
+      mission: {
+        ...current.missionVisionValues.mission,
+        title: text('mvv_mission_title', current.missionVisionValues.mission.title),
+        text: text('mvv_mission_text', current.missionVisionValues.mission.text),
+      },
+      vision: {
+        ...current.missionVisionValues.vision,
+        title: text('mvv_vision_title', current.missionVisionValues.vision.title),
+        text: text('mvv_vision_text', current.missionVisionValues.vision.text),
+      },
+      values: updatedValues,
+    },
+    clientSegments: {
+      ...current.clientSegments,
+      eyebrow: text('seg_eyebrow', current.clientSegments.eyebrow),
+      title: text('seg_title', current.clientSegments.title),
+      text: text('seg_text', current.clientSegments.text),
+      items: updatedSegmentItems,
+    },
+    finalCta: {
+      ...current.finalCta,
+      eyebrow: text('cta_eyebrow', current.finalCta.eyebrow),
+      title: text('cta_title', current.finalCta.title),
+      text: text('cta_text', current.finalCta.text),
+      primary: {
+        label: text('cta_primary_label', current.finalCta.primary.label),
+        href: text('cta_primary_href', current.finalCta.primary.href),
+      },
+    },
+    promoVideo: {
+      title: text('video_title', current.promoVideo.title),
+      text: text('video_text', current.promoVideo.text),
+      url: text('video_url', current.promoVideo.url),
+    },
+  };
+
+  await updateHomeContent(db, updated, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'page.update',
+    target: 'Página: Home',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+
+  return Astro.redirect('/admin/paginas/home?saved=1');
+}
+
+const {
+  hero,
+  valueProposition,
+  elo,
+  benefits,
+  howWeWork,
+  missionVisionValues,
+  clientSegments,
+  finalCta,
+  promoVideo,
+  updatedAt,
+} = await getHomeContent(db);
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+function formatDate(iso: string): string {
+  if (!iso) return '—';
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  const hm = (timePart ?? '').slice(0, 5);
+  return `${d}/${m}/${y} ${hm}`;
+}
+---
+
+<AdminLayout
+  title="Editar Home"
+  description="A Home é administrada por seções estruturadas — sem page builder livre. Serviços em destaque usam os dados cadastrados em Serviços; as demais seções gravam diretamente aqui."
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <a href="/" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
+      <Icon name="eye" size={16} />
+      Pré-visualizar
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Home salva. Já vale para o site publicado.</span>
+      </div>
+    )
+  }
+
+  <form class="editor-layout" method="post" id="form-home">
+    <div class="stack-panels">
+      <!-- seções -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seções da Home</h2>
+          <span class="muted small">Referência — reordenar chega numa próxima fase</span>
+        </div>
+        <div class="panel__body">
+          <ul class="list-clean">
+            {
+              homeSections.map((section, index) => (
+                <li class="list-row section-row">
+                  <span class="drag" aria-hidden="true">
+                    <Icon name="list" size={16} />
+                  </span>
+                  <span class="order">{String(index + 1).padStart(2, '0')}</span>
+                  <span class="list-row__main">
+                    <strong>{section.label}</strong>
+                    <span>{section.fields}</span>
+                  </span>
+                  {[
+                    'hero',
+                    'proposta',
+                    'elo',
+                    'beneficios',
+                    'como-atuamos',
+                    'mvv',
+                    'cta',
+                  ].includes(section.key) && (
+                    <span class="badge badge--success">Editável abaixo</span>
+                  )}
+                  {['servicos', 'concorrente', 'gestao', 'rede'].includes(section.key) && (
+                    <span class="badge badge--brand">Editável em Serviços</span>
+                  )}
+                  {section.key === 'conteudos' && (
+                    <span class="badge badge--neutral">Editável em Matérias (em breve)</span>
+                  )}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </section>
+
+      <!-- edição da seção hero -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Hero</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="hero_eyebrow">Rótulo (eyebrow)</label>
+              <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} />
+            </div>
+            <div class="field">
+              <label class="label" for="hero_title">Título</label>
+              <input class="input" id="hero_title" name="hero_title" value={hero.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="hero_title2">Complemento em destaque</label>
+              <input
+                class="input"
+                id="hero_title2"
+                name="hero_title2"
+                value={hero.titleHighlight}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="hero_lead">Subtítulo</label>
+              <textarea class="textarea" id="hero_lead" name="hero_lead">{hero.lead}</textarea>
+            </div>
+
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label class="label" for="cta1">CTA primário — texto</label>
+                <input class="input" id="cta1" name="cta1" value={hero.primaryCta.label} />
+              </div>
+              <div class="field">
+                <label class="label" for="cta1url">CTA primário — URL</label>
+                <input class="input" id="cta1url" name="cta1url" value={hero.primaryCta.href} />
+              </div>
+              <div class="field">
+                <label class="label" for="cta2">CTA secundário — texto</label>
+                <input class="input" id="cta2" name="cta2" value={hero.secondaryCta.label} />
+              </div>
+              <div class="field">
+                <label class="label" for="cta2url">CTA secundário — URL</label>
+                <input
+                  class="input"
+                  id="cta2url"
+                  name="cta2url"
+                  value={hero.secondaryCta.href}
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="hero_image">Caminho da imagem do hero</label>
+              <div class="image-picker">
+                <img src={hero.image} alt="" width="160" height="120" />
+                <div>
+                  <input class="input" id="hero_image" name="hero_image" value={hero.image} />
+                  <span class="hint">
+                    Upload real (R2) ainda não conectado — informe o caminho já publicado em
+                    <span class="kbd">/images/</span>.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="hero_alt"
+                >Texto alternativo (acessibilidade e SEO)</label
+              >
+              <input class="input" id="hero_alt" name="hero_alt" value={hero.imageAlt} />
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="form-section__title">Pilares exibidos abaixo do hero (um por linha)</h3>
+            <textarea class="textarea" name="pillars" style="min-height:120px"
+              >{hero.pillars.join('\n')}</textarea
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- proposta de valor -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Proposta de valor</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="vp_eyebrow">Rótulo (eyebrow)</label>
+              <input
+                class="input"
+                id="vp_eyebrow"
+                name="vp_eyebrow"
+                value={valueProposition.eyebrow}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="vp_title">Título</label>
+              <input
+                class="input"
+                id="vp_title"
+                name="vp_title"
+                value={valueProposition.title}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="vp_text">Texto</label>
+              <textarea class="textarea" id="vp_text" name="vp_text"
+                >{valueProposition.text}</textarea
+              >
+            </div>
+            <div class="field">
+              <label class="label" for="vp_image">Caminho da imagem</label>
+              <div class="image-picker">
+                <img src={valueProposition.image} alt="" width="160" height="120" />
+                <div>
+                  <input
+                    class="input"
+                    id="vp_image"
+                    name="vp_image"
+                    value={valueProposition.image}
+                  />
+                  <span class="hint">
+                    Upload real (R2) ainda não conectado — informe o caminho já publicado em
+                    <span class="kbd">/images/</span>.
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="vp_alt">Texto alternativo</label>
+              <input
+                class="input"
+                id="vp_alt"
+                name="vp_alt"
+                value={valueProposition.imageAlt}
+              />
+            </div>
+          </div>
+          <div class="form-section">
+            <h3 class="form-section__title">Pontos de destaque</h3>
+            <ul class="list-clean">
+              {
+                valueProposition.points.map((point, index) => (
+                  <li class="list-row benefit-row">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={point.icon} size={16} />
+                    </span>
+                    <div class="benefit-row__fields">
+                      <input
+                        class="input"
+                        name={`vp_point_title_${index}`}
+                        value={point.title}
+                        aria-label={`Título do ponto ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`vp_point_text_${index}`}
+                        value={point.text}
+                        aria-label={`Texto do ponto ${index + 1}`}
+                      />
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint">Ícone de cada ponto ainda não é editável por aqui.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- elo estratégico -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Elo estratégico (diagrama)</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="elo_eyebrow">Rótulo (eyebrow)</label>
+              <input class="input" id="elo_eyebrow" name="elo_eyebrow" value={elo.eyebrow} />
+            </div>
+            <div class="field">
+              <label class="label" for="elo_title">Título</label>
+              <input class="input" id="elo_title" name="elo_title" value={elo.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="elo_text">Texto</label>
+              <textarea class="textarea" id="elo_text" name="elo_text">{elo.text}</textarea>
+            </div>
+          </div>
+          <div class="form-section">
+            <h3 class="form-section__title">Nós do diagrama</h3>
+            <ul class="list-clean">
+              {
+                elo.nodes.map((node, index) => (
+                  <li class="list-row benefit-row">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={node.icon} size={16} />
+                    </span>
+                    <div class="benefit-row__fields">
+                      <input
+                        class="input"
+                        name={`elo_node_label_${index}`}
+                        value={node.label}
+                        aria-label={`Rótulo do nó ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`elo_node_text_${index}`}
+                        value={node.text}
+                        aria-label={`Texto do nó ${index + 1}`}
+                      />
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint"
+              >Ícone e posição de cada nó ainda não são editáveis por aqui.</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- benefícios -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Benefícios</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <ul class="list-clean">
+              {
+                benefits.items.map((item, index) => (
+                  <li class="list-row benefit-row">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={item.icon} size={16} />
+                    </span>
+                    <div class="benefit-row__fields">
+                      <input
+                        class="input"
+                        name={`benefit_title_${index}`}
+                        value={item.title}
+                        aria-label={`Título do benefício ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`benefit_text_${index}`}
+                        value={item.text}
+                        aria-label={`Texto do benefício ${index + 1}`}
+                      />
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint">Ícone de cada benefício ainda não é editável por aqui.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- como atuamos -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Como atuamos</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="how_eyebrow">Rótulo (eyebrow)</label>
+              <input
+                class="input"
+                id="how_eyebrow"
+                name="how_eyebrow"
+                value={howWeWork.eyebrow}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="how_title">Título</label>
+              <input class="input" id="how_title" name="how_title" value={howWeWork.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="how_text">Texto</label>
+              <textarea class="textarea" id="how_text" name="how_text"
+                >{howWeWork.text}</textarea
+              >
+            </div>
+          </div>
+          <div class="form-section">
+            <h3 class="form-section__title">Etapas do processo</h3>
+            <ul class="list-clean">
+              {
+                howWeWork.steps.map((step, index) => (
+                  <li class="list-row benefit-row">
+                    <span class="icon-badge icon-badge--sm">{step.number}</span>
+                    <div class="benefit-row__fields">
+                      <input
+                        class="input"
+                        name={`how_step_title_${index}`}
+                        value={step.title}
+                        aria-label={`Título da etapa ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`how_step_text_${index}`}
+                        value={step.text}
+                        aria-label={`Texto da etapa ${index + 1}`}
+                      />
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint"
+              >Número e ícone de cada etapa ainda não são editáveis por aqui.</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- missão, visão e valores -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Missão, visão e valores</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="mvv_eyebrow">Rótulo (eyebrow)</label>
+              <input
+                class="input"
+                id="mvv_eyebrow"
+                name="mvv_eyebrow"
+                value={missionVisionValues.eyebrow}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="mvv_title">Título</label>
+              <input
+                class="input"
+                id="mvv_title"
+                name="mvv_title"
+                value={missionVisionValues.title}
+              />
+            </div>
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label class="label" for="mvv_mission_title">Missão — título</label>
+                <input
+                  class="input"
+                  id="mvv_mission_title"
+                  name="mvv_mission_title"
+                  value={missionVisionValues.mission.title}
+                />
+              </div>
+              <div class="field">
+                <label class="label" for="mvv_vision_title">Visão — título</label>
+                <input
+                  class="input"
+                  id="mvv_vision_title"
+                  name="mvv_vision_title"
+                  value={missionVisionValues.vision.title}
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="mvv_mission_text">Missão — texto</label>
+              <textarea class="textarea" id="mvv_mission_text" name="mvv_mission_text"
+                >{missionVisionValues.mission.text}</textarea
+              >
+            </div>
+            <div class="field">
+              <label class="label" for="mvv_vision_text">Visão — texto</label>
+              <textarea class="textarea" id="mvv_vision_text" name="mvv_vision_text"
+                >{missionVisionValues.vision.text}</textarea
+              >
+            </div>
+          </div>
+          <div class="form-section">
+            <h3 class="form-section__title">Valores</h3>
+            <ul class="list-clean">
+              {
+                missionVisionValues.values.map((value, index) => (
+                  <li class="list-row benefit-row">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={value.icon} size={16} />
+                    </span>
+                    <div class="benefit-row__fields">
+                      <input
+                        class="input"
+                        name={`mvv_value_title_${index}`}
+                        value={value.title}
+                        aria-label={`Título do valor ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`mvv_value_text_${index}`}
+                        value={value.text}
+                        aria-label={`Texto do valor ${index + 1}`}
+                      />
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint">Ícone de cada valor ainda não é editável por aqui.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- para quem atuamos -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: Para quem atuamos</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="seg_eyebrow">Rótulo (eyebrow)</label>
+              <input
+                class="input"
+                id="seg_eyebrow"
+                name="seg_eyebrow"
+                value={clientSegments.eyebrow}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="seg_title">Título</label>
+              <input
+                class="input"
+                id="seg_title"
+                name="seg_title"
+                value={clientSegments.title}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="seg_text">Texto</label>
+              <textarea class="textarea" id="seg_text" name="seg_text"
+                >{clientSegments.text}</textarea
+              >
+            </div>
+          </div>
+          <div class="form-section">
+            <h3 class="form-section__title">Segmentos (exibidos na Home apenas o rótulo)</h3>
+            <ul class="list-clean">
+              {
+                clientSegments.items.map((item, index) => (
+                  <li class="list-row">
+                    <span class="icon-badge icon-badge--sm">
+                      <Icon name={item.icon} size={16} />
+                    </span>
+                    <div class="list-row__main" style="display:grid;gap:var(--sp-2);flex:1">
+                      <input
+                        class="input"
+                        name={`seg_item_label_${index}`}
+                        value={item.label}
+                        aria-label={`Rótulo do segmento ${index + 1}`}
+                      />
+                      <input
+                        class="input"
+                        name={`seg_item_detail_${index}`}
+                        value={item.detail}
+                        aria-label={`Detalhe do segmento ${index + 1}`}
+                      />
+                      {/* prettier-ignore */}
+                      <textarea class="textarea" name={`seg_item_behavior_${index}`} aria-label={`Comportamento do segmento ${index + 1}`} style="min-height:70px">{item.behavior}</textarea>
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+            <span class="hint"
+              >Detalhe e comportamento são usados em "Quem Somos"; a Home mostra só o rótulo.</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- cta final -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Seção: CTA final</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="cta_eyebrow">Rótulo (eyebrow)</label>
+              <input
+                class="input"
+                id="cta_eyebrow"
+                name="cta_eyebrow"
+                value={finalCta.eyebrow}
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="cta_title">Título</label>
+              <input class="input" id="cta_title" name="cta_title" value={finalCta.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="cta_text">Texto</label>
+              <textarea class="textarea" id="cta_text" name="cta_text">{finalCta.text}</textarea
+              >
+            </div>
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label class="label" for="cta_primary_label">Botão — texto</label>
+                <input
+                  class="input"
+                  id="cta_primary_label"
+                  name="cta_primary_label"
+                  value={finalCta.primary.label}
+                />
+              </div>
+              <div class="field">
+                <label class="label" for="cta_primary_href">Botão — URL</label>
+                <input
+                  class="input"
+                  id="cta_primary_href"
+                  name="cta_primary_href"
+                  value={finalCta.primary.href}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- vídeo promocional -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Vídeo promocional</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <p class="hint">
+              Some da Home enquanto o vídeo não estiver enviado. MP4 ou WebM, até 90 MB.
+            </p>
+            {
+              promoVideo.url && (
+                <video
+                  id="video-preview"
+                  src={promoVideo.url}
+                  controls
+                  class="video-preview"
+                />
+              )
+            }
+            <div class="field">
+              <label class="label" for="video_title">Título</label>
+              <input class="input" id="video_title" name="video_title" value={promoVideo.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="video_text">Texto</label>
+              <input class="input" id="video_text" name="video_text" value={promoVideo.text} />
+            </div>
+            <div class="field">
+              <label class="label" for="video_url">Caminho do vídeo</label>
+              <input class="input" id="video_url" name="video_url" value={promoVideo.url} />
+              <span class="hint">Deixe em branco para ocultar a seção.</span>
+            </div>
+            <label class="btn btn--secondary btn--sm" style="justify-self:start">
+              <Icon name="upload" size={16} />
+              Enviar vídeo
+              <input
+                type="file"
+                id="video-upload-input"
+                accept="video/mp4,video/webm"
+                style="display:none"
+              />
+            </label>
+            <span class="hint" id="video-upload-status" />
+          </div>
+        </div>
+      </section>
+
+      <div class="panel__foot standalone-foot">
+        <span class="muted small">Última atualização: {formatDate(updatedAt)}</span>
+        <button type="submit" class="btn">
+          <Icon name="save" size={16} />
+          Salvar alterações da Home
+        </button>
+      </div>
+    </div>
+
+    <!-- lateral -->
+    <aside class="editor-side">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Outras seções</h2>
+        </div>
+        <div class="panel__body">
+          <p class="muted small">
+            Serviços, Auditoria Concorrente, Gestão Hospitalar e Qualificação da rede usam os
+            dados cadastrados em <strong>Serviços</strong> — edite-os por lá. Conteúdos recentes usa
+            as publicações em <strong>Matérias</strong>, ainda simulada.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">SEO da Home</h2>
+        </div>
+        <div class="panel__body">
+          <p class="muted small">
+            Metadados de SEO por página ainda não são editáveis — a Home usa o título e a
+            descrição padrão definidos em Configurações.
+          </p>
+        </div>
+      </section>
+    </aside>
+  </form>
+</AdminLayout>
+
+<style>
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+    align-content: start;
+  }
+
+  .standalone-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+  }
+
+  .section-row .drag {
+    color: var(--c-ink-300);
+    cursor: grab;
+  }
+
+  .order {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-xs);
+    background: var(--c-ink-100);
+    color: var(--c-ink-600);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .image-picker {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .image-picker img {
+    width: 160px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
+
+  @media (max-width: 560px) {
+    .image-picker {
+      grid-template-columns: 1fr;
+    }
+
+    .image-picker img {
+      width: 100%;
+    }
+  }
+
+  .benefit-row {
+    align-items: center;
+  }
+
+  .benefit-row__fields {
+    display: grid;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (min-width: 700px) {
+    .benefit-row__fields {
+      grid-template-columns: 1fr 2fr;
+    }
+  }
+</style>

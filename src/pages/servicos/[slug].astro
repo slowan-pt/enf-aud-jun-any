@@ -1,0 +1,344 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import Icon from '../../components/Icon.astro';
+import ContactForm from '../../components/ContactForm.astro';
+import ServiceCard from '../../components/ServiceCard.astro';
+import { publishedOnly, findBySlug } from '../../lib/services';
+import { seo, waLink } from '../../data/site';
+
+const { company, whatsapp } = Astro.locals.settings;
+const publishedServices = publishedOnly(Astro.locals.services);
+const service = findBySlug(publishedServices, Astro.params.slug ?? '');
+if (!service) return Astro.rewrite('/404');
+const others = publishedServices.filter((item) => item.slug !== service.slug).slice(0, 3);
+
+const serviceLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: service.name,
+  description: service.summary,
+  serviceType: service.name,
+  url: new URL(`/servicos/${service.slug}`, seo.siteUrl).href,
+  areaServed: 'BR',
+  provider: {
+    '@type': 'Organization',
+    name: company.name,
+    url: seo.siteUrl,
+  },
+};
+---
+
+<BaseLayout
+  title={service.seo.title.replace(' | Essencial Saúde Auditoria', '')}
+  description={service.seo.description}
+  path={`/servicos/${service.slug}`}
+  ogImage={service.image}
+  jsonLd={[serviceLd]}
+  whatsappMessage={service.whatsappMessage}
+>
+  <PageHero
+    eyebrow="Serviço"
+    title={service.heroTitle}
+    lead={service.heroLead}
+    crumbs={[{ label: 'Serviços', href: '/servicos' }, { label: service.name }]}
+    image={service.image}
+    imageAlt={service.imageAlt}
+  >
+    <div class="cluster hero-actions">
+      <a href="#solicitar" class="btn btn--on-brand">
+        Solicitar apresentação
+        <Icon name="arrow-right" size={16} class="icon--arrow" />
+      </a>
+      <a
+        href={waLink(whatsapp.number, service.whatsappMessage)}
+        class="btn btn--outline-on-brand"
+        target="_blank"
+        rel="noopener"
+      >
+        <Icon name="whatsapp" size={16} />
+        Falar no WhatsApp
+      </a>
+    </div>
+  </PageHero>
+
+  <!-- ------------------------------------------------- destaques -->
+  <section class="section section--tight">
+    <div class="container">
+      <div class="grid grid--4">
+        {
+          service.highlights.map((item) => (
+            <article class="card highlight" data-reveal>
+              <span class="icon-badge icon-badge--accent icon-badge--sm">
+                <Icon name={item.icon} size={18} />
+              </span>
+              <h2>{item.title}</h2>
+              <p>{item.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------- conteúdo -->
+  <section class="section section--tight">
+    <div class="container svc-layout">
+      <article class="svc-content">
+        <div class="prose" data-reveal>
+          {service.intro.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        {
+          service.blocks.map((block) => (
+            <div class="svc-block" data-reveal>
+              <h2 class="title-md">{block.title}</h2>
+              {block.text && <p class="svc-block__text">{block.text}</p>}
+              {block.items && (
+                <ul class="check-list">
+                  {block.items.map((item) => (
+                    <li>
+                      <Icon name="check-circle" size={18} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))
+        }
+      </article>
+
+      <aside class="svc-aside">
+        <div class="aside-card" data-reveal>
+          <h2 class="aside-card__title">
+            <Icon name="file-check" size={18} />
+            O que entregamos
+          </h2>
+          <ul class="aside-list">
+            {
+              service.deliverables.map((item) => (
+                <li>
+                  <Icon name="check" size={15} />
+                  <span>{item}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="aside-card" data-reveal>
+          <h2 class="aside-card__title">
+            <Icon name="users" size={18} />
+            Para quem
+          </h2>
+          <ul class="aside-list">
+            {
+              service.audience.map((item) => (
+                <li>
+                  <Icon name="check" size={15} />
+                  <span>{item}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="aside-card aside-card--cta" data-reveal>
+          <h2 class="title-sm">Fale com a equipe técnica</h2>
+          <p>
+            Tire dúvidas sobre escopo, método e indicadores de acompanhamento deste serviço.
+          </p>
+          <a
+            href={waLink(whatsapp.number, service.whatsappMessage)}
+            class="btn btn--accent btn--block"
+            target="_blank"
+            rel="noopener"
+          >
+            <Icon name="whatsapp" size={18} />
+            {company.phoneDisplay}
+          </a>
+          <a href="#solicitar" class="btn btn--secondary btn--block">Solicitar apresentação</a>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------ formulário -->
+  <section class="section section--subtle" id="solicitar">
+    <div class="container form-layout">
+      <div data-reveal>
+        <p class="eyebrow">Solicitar apresentação</p>
+        <h2 class="title-lg">Converse com a Essencial sobre {service.shortName}</h2>
+        <p class="lead" style="margin-top: var(--sp-4)">
+          Preencha o formulário com o cenário da sua organização. O campo “serviço de interesse”
+          já vem preenchido com <strong>{service.name}</strong>.
+        </p>
+        <ul class="check-list" style="margin-top: var(--sp-6)">
+          <li>
+            <Icon name="check-circle" size={18} />
+            <span>Retorno em horário comercial</span>
+          </li>
+          <li>
+            <Icon name="check-circle" size={18} />
+            <span>Conversa técnica, sem compromisso</span>
+          </li>
+          <li>
+            <Icon name="check-circle" size={18} />
+            <span>Apresentação do método e do escopo</span>
+          </li>
+        </ul>
+      </div>
+      <div data-reveal>
+        <ContactForm
+          variant="commercial"
+          id={`form-${service.slug}`}
+          title="Solicite uma apresentação"
+          preselectedService={service.name}
+          origin={`Serviço: ${service.name}`}
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------- outros serviços -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">Outros serviços</p>
+        <h2 class="title-md">Complemente com outras frentes de atuação</h2>
+      </div>
+      <div class="grid grid--3">
+        {others.map((item) => <ServiceCard service={item} variant="compact" />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero-actions {
+    margin-top: var(--sp-8);
+  }
+
+  @media (max-width: 480px) {
+    .hero-actions :global(.btn) {
+      width: 100%;
+    }
+  }
+
+  .highlight h2 {
+    font-size: var(--fs-base);
+  }
+
+  .highlight p {
+    font-size: var(--fs-xs);
+  }
+
+  .svc-layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 1000px) {
+    .svc-layout {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+  }
+
+  .svc-content > * + * {
+    margin-top: clamp(2rem, 4vw, 3rem);
+  }
+
+  .svc-block__text {
+    margin: var(--sp-4) 0 var(--sp-5);
+    color: var(--text-muted);
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
+    max-width: 68ch;
+  }
+
+  .svc-block .check-list {
+    max-width: 68ch;
+  }
+
+  .svc-aside {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  @media (min-width: 1000px) {
+    .svc-aside {
+      position: sticky;
+      top: 120px;
+    }
+  }
+
+  .aside-card {
+    padding: var(--sp-5);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+  }
+
+  .aside-card__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--fs-xs);
+    font-family: var(--font-text);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-brand-600);
+    margin-bottom: var(--sp-4);
+  }
+
+  .aside-list {
+    display: grid;
+    gap: var(--sp-3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .aside-list li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-2);
+    align-items: start;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-normal);
+    color: var(--text-muted);
+  }
+
+  .aside-list :global(.icon) {
+    color: var(--c-accent-600);
+    margin-top: 3px;
+  }
+
+  .aside-card--cta {
+    display: grid;
+    gap: var(--sp-3);
+    background: linear-gradient(160deg, var(--c-brand-50), var(--c-white));
+    border-color: var(--c-brand-100);
+  }
+
+  .aside-card--cta p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  .form-layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 980px) {
+    .form-layout {
+      grid-template-columns: 0.85fr 1.15fr;
+    }
+  }
+</style>

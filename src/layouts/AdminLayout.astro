@@ -1,0 +1,390 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/sora';
+import '../styles/admin.css';
+
+import Icon from '../components/Icon.astro';
+import Logo from '../components/Logo.astro';
+import { adminNav } from '../data/admin';
+import { seo } from '../data/site';
+
+const { company } = Astro.locals.settings;
+
+interface Props {
+  title: string;
+  /** Descrição curta abaixo do título da página. */
+  description?: string;
+  /** Caminho ativo no menu (default: URL atual). */
+  active?: string;
+}
+
+const { title, description, active } = Astro.props;
+const pathname = active ?? (Astro.url.pathname.replace(/\/$/, '') || '/admin');
+
+// Usuário autenticado — preenchido pelo middleware (src/middleware.ts) a
+// partir da sessão real. Chegar aqui sem `user` não deveria acontecer (o
+// middleware redireciona para /admin/login), mas mantemos um fallback seguro.
+const user = Astro.locals.user ?? {
+  name: 'Sessão expirada',
+  email: '',
+  role: 'editor' as const,
+};
+const initials = user.name
+  .split(' ')
+  .map((part) => part[0])
+  .filter(Boolean)
+  .slice(0, 2)
+  .join('')
+  .toUpperCase();
+const roleLabel = user.role === 'admin' ? 'Administrador' : 'Editor';
+
+function isActive(href: string): boolean {
+  if (href === '/admin') return pathname === '/admin';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | CMS {company.shortName}</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content={seo.themeColor} />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body class="admin">
+    <a href="#admin-conteudo" class="skip-link">Pular para o conteúdo</a>
+
+    <div class="admin__shell">
+      <!-- ------------------------------------------------ sidebar -->
+      <aside class="aside" id="admin-aside" data-aside>
+        <div class="aside__head">
+          <a href="/admin" aria-label="Painel administrativo">
+            <Logo variant="inverse" size="sm" />
+            <span class="aside__badge">CMS · Etapa 2</span>
+          </a>
+          <button
+            type="button"
+            class="icon-btn burger-admin"
+            data-aside-close
+            aria-label="Fechar menu"
+          >
+            <Icon name="close" size={20} />
+          </button>
+        </div>
+
+        <nav class="aside__nav" aria-label="Menu do painel">
+          <p class="aside__group-label">Painel</p>
+          <ul class="aside__list">
+            {
+              adminNav.map((item) =>
+                item.children ? (
+                  <li>
+                    <a
+                      href={item.children[0]?.href ?? item.href}
+                      class:list={[
+                        'aside__link',
+                        {
+                          'is-active': item.children.some((c) =>
+                            isActive(c.href.split('#')[0] ?? '')
+                          ),
+                        },
+                      ]}
+                    >
+                      <Icon name={item.icon} size={18} />
+                      {item.label}
+                    </a>
+                    <ul class="aside__sub">
+                      {item.children.map((child) => (
+                        <li>
+                          <a
+                            href={child.href}
+                            class:list={[
+                              'aside__sublink',
+                              {
+                                'is-active':
+                                  isActive(child.href.split('#')[0] ?? '') &&
+                                  !child.href.includes('#'),
+                              },
+                            ]}
+                          >
+                            {child.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ) : (
+                  <li>
+                    <a
+                      href={item.href}
+                      class:list={['aside__link', { 'is-active': isActive(item.href) }]}
+                    >
+                      <Icon name={item.icon} size={18} />
+                      {item.label}
+                      {item.badge && <span class="aside__count">{item.badge}</span>}
+                    </a>
+                  </li>
+                )
+              )
+            }
+          </ul>
+        </nav>
+
+        <div class="aside__foot">
+          <div class="aside__user">
+            <span class="avatar">{initials}</span>
+            <div>
+              <strong>{user.name}</strong>
+              <span>{roleLabel}</span>
+            </div>
+          </div>
+          <form method="post" action="/admin/logout">
+            <button type="submit" class="aside__link aside__link--button">
+              <Icon name="log-out" size={18} />
+              Sair
+            </button>
+          </form>
+          <a href="/" class="aside__link" target="_blank" rel="noopener">
+            <Icon name="external-link" size={18} />
+            Ver o site
+          </a>
+        </div>
+      </aside>
+
+      <div class="overlay-backdrop" data-aside-close hidden></div>
+
+      <!-- --------------------------------------------------- main -->
+      <div class="admin__main">
+        <header class="topbar-admin">
+          <button
+            type="button"
+            class="icon-btn burger-admin"
+            data-aside-open
+            aria-label="Abrir menu"
+          >
+            <Icon name="menu" size={20} />
+          </button>
+
+          <label class="topbar-admin__search">
+            <Icon name="search" size={16} />
+            <input
+              type="search"
+              class="input"
+              placeholder="Buscar no painel (matérias, contatos, mídia)"
+              aria-label="Buscar no painel"
+              data-toast-trigger="Busca global disponível na Etapa 2."
+            />
+          </label>
+
+          <div class="topbar-admin__actions">
+            <button
+              type="button"
+              class="icon-btn"
+              aria-label="Notificações"
+              data-toast-trigger="3 contatos novos aguardando atendimento (demonstração)."
+            >
+              <Icon name="bell" size={18} />
+              <span class="icon-btn__dot"></span>
+            </button>
+            <a
+              href="/"
+              class="icon-btn"
+              aria-label="Abrir o site"
+              target="_blank"
+              rel="noopener"
+            >
+              <Icon name="external-link" size={18} />
+            </a>
+            <span class="avatar">{initials}</span>
+          </div>
+        </header>
+
+        <main class="admin__content" id="admin-conteudo">
+          <p class="admin-demo">
+            <Icon name="info" size={16} />
+            <span>
+              <strong>Etapa 2 em andamento.</strong>
+              Todo o painel grava de verdade no banco (Cloudflare D1) e no armazenamento de mídia
+              (Cloudflare R2), publicado em produção. Ainda pendente: domínio próprio, Cloudflare
+              Turnstile e o aviso automático por e-mail de novos contatos.
+            </span>
+          </p>
+
+          <div class="page-head">
+            <div>
+              <h1 class="page-head__title">{title}</h1>
+              {description && <p class="page-head__desc">{description}</p>}
+            </div>
+            <div class="page-head__actions">
+              <slot name="actions" />
+            </div>
+          </div>
+
+          <slot />
+        </main>
+      </div>
+    </div>
+
+    <div class="toasts" data-toasts aria-live="polite" aria-atomic="false"></div>
+
+    <script>
+      // ---- sidebar mobile -------------------------------------------
+      const aside = document.querySelector<HTMLElement>('[data-aside]');
+      const backdrop = document.querySelector<HTMLElement>('.overlay-backdrop');
+
+      function openAside() {
+        aside?.classList.add('is-open');
+        if (backdrop) backdrop.hidden = false;
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeAside() {
+        aside?.classList.remove('is-open');
+        if (backdrop) backdrop.hidden = true;
+        document.body.style.overflow = '';
+      }
+
+      document.querySelector('[data-aside-open]')?.addEventListener('click', openAside);
+      document.querySelectorAll('[data-aside-close]').forEach((el) => {
+        el.addEventListener('click', closeAside);
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeAside();
+      });
+
+      // ---- toasts (feedback simulado) -------------------------------
+      const container = document.querySelector<HTMLElement>('[data-toasts]');
+
+      function showToast(message: string, tone = 'default') {
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast${tone !== 'default' ? ` toast--${tone}` : ''}`;
+        toast.setAttribute('role', 'status');
+        toast.innerHTML = `<strong>Simulação (Etapa 1)</strong><span></span>`;
+        const span = toast.querySelector('span');
+        if (span) span.textContent = message;
+        container.appendChild(toast);
+        window.setTimeout(() => {
+          toast.classList.add('is-leaving');
+          window.setTimeout(() => toast.remove(), 260);
+        }, 3600);
+      }
+
+      document.querySelectorAll<HTMLElement>('[data-toast-trigger]').forEach((el) => {
+        const handler = () => {
+          showToast(
+            el.dataset.toastTrigger ?? 'Ação simulada.',
+            el.dataset.toastTone ?? 'default'
+          );
+        };
+        if (el instanceof HTMLInputElement) {
+          el.addEventListener('focus', handler, { once: true });
+        } else {
+          el.addEventListener('click', (event) => {
+            event.preventDefault();
+            handler();
+          });
+        }
+      });
+
+      // ---- formulários administrativos: nunca enviam ----------------
+      document.querySelectorAll<HTMLFormElement>('form[data-admin-form]').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          showToast(form.dataset.adminForm || 'Alterações salvas (simulação).', 'success');
+        });
+      });
+
+      // ---- abas ------------------------------------------------------
+      document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((group) => {
+        const tabs = Array.from(group.querySelectorAll<HTMLButtonElement>('[data-tab]'));
+        tabs.forEach((tab) => {
+          tab.addEventListener('click', () => {
+            const target = tab.dataset.tab;
+            tabs.forEach((other) => {
+              other.classList.toggle('is-active', other === tab);
+              other.setAttribute('aria-selected', String(other === tab));
+            });
+            group.querySelectorAll<HTMLElement>('[data-tab-panel]').forEach((panel) => {
+              panel.hidden = panel.dataset.tabPanel !== target;
+            });
+          });
+        });
+      });
+
+      // ---- modais ----------------------------------------------------
+      document.querySelectorAll<HTMLElement>('[data-modal-open]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+          const modal = document.getElementById(trigger.dataset.modalOpen ?? '');
+          if (modal) {
+            modal.hidden = false;
+            document.body.style.overflow = 'hidden';
+            modal.querySelector<HTMLElement>('[data-modal-close]')?.focus();
+          }
+        });
+      });
+
+      document.querySelectorAll<HTMLElement>('[data-modal-close]').forEach((el) => {
+        el.addEventListener('click', () => {
+          const modal = el.closest<HTMLElement>('.modal');
+          if (modal) modal.hidden = true;
+          document.body.style.overflow = '';
+        });
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        document.querySelectorAll<HTMLElement>('.modal').forEach((modal) => {
+          if (!modal.hidden) {
+            modal.hidden = true;
+            document.body.style.overflow = '';
+          }
+        });
+      });
+
+      // ---- filtro de tabelas (busca local) --------------------------
+      document.querySelectorAll<HTMLInputElement>('[data-table-search]').forEach((input) => {
+        const table = document.getElementById(input.dataset.tableSearch ?? '');
+        const rows = Array.from(table?.querySelectorAll<HTMLTableRowElement>('tbody tr') ?? []);
+        const emptyBox = document.querySelector<HTMLElement>(
+          `[data-table-empty="${input.dataset.tableSearch}"]`
+        );
+        const counter = document.querySelector<HTMLElement>(
+          `[data-table-count="${input.dataset.tableSearch}"]`
+        );
+
+        const apply = () => {
+          const term = input.value.trim().toLowerCase();
+          const status = (
+            document.querySelector<HTMLSelectElement>(
+              `[data-table-filter="${input.dataset.tableSearch}"]`
+            )?.value ?? ''
+          ).toLowerCase();
+          let visible = 0;
+          rows.forEach((row) => {
+            const text = row.textContent?.toLowerCase() ?? '';
+            const rowStatus = (row.dataset.status ?? '').toLowerCase();
+            const show = (!term || text.includes(term)) && (!status || rowStatus === status);
+            row.hidden = !show;
+            if (show) visible += 1;
+          });
+          if (emptyBox) emptyBox.hidden = visible > 0;
+          if (counter) counter.textContent = `${visible} de ${rows.length} registros`;
+        };
+
+        input.addEventListener('input', apply);
+        document
+          .querySelector<HTMLSelectElement>(
+            `[data-table-filter="${input.dataset.tableSearch}"]`
+          )
+          ?.addEventListener('change', apply);
+        apply();
+      });
+    </script>
+  </body>
+</html>

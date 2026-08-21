@@ -1,0 +1,207 @@
+---
+/**
+ * Diagrama do modelo Essencial — HTML + CSS + SVG (sem imagem estática).
+ * Desktop: eixo horizontal Operadora → Essencial → Prestador, com o Paciente
+ * ao centro, abaixo. Mobile: fluxo vertical.
+ */
+import Icon from './Icon.astro';
+import { elo as defaultElo } from '../data/institutional';
+
+interface Props {
+  /** Passe o conteúdo vindo do banco (Home); sem prop, usa o padrão estático. */
+  elo?: typeof defaultElo;
+}
+
+const { elo = defaultElo } = Astro.props;
+const [pagador, essencial, prestador, paciente] = elo.nodes;
+---
+
+<div class="elo" role="group" aria-label="Modelo de atuação da Essencial Saúde">
+  <div class="elo__row">
+    <article class="elo__node">
+      <span class="elo__icon"><Icon name={pagador!.icon} size={22} /></span>
+      <h3>{pagador!.label}</h3>
+      <p>{pagador!.text}</p>
+    </article>
+
+    <span class="elo__link" aria-hidden="true"><i></i></span>
+
+    <article class="elo__node elo__node--core">
+      <span class="elo__icon elo__icon--core"><Icon name={essencial!.icon} size={24} /></span>
+      <h3>{essencial!.label}</h3>
+      <p>{essencial!.text}</p>
+      <span class="elo__tag">Elo técnico</span>
+    </article>
+
+    <span class="elo__link" aria-hidden="true"><i></i></span>
+
+    <article class="elo__node">
+      <span class="elo__icon"><Icon name={prestador!.icon} size={22} /></span>
+      <h3>{prestador!.label}</h3>
+      <p>{prestador!.text}</p>
+    </article>
+  </div>
+
+  <span class="elo__link elo__link--down" aria-hidden="true"><i></i></span>
+
+  <article class="elo__node elo__node--patient">
+    <span class="elo__icon elo__icon--patient"><Icon name={paciente!.icon} size={22} /></span>
+    <div>
+      <h3>{paciente!.label}</h3>
+      <p>{paciente!.text}</p>
+    </div>
+  </article>
+</div>
+
+<style>
+  .elo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .elo__row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0;
+  }
+
+  @media (min-width: 900px) {
+    .elo__row {
+      flex-direction: row;
+      align-items: stretch;
+    }
+  }
+
+  .elo__node {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: clamp(1.15rem, 2vw, 1.6rem);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--r-lg);
+    backdrop-filter: blur(2px);
+  }
+
+  .elo__node h3 {
+    font-size: var(--fs-base);
+    color: #fff;
+  }
+
+  .elo__node p {
+    font-size: var(--fs-xs);
+    line-height: var(--lh-relaxed);
+    color: rgba(234, 243, 251, 0.72);
+    margin: 0;
+  }
+
+  .elo__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: var(--c-brand-200);
+  }
+
+  .elo__node--core {
+    background: linear-gradient(160deg, rgba(18, 167, 148, 0.22), rgba(26, 111, 175, 0.16));
+    border-color: rgba(111, 208, 194, 0.5);
+    box-shadow: 0 18px 40px -22px rgba(18, 167, 148, 0.8);
+  }
+
+  .elo__icon--core {
+    background: var(--c-accent-600);
+    border-color: var(--c-accent-500);
+    color: #fff;
+  }
+
+  .elo__tag {
+    align-self: flex-start;
+    margin-top: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: var(--r-pill);
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 0.6875rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .elo__node--patient {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-4);
+    width: min(560px, 100%);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(168, 211, 239, 0.4);
+  }
+
+  .elo__icon--patient {
+    color: #ffb4b4;
+    border-color: rgba(255, 180, 180, 0.4);
+  }
+
+  /* conectores */
+  .elo__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+  }
+
+  .elo__link i {
+    display: block;
+    background: linear-gradient(
+      90deg,
+      rgba(168, 211, 239, 0.1),
+      rgba(168, 211, 239, 0.55),
+      rgba(168, 211, 239, 0.1)
+    );
+  }
+
+  /* mobile: conectores verticais */
+  .elo__link i {
+    width: 2px;
+    height: 26px;
+    background: linear-gradient(
+      180deg,
+      rgba(168, 211, 239, 0.1),
+      rgba(168, 211, 239, 0.55),
+      rgba(168, 211, 239, 0.1)
+    );
+  }
+
+  .elo__link--down i {
+    height: 32px;
+  }
+
+  @media (min-width: 900px) {
+    .elo__row > .elo__link {
+      width: clamp(24px, 4vw, 56px);
+    }
+
+    .elo__row > .elo__link i {
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        rgba(168, 211, 239, 0.1),
+        rgba(168, 211, 239, 0.55),
+        rgba(168, 211, 239, 0.1)
+      );
+    }
+
+    .elo__link--down i {
+      height: 40px;
+    }
+  }
+</style>

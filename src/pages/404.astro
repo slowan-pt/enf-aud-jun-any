@@ -1,0 +1,213 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import { publishedOnly } from '../lib/services';
+import { publishedOnly as publishedPostsOnly } from '../lib/posts';
+import { waLink } from '../data/site';
+
+const { company, whatsapp } = Astro.locals.settings;
+const publishedServices = publishedOnly(Astro.locals.services);
+const publishedPosts = publishedPostsOnly(Astro.locals.posts);
+
+const suggestions = [
+  { icon: 'home', label: 'Página inicial', href: '/' },
+  { icon: 'users', label: 'Quem somos', href: '/quem-somos' },
+  { icon: 'layers', label: 'Serviços', href: '/servicos' },
+  { icon: 'newspaper', label: 'Conteúdos', href: '/conteudos' },
+  { icon: 'message', label: 'Contato', href: '/contato' },
+];
+---
+
+<BaseLayout
+  title="Página não encontrada"
+  description="A página que você procurou não foi encontrada no site da Essencial Saúde Auditoria."
+  noindex
+>
+  <section class="nf">
+    <div class="container nf__inner">
+      <div class="nf__text">
+        <span class="nf__code" aria-hidden="true">404</span>
+        <h1 class="title-lg">Não encontramos esta página</h1>
+        <p class="lead">
+          O endereço pode ter mudado, o conteúdo pode ter sido despublicado ou houve um erro de
+          digitação. Abaixo estão os caminhos mais úteis para continuar.
+        </p>
+
+        <div class="cluster nf__actions">
+          <a href="/" class="btn">
+            Ir para a página inicial
+            <Icon name="arrow-right" size={16} class="icon--arrow" />
+          </a>
+          <a
+            href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+            class="btn btn--secondary"
+            target="_blank"
+            rel="noopener"
+          >
+            <Icon name="whatsapp" size={16} />
+            {company.phoneDisplay}
+          </a>
+        </div>
+
+        <ul class="nf__links">
+          {
+            suggestions.map((item) => (
+              <li>
+                <a href={item.href}>
+                  <Icon name={item.icon} size={16} />
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+
+      <div class="nf__panel">
+        <h2 class="nf__panel-title">Serviços</h2>
+        <ul>
+          {
+            publishedServices.slice(0, 6).map((service) => (
+              <li>
+                <a href={`/servicos/${service.slug}`}>
+                  <Icon name="chevron-right" size={14} />
+                  {service.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+
+        <h2 class="nf__panel-title nf__panel-title--spaced">Conteúdos recentes</h2>
+        <ul>
+          {
+            publishedPosts.slice(0, 3).map((post) => (
+              <li>
+                <a href={`/conteudos/${post.slug}`}>
+                  <Icon name="chevron-right" size={14} />
+                  {post.title}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .nf {
+    padding-block: clamp(3rem, 7vw, 6rem);
+    background: linear-gradient(180deg, var(--c-brand-50), var(--c-white));
+  }
+
+  .nf__inner {
+    display: grid;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .nf__inner {
+      grid-template-columns: 1.15fr 0.85fr;
+    }
+  }
+
+  .nf__code {
+    display: block;
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 12vw, 7rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--c-brand-200);
+    margin-bottom: var(--sp-4);
+  }
+
+  .nf__text .lead {
+    margin-top: var(--sp-4);
+    max-width: 46ch;
+  }
+
+  .nf__actions {
+    margin-top: var(--sp-8);
+  }
+
+  .nf__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    list-style: none;
+    margin: var(--sp-8) 0 0;
+    padding: var(--sp-6) 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .nf__links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+
+  .nf__links a:hover {
+    border-color: var(--c-brand-300);
+    color: var(--c-brand-700);
+  }
+
+  .nf__panel {
+    padding: clamp(1.35rem, 3vw, 2rem);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .nf__panel-title {
+    font-family: var(--font-text);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--c-brand-600);
+    margin-bottom: var(--sp-3);
+  }
+
+  .nf__panel-title--spaced {
+    margin-top: var(--sp-6);
+  }
+
+  .nf__panel ul {
+    display: grid;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nf__panel a {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .nf__panel a:hover {
+    color: var(--c-brand-700);
+  }
+
+  .nf__panel :global(.icon) {
+    color: var(--c-accent-500);
+    flex: none;
+  }
+</style>

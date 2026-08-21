@@ -1,0 +1,332 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { listMedia, updateMediaMeta, deleteMedia } from '../../lib/media';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+  const userId = Astro.locals.user?.id;
+  const userName = Astro.locals.user?.name ?? '';
+
+  if (action === 'update') {
+    const id = Number(form.get('id'));
+    const altText = String(form.get('alt') ?? '').trim();
+    const title = String(form.get('title') ?? '').trim();
+    if (id) {
+      await updateMediaMeta(db, id, { altText, title });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'media.update',
+        target: `Mídia #${id}`,
+        ip,
+      });
+    }
+  } else if (action === 'delete') {
+    const id = Number(form.get('id'));
+    const item = await deleteMedia(db, id);
+    if (item) {
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'media.delete',
+        target: `Mídia: ${item.filename}`,
+        ip,
+      });
+    }
+  }
+
+  return Astro.redirect('/admin/midia');
+}
+
+const media = await listMedia(db);
+const editId = Astro.url.searchParams.get('item');
+const editing = editId ? (media.find((m) => String(m.id) === editId) ?? null) : null;
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+---
+
+<AdminLayout
+  title="Mídia"
+  description="Biblioteca de imagens e vídeos do site. Upload real para Cloudflare R2, busca, texto alternativo e exclusão."
+  active="/admin/midia"
+>
+  <section class="panel">
+    <div class="panel__body">
+      <form
+        id="upload-form"
+        class="dropzone"
+        enctype="multipart/form-data"
+        style="cursor:pointer"
+      >
+        <Icon name="upload" size={26} />
+        <strong>Arraste arquivos aqui ou clique para selecionar</strong>
+        <span class="hint" id="upload-hint">
+          JPG, PNG, WebP ou SVG (até 5 MB) · MP4 ou WebM (até 90 MB)
+        </span>
+        <input
+          type="file"
+          name="file"
+          id="upload-input"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml,video/mp4,video/webm"
+          style="display:none"
+        />
+      </form>
+    </div>
+  </section>
+
+  {
+    editing && (
+      <section class="panel" style="margin-bottom: var(--sp-5)">
+        <div class="panel__head">
+          <h2 class="panel__title">Editar mídia</h2>
+        </div>
+        <div class="panel__body detail">
+          {editing.mimeType.startsWith('video/') ? (
+            <video src={editing.url} controls width="420" height="315" />
+          ) : (
+            <img src={editing.url} alt={editing.altText} width="420" height="315" />
+          )}
+          <form class="stack" method="post">
+            <input type="hidden" name="_action" value="update" />
+            <input type="hidden" name="id" value={editing.id} />
+            <div class="field">
+              <label class="label" for="midia-nome">
+                Nome do arquivo
+              </label>
+              <input class="input" id="midia-nome" value={editing.filename} readonly />
+            </div>
+            <div class="field">
+              <label class="label" for="midia-titulo">
+                Título
+              </label>
+              <input class="input" id="midia-titulo" name="title" value={editing.title} />
+            </div>
+            <div class="field">
+              <label class="label" for="midia-alt">
+                Texto alternativo
+              </label>
+              <input class="input" id="midia-alt" name="alt" value={editing.altText} />
+              <span class="hint">Obrigatório para acessibilidade e SEO.</span>
+            </div>
+            <dl class="meta-list">
+              <div>
+                <dt>Tipo</dt>
+                <dd>{editing.mimeType}</dd>
+              </div>
+              <div>
+                <dt>Tamanho</dt>
+                <dd>{formatSize(editing.sizeBytes)}</dd>
+              </div>
+              <div>
+                <dt>Enviado em</dt>
+                <dd>{editing.createdAt}</dd>
+              </div>
+            </dl>
+            <div class="cluster">
+              <button type="submit" class="btn btn--sm">
+                <Icon name="save" size={16} />
+                Salvar alterações
+              </button>
+              <a class="btn btn--secondary btn--sm" href="/admin/midia">
+                Fechar
+              </a>
+            </div>
+          </form>
+        </div>
+        <div class="panel__foot">
+          <form method="post" style="display:contents">
+            <input type="hidden" name="_action" value="delete" />
+            <input type="hidden" name="id" value={editing.id} />
+            <button type="submit" class="btn btn--secondary btn--sm">
+              <Icon name="trash" size={16} />
+              Excluir arquivo
+            </button>
+          </form>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar por nome ou texto alternativo"
+          aria-label="Buscar mídia"
+          data-media-search
+        />
+      </label>
+      <span class="toolbar__count" data-media-count>{media.length} arquivos</span>
+    </div>
+
+    <div class="panel__body">
+      <div class="media-grid" data-media-grid>
+        {
+          media.map((item) => (
+            <a
+              class="media-item"
+              href={`/admin/midia?item=${item.id}`}
+              data-name={item.filename.toLowerCase()}
+              data-alt={item.altText.toLowerCase()}
+            >
+              {item.mimeType.startsWith('video/') ? (
+                <video src={item.url} width="320" height="240" muted preload="metadata" />
+              ) : (
+                <img src={item.url} alt={item.altText} width="320" height="240" loading="lazy" />
+              )}
+              <span class="media-item__meta">
+                <span class="media-item__name">{item.filename}</span>
+                <span class="media-item__sub">
+                  {item.mimeType} · {formatSize(item.sizeBytes)}
+                </span>
+              </span>
+            </a>
+          ))
+        }
+      </div>
+
+      {
+        media.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="image" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhum arquivo enviado ainda</h2>
+            <p>Envie o primeiro arquivo acima.</p>
+          </div>
+        )
+      }
+
+      <div class="empty-state" data-media-empty hidden>
+        <span class="empty-state__icon"><Icon name="search" size={22} /></span>
+        <h2 class="title-sm">Nenhum arquivo encontrado</h2>
+        <p>Ajuste a busca.</p>
+      </div>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">Armazenamento: Cloudflare R2</span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .detail {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  @media (min-width: 640px) {
+    .detail {
+      grid-template-columns: 0.9fr 1.1fr;
+      align-items: start;
+    }
+  }
+
+  .detail img,
+  .detail video {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
+
+  .meta-list {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-xs);
+  }
+
+  .meta-list div {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: var(--sp-3);
+  }
+
+  .meta-list dt {
+    color: var(--text-faint);
+  }
+
+  .meta-list dd {
+    margin: 0;
+    color: var(--text-strong);
+  }
+</style>
+
+<script>
+  const search = document.querySelector<HTMLInputElement>('[data-media-search]');
+  const grid = document.querySelector<HTMLElement>('[data-media-grid]');
+  const empty = document.querySelector<HTMLElement>('[data-media-empty]');
+  const count = document.querySelector<HTMLElement>('[data-media-count]');
+  const items = Array.from(grid?.querySelectorAll<HTMLElement>('.media-item') ?? []);
+
+  search?.addEventListener('input', () => {
+    const term = search.value.trim().toLowerCase();
+    let visible = 0;
+    items.forEach((item) => {
+      const match =
+        !term ||
+        (item.dataset.name ?? '').includes(term) ||
+        (item.dataset.alt ?? '').includes(term);
+      item.hidden = !match;
+      if (match) visible += 1;
+    });
+    if (empty) empty.hidden = visible > 0;
+    if (count) count.textContent = `${visible} de ${items.length} arquivos`;
+  });
+
+  const dropzone = document.getElementById('upload-form');
+  const fileInput = document.querySelector<HTMLInputElement>('#upload-input');
+  const hint = document.getElementById('upload-hint');
+
+  dropzone?.addEventListener('click', () => fileInput?.click());
+  dropzone?.addEventListener('dragover', (e) => e.preventDefault());
+  dropzone?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const dropped = (e as DragEvent).dataTransfer?.files?.[0];
+    if (dropped && fileInput) {
+      const dt = new DataTransfer();
+      dt.items.add(dropped);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    if (hint) hint.textContent = `Enviando ${file.name}…`;
+    const body = new FormData();
+    body.set('file', file);
+    body.set('alt', '');
+    body.set('title', file.name);
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (hint) hint.textContent = data.error ?? 'Falha no envio.';
+        return;
+      }
+      window.location.reload();
+    } catch {
+      if (hint) hint.textContent = 'Falha no envio. Tente novamente.';
+    }
+  });
+</script>

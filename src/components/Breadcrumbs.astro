@@ -1,0 +1,102 @@
+---
+import Icon from './Icon.astro';
+import { seo } from '../data/site';
+import type { Crumb } from '../lib/types';
+
+interface Props {
+  items: Crumb[];
+  variant?: 'default' | 'inverse';
+}
+
+const { items, variant = 'default' } = Astro.props;
+
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [{ label: 'Início', href: '/' }, ...items].map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.label,
+    ...(item.href ? { item: new URL(item.href, seo.siteUrl).href } : {}),
+  })),
+};
+---
+
+<nav class={`crumbs crumbs--${variant}`} aria-label="Você está aqui">
+  <ol class="crumbs__list">
+    <li>
+      <a href="/">Início</a>
+    </li>
+    {
+      items.map((item) => (
+        <li>
+          <Icon name="chevron-right" size={13} />
+          {item.href ? (
+            <a href={item.href}>{item.label}</a>
+          ) : (
+            <span aria-current="page">{item.label}</span>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+
+<style>
+  .crumbs {
+    font-size: var(--fs-xs);
+  }
+
+  .crumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .crumbs__list li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .crumbs a {
+    color: var(--c-ink-500);
+    text-decoration: none;
+  }
+
+  .crumbs a:hover {
+    color: var(--c-brand-600);
+    text-decoration: underline;
+  }
+
+  .crumbs span[aria-current] {
+    color: var(--c-ink-700);
+    font-weight: var(--fw-medium);
+  }
+
+  .crumbs :global(.icon) {
+    color: var(--c-ink-300);
+  }
+
+  .crumbs--inverse a {
+    color: rgba(234, 243, 251, 0.65);
+  }
+
+  .crumbs--inverse a:hover {
+    color: #fff;
+  }
+
+  .crumbs--inverse span[aria-current] {
+    color: #fff;
+  }
+
+  .crumbs--inverse :global(.icon) {
+    color: rgba(234, 243, 251, 0.4);
+  }
+</style>

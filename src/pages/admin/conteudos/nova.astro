@@ -1,0 +1,148 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { listCategories } from '../../../lib/categories';
+import { listAuthors } from '../../../lib/authors';
+import { createPost, slugExists } from '../../../lib/posts';
+
+const db = getDB();
+let slugError = '';
+
+function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = String(form.get('title') ?? '').trim();
+  const slugInput = String(form.get('slug') ?? '').trim();
+  const slug = slugify(slugInput || title);
+  const categoryId = Number(form.get('category_id')) || null;
+  const authorId = Number(form.get('author_id')) || null;
+  const excerpt = String(form.get('excerpt') ?? '').trim();
+
+  if (!title || !slug) {
+    slugError = 'Informe um título válido.';
+  } else if (await slugExists(db, slug)) {
+    slugError = 'Já existe uma matéria com esse slug.';
+  } else {
+    await createPost(
+      db,
+      {
+        slug,
+        title,
+        excerpt,
+        categoryId,
+        authorId,
+        status: 'draft',
+        featured: false,
+        coverUrl: '',
+        coverAlt: '',
+        readingMinutes: 5,
+        body: [{ type: 'paragraph', text: excerpt || '' }],
+        seoTitle: title,
+        seoDescription: excerpt,
+        publishedAt: '',
+      },
+      Astro.locals.user?.id
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'post.create',
+      target: `Matéria: ${title}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect(`/admin/conteudos/${slug}`);
+  }
+}
+
+const categories = await listCategories(db);
+const authors = await listAuthors(db);
+---
+
+<AdminLayout
+  title="Nova matéria"
+  description="Crie a matéria com as informações básicas. O conteúdo em blocos e os demais campos são editados na tela seguinte."
+  active="/admin/conteudos"
+>
+  <div slot="actions">
+    <a href="/admin/conteudos" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Voltar
+    </a>
+  </div>
+
+  {
+    slugError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{slugError}</span>
+      </div>
+    )
+  }
+
+  <section class="panel" style="max-width:640px">
+    <div class="panel__head">
+      <h2 class="panel__title">Nova matéria</h2>
+    </div>
+    <form class="panel__body stack" method="post">
+      <div class="field">
+        <label class="label" for="title">Título</label>
+        <input
+          class="input input--title"
+          id="title"
+          name="title"
+          placeholder="Escreva o título da matéria"
+          required
+        />
+      </div>
+      <div class="field">
+        <label class="label" for="slug">Slug</label>
+        <input class="input" id="slug" name="slug" placeholder="gerado a partir do título" />
+        <span class="hint">Deixe em branco para gerar a partir do título.</span>
+      </div>
+      <div class="form-grid form-grid--2">
+        <div class="field">
+          <label class="label" for="category_id">Categoria</label>
+          <select class="select" id="category_id" name="category_id">
+            <option value="">Sem categoria</option>
+            {categories.map((category) => <option value={category.id}>{category.name}</option>)}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="author_id">Autor</label>
+          <select class="select" id="author_id" name="author_id">
+            <option value="">Sem autor</option>
+            {authors.map((author) => <option value={author.id}>{author.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="excerpt">Resumo (aparece nos cards e no Google)</label>
+        <textarea class="textarea" id="excerpt" name="excerpt" style="min-height:88px"
+        ></textarea>
+      </div>
+      <button type="submit" class="btn">
+        <Icon name="plus" size={16} />
+        Criar e continuar editando
+      </button>
+    </form>
+  </section>
+</AdminLayout>
+
+<style>
+  .input--title {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    min-height: 52px;
+  }
+</style>

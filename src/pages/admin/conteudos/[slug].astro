@@ -1,0 +1,554 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { listCategories } from '../../../lib/categories';
+import { listAuthors } from '../../../lib/authors';
+import { getPost, updatePost, type BlockNode } from '../../../lib/posts';
+
+const db = getDB();
+const slug = Astro.params.slug ?? '';
+const existing = await getPost(db, slug);
+if (!existing) return Astro.rewrite('/404');
+
+const BLOCK_TYPES: BlockNode['type'][] = [
+  'paragraph',
+  'h2',
+  'h3',
+  'list',
+  'quote',
+  'divider',
+  'image',
+  'video',
+];
+const BLOCK_LABELS: Record<BlockNode['type'], string> = {
+  paragraph: 'Parágrafo',
+  h2: 'Título H2',
+  h3: 'Título H3',
+  list: 'Lista',
+  quote: 'Citação',
+  divider: 'Separador',
+  image: 'Imagem',
+  video: 'Vídeo',
+};
+
+function readBlocksFromForm(form: FormData, count: number): BlockNode[] {
+  const blocks: BlockNode[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const type = String(form.get(`block_type_${i}`) ?? 'paragraph') as BlockNode['type'];
+    if (type === 'divider') {
+      blocks.push({ type: 'divider' });
+    } else if (type === 'list') {
+      const items = String(form.get(`block_items_${i}`) ?? '')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      const ordered = form.get(`block_ordered_${i}`) === 'on';
+      blocks.push({ type: 'list', items, ordered });
+    } else if (type === 'image') {
+      const url = String(form.get(`block_url_${i}`) ?? '').trim();
+      const alt = String(form.get(`block_alt_${i}`) ?? '').trim();
+      blocks.push({ type: 'image', url, alt });
+    } else if (type === 'video') {
+      const url = String(form.get(`block_url_${i}`) ?? '').trim();
+      blocks.push({ type: 'video', url });
+    } else {
+      const text = String(form.get(`block_text_${i}`) ?? '');
+      blocks.push({ type, text } as BlockNode);
+    }
+  }
+  return blocks;
+}
+
+let currentBlocks = existing.body;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? 'save');
+  const blockCount = Number(form.get('block_count') ?? currentBlocks.length);
+  let blocks = readBlocksFromForm(form, blockCount);
+
+  if (action === 'addblock') {
+    blocks = [...blocks, { type: 'paragraph', text: '' }];
+  } else if (action.startsWith('removeblock:')) {
+    const removeIndex = Number(action.split(':')[1]);
+    blocks = blocks.filter((_, i) => i !== removeIndex);
+  }
+
+  const title = String(form.get('title') ?? existing.title).trim();
+  const categoryId = Number(form.get('category_id')) || null;
+  const authorId = Number(form.get('author_id')) || null;
+  const status = String(form.get('status') ?? existing.status) as
+    'draft' | 'published' | 'archived';
+
+  await updatePost(
+    db,
+    slug,
+    {
+      slug,
+      title,
+      excerpt: String(form.get('excerpt') ?? '').trim(),
+      categoryId,
+      authorId,
+      status,
+      featured: form.get('featured') === 'on',
+      coverUrl: String(form.get('cover_url') ?? '').trim(),
+      coverAlt: String(form.get('cover_alt') ?? '').trim(),
+      readingMinutes: Number(form.get('reading_minutes')) || existing.readingMinutes,
+      body: blocks,
+      seoTitle: String(form.get('seo_title') ?? '').trim(),
+      seoDescription: String(form.get('seo_description') ?? '').trim(),
+      publishedAt: String(form.get('published_at') ?? existing.publishedAt),
+    },
+    Astro.locals.user?.id
+  );
+
+  if (action === 'save') {
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'post.update',
+      target: `Matéria: ${title}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect(`/admin/conteudos/${slug}?saved=1`);
+  }
+
+  currentBlocks = blocks;
+}
+
+const fresh = (await getPost(db, slug))!;
+const categories = await listCategories(db);
+const authors = await listAuthors(db);
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title={`Editar: ${fresh.title}`}
+  description="Título, categoria, autor, resumo, conteúdo em blocos, capa, publicação e SEO."
+  active="/admin/conteudos"
+>
+  <div slot="actions">
+    <a href="/admin/conteudos" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Voltar
+    </a>
+    <a
+      href={`/conteudos/${fresh.slug}`}
+      target="_blank"
+      rel="noopener"
+      class="btn btn--secondary btn--sm"
+    >
+      <Icon name="eye" size={16} />
+      Ver no site
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Matéria salva.</span>
+      </div>
+    )
+  }
+
+  <form class="editor-layout" method="post" id="form-post">
+    {
+      /* botão invisível: garante que Enter em qualquer campo salve, em vez de acionar o primeiro botão "Remover bloco" do DOM */
+    }
+    <button
+      type="submit"
+      name="_action"
+      value="save"
+      tabindex="-1"
+      aria-hidden="true"
+      style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0"></button>
+    <input type="hidden" name="block_count" value={currentBlocks.length} />
+
+    <div class="stack-panels">
+      <section class="panel">
+        <div class="panel__body">
+          <div class="form-section">
+            <div class="field">
+              <label class="label" for="title">Título</label>
+              <input class="input input--title" id="title" name="title" value={fresh.title} />
+            </div>
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label class="label" for="slug-ro">Slug</label>
+                <input class="input" id="slug-ro" value={fresh.slug} readonly />
+                <span class="hint"
+                  >Slug não é editável (evita quebrar links já publicados).</span
+                >
+              </div>
+              <div class="field">
+                <label class="label" for="category_id">Categoria</label>
+                <select class="select" id="category_id" name="category_id">
+                  <option value="">Sem categoria</option>
+                  {
+                    categories.map((c) => (
+                      <option value={c.id} selected={c.id === fresh.categoryId}>
+                        {c.name}
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="excerpt">Resumo</label>
+              {/* prettier-ignore */}
+              <textarea class="textarea" id="excerpt" name="excerpt" style="min-height:80px"
+                >{fresh.excerpt}</textarea
+              >
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h2 class="form-section__title">Conteúdo (blocos)</h2>
+            <div class="blocks">
+              {
+                currentBlocks.map((block, index) => (
+                  <div class="block-row">
+                    <div class="block-row__head">
+                      <span class="muted small">Bloco {index + 1}</span>
+                      <select class="select select--sm" name={`block_type_${index}`}>
+                        {BLOCK_TYPES.map((t) => (
+                          <option value={t} selected={t === block.type}>
+                            {BLOCK_LABELS[t]}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        name="_action"
+                        value={`removeblock:${index}`}
+                        class="row-btn row-btn--danger"
+                        aria-label="Remover bloco"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
+                    </div>
+                    {block.type === 'list' ? (
+                      <>
+                        {/* prettier-ignore */}
+                        <textarea class="textarea" name={`block_items_${index}`} style="min-height:90px" placeholder="Um item por linha">{block.items.join('\n')}</textarea>
+                        <label class="checkbox">
+                          <input
+                            type="checkbox"
+                            name={`block_ordered_${index}`}
+                            checked={block.ordered}
+                          />
+                          <span>Lista numerada</span>
+                        </label>
+                      </>
+                    ) : block.type === 'divider' ? (
+                      <span class="hint">Separador visual — sem texto.</span>
+                    ) : block.type === 'image' ? (
+                      <div class="block-media">
+                        {block.url && <img src={block.url} alt="" class="block-media__preview" />}
+                        <input
+                          class="input"
+                          name={`block_url_${index}`}
+                          value={block.url}
+                          placeholder="/media/arquivo.jpg"
+                        />
+                        <input
+                          class="input"
+                          name={`block_alt_${index}`}
+                          value={block.alt}
+                          placeholder="Texto alternativo (acessibilidade e SEO)"
+                        />
+                        <label class="btn btn--secondary btn--sm block-media__upload">
+                          <Icon name="upload" size={14} />
+                          Enviar imagem
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                            data-block-upload={index}
+                            style="display:none"
+                          />
+                        </label>
+                        <span class="hint" data-block-status={index} />
+                      </div>
+                    ) : block.type === 'video' ? (
+                      <div class="block-media">
+                        {block.url && (
+                          <video src={block.url} class="block-media__preview" controls muted />
+                        )}
+                        <input
+                          class="input"
+                          name={`block_url_${index}`}
+                          value={block.url}
+                          placeholder="/media/arquivo.mp4"
+                        />
+                        <label class="btn btn--secondary btn--sm block-media__upload">
+                          <Icon name="upload" size={14} />
+                          Enviar vídeo (até 90 MB)
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm"
+                            data-block-upload={index}
+                            style="display:none"
+                          />
+                        </label>
+                        <span class="hint" data-block-status={index} />
+                      </div>
+                    ) : (
+                      /* prettier-ignore */
+                      <textarea class="textarea" name={`block_text_${index}`} style="min-height:90px">{block.text}</textarea>
+                    )}
+                  </div>
+                ))
+              }
+            </div>
+            <button
+              type="submit"
+              name="_action"
+              value="addblock"
+              class="btn btn--secondary btn--sm"
+              style="margin-top: var(--sp-3)"
+            >
+              <Icon name="plus" size={16} />
+              Adicionar bloco
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="panel__foot standalone-foot">
+        <span class="muted small">Última atualização: {fresh.updatedAt}</span>
+        <button type="submit" name="_action" value="save" class="btn">
+          <Icon name="save" size={16} />
+          Salvar matéria
+        </button>
+      </div>
+    </div>
+
+    <aside class="editor-side">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Publicação</h2>
+        </div>
+        <div class="panel__body stack">
+          <div class="field">
+            <label class="label" for="status">Status</label>
+            <select class="select" id="status" name="status">
+              <option value="draft" selected={fresh.status === 'draft'}> Rascunho </option>
+              <option value="published" selected={fresh.status === 'published'}>
+                Publicada
+              </option>
+              <option value="archived" selected={fresh.status === 'archived'}>
+                Arquivada
+              </option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="published_at">Data de publicação</label>
+            <input
+              class="input"
+              id="published_at"
+              name="published_at"
+              type="date"
+              value={fresh.publishedAt}
+            />
+          </div>
+          <div class="field">
+            <label class="label" for="author_id">Autor</label>
+            <select class="select" id="author_id" name="author_id">
+              <option value="">Sem autor</option>
+              {
+                authors.map((a) => (
+                  <option value={a.id} selected={a.id === fresh.authorId}>
+                    {a.name}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="reading_minutes">Tempo de leitura (min)</label>
+            <input
+              class="input"
+              id="reading_minutes"
+              name="reading_minutes"
+              type="number"
+              min="1"
+              value={fresh.readingMinutes}
+            />
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" name="featured" checked={fresh.featured} />
+            <span>Destacar na listagem de conteúdos</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Imagem de capa</h2>
+        </div>
+        <div class="panel__body stack">
+          {
+            fresh.cover && (
+              <img class="cover-preview" src={fresh.cover} alt="" width="320" height="240" />
+            )
+          }
+          <div class="field">
+            <label class="label" for="cover_url">Caminho da imagem</label>
+            <input class="input" id="cover_url" name="cover_url" value={fresh.cover} />
+            <span class="hint">
+              Publique em <a href="/admin/midia">Mídia</a> e cole aqui o caminho (ex.: /media/arquivo.jpg).
+            </span>
+          </div>
+          <div class="field">
+            <label class="label" for="cover_alt">Texto alternativo</label>
+            <input class="input" id="cover_alt" name="cover_alt" value={fresh.coverAlt} />
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">SEO</h2>
+        </div>
+        <div class="panel__body stack">
+          <div class="field">
+            <label class="label" for="seo_title">SEO title</label>
+            <input class="input" id="seo_title" name="seo_title" value={fresh.seo.title} />
+          </div>
+          <div class="field">
+            <label class="label" for="seo_description">Meta description</label>
+            {/* prettier-ignore */}
+            <textarea
+              class="textarea"
+              id="seo_description"
+              name="seo_description"
+              style="min-height:80px">{fresh.seo.description}</textarea
+            >
+          </div>
+        </div>
+      </section>
+    </aside>
+  </form>
+</AdminLayout>
+
+<script>
+  document.querySelectorAll<HTMLInputElement>('[data-block-upload]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const index = input.dataset.blockUpload;
+      const status = document.querySelector<HTMLElement>(`[data-block-status="${index}"]`);
+      const urlField = document.querySelector<HTMLInputElement>(`[name="block_url_${index}"]`);
+      const preview = input.closest('.block-media')?.querySelector('img, video') as
+        | HTMLImageElement
+        | HTMLVideoElement
+        | null;
+      if (status) status.textContent = `Enviando ${file.name}…`;
+      const body = new FormData();
+      body.set('file', file);
+      body.set('alt', '');
+      body.set('title', file.name);
+      try {
+        const res = await fetch('/admin/api/upload', { method: 'POST', body });
+        const data = await res.json();
+        if (!res.ok) {
+          if (status) status.textContent = data.error ?? 'Falha no envio.';
+          return;
+        }
+        if (urlField) urlField.value = data.url;
+        if (preview) preview.src = data.url;
+        if (status) status.textContent = 'Enviado.';
+      } catch {
+        if (status) status.textContent = 'Falha no envio. Tente novamente.';
+      }
+    });
+  });
+</script>
+
+<style>
+  .input--title {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    min-height: 52px;
+  }
+
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+    align-content: start;
+  }
+
+  .standalone-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+  }
+
+  .blocks {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .block-row {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .block-row__head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+
+  .block-row__head .select--sm {
+    max-width: 200px;
+  }
+
+  .block-row__head .muted {
+    flex: 1;
+  }
+
+  .cover-preview {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
+
+  .block-media {
+    display: grid;
+    gap: var(--sp-2);
+  }
+
+  .block-media__preview {
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    background: var(--c-ink-100);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
+
+  .block-media__upload {
+    justify-self: start;
+  }
+</style>

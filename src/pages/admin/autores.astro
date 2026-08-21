@@ -1,0 +1,340 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { listAuthors, createAuthor, updateAuthor, deleteAuthor } from '../../lib/authors';
+
+const db = getDB();
+let deleteBlocked = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+  const userId = Astro.locals.user?.id;
+  const userName = Astro.locals.user?.name ?? '';
+  const status = form.get('status') === 'inactive' ? 'inactive' : 'active';
+
+  if (action === 'create') {
+    const name = String(form.get('name') ?? '').trim();
+    const role = String(form.get('role') ?? '').trim();
+    const bio = String(form.get('bio') ?? '').trim();
+    if (name) {
+      await createAuthor(db, { name, role, bio, status });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'author.create',
+        target: `Autor: ${name}`,
+        ip,
+      });
+    }
+  } else if (action === 'update') {
+    const id = Number(form.get('id'));
+    const name = String(form.get('name') ?? '').trim();
+    const role = String(form.get('role') ?? '').trim();
+    const bio = String(form.get('bio') ?? '').trim();
+    if (id && name) {
+      await updateAuthor(db, id, { name, role, bio, status });
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'author.update',
+        target: `Autor: ${name}`,
+        ip,
+      });
+    }
+  } else if (action === 'delete') {
+    const id = Number(form.get('id'));
+    const ok = await deleteAuthor(db, id);
+    if (!ok) {
+      deleteBlocked = true;
+    } else {
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'author.delete',
+        target: `Autor #${id}`,
+        ip,
+      });
+    }
+  }
+
+  if (!deleteBlocked) {
+    return Astro.redirect('/admin/autores');
+  }
+}
+
+const authors = await listAuthors(db);
+const editId = Astro.url.searchParams.get('editar');
+const creating = Astro.url.searchParams.get('novo') === '1';
+---
+
+<AdminLayout
+  title="Autores"
+  description="Autores exibidos nas matérias do blog: nome, função, biografia e status."
+  active="/admin/autores"
+>
+  <div slot="actions">
+    <a href="/admin/autores?novo=1" class="btn btn--sm">
+      <Icon name="plus" size={16} />
+      Novo autor
+    </a>
+  </div>
+
+  {
+    deleteBlocked && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>Não é possível excluir: há matérias assinadas por este autor.</span>
+      </div>
+    )
+  }
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Autores cadastrados</h2>
+      <span class="muted small">{authors.length} registro(s)</span>
+    </div>
+    <div class="panel__body">
+      <div class="authors">
+        {
+          authors.map((author) =>
+            editId === String(author.id) ? (
+              <article class="author-card author-card--edit">
+                <form method="post" class="stack">
+                  <input type="hidden" name="_action" value="update" />
+                  <input type="hidden" name="id" value={author.id} />
+                  <div class="field">
+                    <label class="label" for={`aut-name-${author.id}`}>
+                      Nome
+                    </label>
+                    <input
+                      class="input"
+                      id={`aut-name-${author.id}`}
+                      name="name"
+                      value={author.name}
+                    />
+                  </div>
+                  <div class="field">
+                    <label class="label" for={`aut-role-${author.id}`}>
+                      Função
+                    </label>
+                    <input
+                      class="input"
+                      id={`aut-role-${author.id}`}
+                      name="role"
+                      value={author.role}
+                    />
+                  </div>
+                  <div class="field">
+                    <label class="label" for={`aut-bio-${author.id}`}>
+                      Biografia
+                    </label>
+                    {/* prettier-ignore */}
+                    <textarea class="textarea" id={`aut-bio-${author.id}`} name="bio" style="min-height:90px">{author.bio}</textarea>
+                  </div>
+                  <div class="field">
+                    <label class="label" for={`aut-status-${author.id}`}>
+                      Status
+                    </label>
+                    <select class="select" id={`aut-status-${author.id}`} name="status">
+                      <option value="active" selected={author.status === 'active'}>
+                        Ativo
+                      </option>
+                      <option value="inactive" selected={author.status === 'inactive'}>
+                        Inativo
+                      </option>
+                    </select>
+                  </div>
+                  <div class="cluster">
+                    <button type="submit" class="btn btn--sm">
+                      <Icon name="save" size={16} />
+                      Salvar
+                    </button>
+                    <a class="btn btn--secondary btn--sm" href="/admin/autores">
+                      Cancelar
+                    </a>
+                  </div>
+                </form>
+              </article>
+            ) : (
+              <article class="author-card">
+                <span class="avatar avatar--lg">{author.initials}</span>
+                <div class="author-card__body">
+                  <h3>{author.name}</h3>
+                  <span class="author-card__role">{author.role}</span>
+                  <p>{author.bio}</p>
+                  <div class="cluster">
+                    <span
+                      class:list={[
+                        'badge',
+                        author.status === 'active' ? 'badge--success' : 'badge--neutral',
+                      ]}
+                    >
+                      {author.status === 'active' ? 'Ativo' : 'Inativo'}
+                    </span>
+                    <a
+                      class="btn btn--ghost btn--sm"
+                      href={`/admin/autores?editar=${author.id}`}
+                    >
+                      <Icon name="edit" size={16} />
+                      Editar
+                    </a>
+                    <form method="post" style="display:contents">
+                      <input type="hidden" name="_action" value="delete" />
+                      <input type="hidden" name="id" value={author.id} />
+                      <button type="submit" class="btn btn--ghost btn--sm">
+                        <Icon name="trash" size={16} />
+                        Excluir
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </article>
+            )
+          )
+        }
+
+        {
+          creating ? (
+            <article class="author-card author-card--edit">
+              <form method="post" class="stack">
+                <input type="hidden" name="_action" value="create" />
+                <div class="field">
+                  <label class="label" for="new-aut-name">
+                    Nome
+                  </label>
+                  <input
+                    class="input"
+                    id="new-aut-name"
+                    name="name"
+                    placeholder="Nome completo"
+                    required
+                  />
+                </div>
+                <div class="field">
+                  <label class="label" for="new-aut-role">
+                    Função
+                  </label>
+                  <input
+                    class="input"
+                    id="new-aut-role"
+                    name="role"
+                    placeholder="Ex.: Enfermeira auditora"
+                  />
+                </div>
+                <div class="field">
+                  <label class="label" for="new-aut-bio">
+                    Biografia
+                  </label>
+                  <textarea
+                    class="textarea"
+                    id="new-aut-bio"
+                    name="bio"
+                    style="min-height:90px"
+                    placeholder="Breve apresentação profissional."
+                  />
+                </div>
+                <div class="field">
+                  <span class="label">Foto</span>
+                  <span class="hint">
+                    Upload real (R2) ainda não conectado — o autor usa as iniciais do nome
+                    enquanto isso.
+                  </span>
+                </div>
+                <div class="cluster">
+                  <button type="submit" class="btn btn--sm">
+                    <Icon name="plus" size={16} />
+                    Criar autor
+                  </button>
+                  <a class="btn btn--secondary btn--sm" href="/admin/autores">
+                    Cancelar
+                  </a>
+                </div>
+              </form>
+            </article>
+          ) : (
+            <article class="author-card author-card--empty">
+              <span class="empty-state__icon">
+                <Icon name="user" size={22} />
+              </span>
+              <div class="author-card__body">
+                <h3>Adicionar autor</h3>
+                <p>
+                  Cadastre os profissionais que assinam os conteúdos. Sem autores cadastrados,
+                  as matérias saem assinadas pela equipe.
+                </p>
+                <a class="btn btn--secondary btn--sm" href="/admin/autores?novo=1">
+                  <Icon name="plus" size={16} />
+                  Novo autor
+                </a>
+              </div>
+            </article>
+          )
+        }
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .authors {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  @media (min-width: 820px) {
+    .authors {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .author-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-4);
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--c-white);
+  }
+
+  .author-card--edit {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .author-card--empty {
+    border-style: dashed;
+    background: var(--c-ink-50);
+  }
+
+  .avatar--lg {
+    width: 56px;
+    height: 56px;
+    font-size: var(--fs-base);
+  }
+
+  .author-card__body {
+    display: grid;
+    gap: 0.35rem;
+    align-content: start;
+  }
+
+  .author-card h3 {
+    font-size: var(--fs-base);
+  }
+
+  .author-card__role {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+
+  .author-card p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+    margin-bottom: var(--sp-2);
+  }
+</style>

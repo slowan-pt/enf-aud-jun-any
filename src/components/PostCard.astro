@@ -1,0 +1,161 @@
+---
+import Icon from './Icon.astro';
+import { formatDate, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  featured?: boolean;
+}
+
+const { post, featured = false } = Astro.props;
+---
+
+<article
+  class:list={['card card--link card--flush post', { 'post--featured': featured }]}
+  data-reveal
+>
+  <div class="post__media">
+    <img src={post.cover} alt="" width="640" height="400" loading="lazy" decoding="async" />
+  </div>
+  <div class="post__body">
+    <div class="post__meta">
+      {post.categoryName && <span class="badge badge--brand">{post.categoryName}</span>}
+      <span class="post__date">
+        <Icon name="calendar" size={14} />
+        {formatDate(post.publishedAt)}
+      </span>
+    </div>
+    <h3 class="post__title">
+      <a href={`/conteudos/${post.slug}`} class="stretched-link">{post.title}</a>
+    </h3>
+    <p class="post__excerpt">{post.excerpt}</p>
+    <div class="post__foot">
+      <span class="link-arrow">
+        Ler conteúdo
+        <Icon name="arrow-right" size={16} />
+      </span>
+      <span class="post__time">
+        <Icon name="clock" size={14} />
+        {post.readingMinutes} min
+      </span>
+    </div>
+  </div>
+</article>
+
+<style>
+  .post {
+    overflow: hidden;
+  }
+
+  .post__media {
+    display: block;
+    overflow: hidden;
+    background: var(--c-brand-50);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .post__media img {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .post:hover .post__media img {
+    transform: scale(1.04);
+  }
+
+  .post__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: clamp(1.15rem, 2vw, 1.6rem);
+    flex: 1;
+  }
+
+  .post__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+
+  .post__date,
+  .post__time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+  }
+
+  .post__title {
+    font-size: var(--fs-lg);
+    line-height: var(--lh-snug);
+  }
+
+  .post__title a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .post:hover .post__title a {
+    color: var(--c-brand-700);
+  }
+
+  .post__excerpt {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .post__foot {
+    margin-top: auto;
+    padding-top: var(--sp-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    border-top: 1px solid var(--line);
+  }
+
+  @media (min-width: 860px) {
+    .post--featured {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      align-items: stretch;
+    }
+
+    .post--featured .post__media {
+      height: 100%;
+      border-bottom: 0;
+      border-right: 1px solid var(--line);
+    }
+
+    .post--featured .post__media img {
+      height: 100%;
+      aspect-ratio: auto;
+      min-height: 320px;
+    }
+
+    .post--featured .post__body {
+      padding: clamp(1.5rem, 3vw, 2.5rem);
+      justify-content: center;
+    }
+
+    .post--featured .post__title {
+      font-size: var(--fs-2xl);
+    }
+
+    .post--featured .post__excerpt {
+      font-size: var(--fs-md);
+      -webkit-line-clamp: 4;
+      line-clamp: 4;
+    }
+  }
+</style>

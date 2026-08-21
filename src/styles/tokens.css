@@ -1,0 +1,159 @@
+/* =====================================================================
+   ESSENCIAL SAÚDE AUDITORIA — DESIGN TOKENS
+   Fonte única de verdade para cor, tipografia, espaçamento, raio,
+   sombra, bordas, containers e camadas.
+   ===================================================================== */
+
+:root {
+  /* ---------- Cor: azul institucional (marca) ---------- */
+  --c-brand-950: #041526;
+  --c-brand-900: #06203a;
+  --c-brand-800: #092c4e;
+  --c-brand-700: #0d3d69;
+  --c-brand-600: #12558e;
+  --c-brand-500: #1a6faf;
+  --c-brand-400: #2f8ecd;
+  --c-brand-300: #6cb2e0;
+  --c-brand-200: #a8d3ef;
+  --c-brand-100: #d7eaf8;
+  --c-brand-50: #eff7fd;
+
+  /* ---------- Cor: complementar discreta (cuidado/saúde) ---------- */
+  --c-accent-700: #0a6f65;
+  --c-accent-600: #0d8b7d;
+  --c-accent-500: #12a794;
+  --c-accent-300: #6fd0c2;
+  --c-accent-100: #d8f2ed;
+  --c-accent-50: #eefaf8;
+
+  /* ---------- Neutros ---------- */
+  --c-ink-900: #0e1720;
+  --c-ink-800: #1b2836;
+  --c-ink-700: #2c3a4b;
+  --c-ink-600: #47576b;
+  --c-ink-500: #64748b;
+  --c-ink-400: #8b98a9;
+  --c-ink-300: #b7c1cd;
+  --c-ink-200: #dbe2ea;
+  --c-ink-150: #e7ecf2;
+  --c-ink-100: #f1f4f8;
+  --c-ink-50: #f7f9fc;
+  --c-white: #ffffff;
+
+  /* ---------- Estados ---------- */
+  --c-success-600: #0f7a4f;
+  --c-success-100: #dcf5e9;
+  --c-warning-600: #7a5205;
+  --c-warning-100: #fdf0d5;
+  --c-danger-600: #b3261e;
+  --c-danger-100: #fbe3e1;
+  --c-info-600: var(--c-brand-600);
+  --c-info-100: var(--c-brand-100);
+
+  /* ---------- Papéis semânticos (site público) ---------- */
+  --bg: var(--c-white);
+  --bg-subtle: var(--c-ink-50);
+  --bg-muted: var(--c-ink-100);
+  --bg-brand: var(--c-brand-900);
+  --bg-brand-soft: var(--c-brand-50);
+  --text: var(--c-ink-800);
+  --text-strong: var(--c-brand-900);
+  --text-muted: var(--c-ink-600);
+  --text-faint: var(--c-ink-500);
+  --text-on-brand: #eaf3fb;
+  --line: var(--c-ink-200);
+  --line-strong: var(--c-ink-300);
+  --line-brand: rgba(255, 255, 255, 0.14);
+  --focus: var(--c-accent-500);
+
+  /* ---------- Tipografia ---------- */
+  --font-display: 'Sora Variable', 'Sora', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-text: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', Consolas, monospace;
+
+  /* escala fluida (min 360px → max 1440px) */
+  --fs-eyebrow: 0.75rem;
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-md: clamp(1.0625rem, 0.3vw + 1rem, 1.125rem);
+  --fs-lg: clamp(1.125rem, 0.5vw + 1rem, 1.3125rem);
+  --fs-xl: clamp(1.375rem, 0.9vw + 1.1rem, 1.75rem);
+  --fs-2xl: clamp(1.625rem, 1.5vw + 1.2rem, 2.25rem);
+  --fs-3xl: clamp(1.875rem, 2.4vw + 1.25rem, 3rem);
+  --fs-4xl: clamp(2.125rem, 3.4vw + 1.25rem, 3.75rem);
+
+  --lh-tight: 1.12;
+  --lh-snug: 1.25;
+  --lh-normal: 1.55;
+  --lh-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+  --tracking-caps: 0.14em;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---------- Espaçamento (base 4px) ---------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+  --sp-20: 5rem;
+  --sp-24: 6rem;
+  --sp-32: 8rem;
+
+  /* ritmo vertical de seção (fluido) */
+  --section-y: clamp(3.5rem, 6vw, 7rem);
+  --section-y-sm: clamp(2.5rem, 4vw, 4.5rem);
+
+  /* ---------- Container / grid ---------- */
+  --container-max: 1200px;
+  --container-wide: 1360px;
+  --container-narrow: 760px;
+  --gutter: clamp(1.125rem, 4vw, 2.5rem);
+
+  /* ---------- Raio ---------- */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* ---------- Sombra (discreta, corporativa) ---------- */
+  --shadow-xs: 0 1px 2px rgba(9, 44, 78, 0.06);
+  --shadow-sm: 0 2px 6px rgba(9, 44, 78, 0.07);
+  --shadow-md: 0 10px 24px -12px rgba(9, 44, 78, 0.22);
+  --shadow-lg: 0 24px 48px -24px rgba(9, 44, 78, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(18, 167, 148, 0.35);
+
+  /* ---------- Motion ---------- */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
+  --dur-slow: 420ms;
+
+  /* ---------- Camadas ---------- */
+  --z-base: 1;
+  --z-sticky: 40;
+  --z-header: 50;
+  --z-drawer: 60;
+  --z-float: 70;
+  --z-modal: 80;
+  --z-toast: 90;
+
+  /* ---------- Alvo de toque mínimo (WCAG 2.2 AA) ---------- */
+  --tap: 44px;
+}

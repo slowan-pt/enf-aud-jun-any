@@ -1,0 +1,666 @@
+---
+/**
+ * FORMULÁRIO — envio real.
+ *
+ * POST para /api/contato: validação no cliente + validação server-side,
+ * honeypot, rate limiting por IP e persistência no D1. Visualização em
+ * /admin/contatos.
+ *
+ * Pendente (Fase 4): Cloudflare Turnstile (antispam adicional) — hoje a
+ * defesa é honeypot + rate limiting, sem CAPTCHA visível.
+ */
+import Icon from './Icon.astro';
+import { organizationTypes } from '../data/site';
+import { publishedOnly } from '../lib/services';
+
+const publishedServices = publishedOnly(Astro.locals.services);
+
+interface Props {
+  variant?: 'full' | 'commercial';
+  title?: string;
+  description?: string;
+  /** Serviço pré-selecionado (páginas de serviço). */
+  preselectedService?: string;
+  id?: string;
+  /** Página de origem gravada junto do contato. */
+  origin?: string;
+}
+
+const {
+  variant = 'full',
+  title = 'Envie sua mensagem',
+  description,
+  preselectedService,
+  id = 'form-contato',
+  origin = Astro.url.pathname,
+} = Astro.props;
+
+const isCommercial = variant === 'commercial';
+---
+
+<div class="formwrap" data-form-wrap>
+  <div class="formwrap__head">
+    <h2 class="title-sm">{title}</h2>
+    {description && <p class="muted small">{description}</p>}
+  </div>
+
+  <form class="form" id={id} novalidate data-contact-form>
+    <input type="hidden" name="origem" value={origin} />
+    <!-- honeypot antispam: invisível para pessoas, preenchido por bots -->
+    <div class="hp" aria-hidden="true">
+      <label for={`${id}-website`}>Não preencha este campo</label>
+      <input type="text" id={`${id}-website`} name="website" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <div class="form-grid form-grid--2">
+      <div class="field field--full" data-field>
+        <label class="label" for={`${id}-nome`}>Nome completo <span class="req">*</span></label>
+        <input
+          class="input"
+          id={`${id}-nome`}
+          name="nome"
+          type="text"
+          autocomplete="name"
+          placeholder="Como devemos chamá-lo(a)?"
+          data-validate="required|minlen:5"
+          aria-describedby={`${id}-nome-erro`}
+          required
+        />
+        <span class="error-text" id={`${id}-nome-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>Informe seu nome completo.</span>
+        </span>
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-empresa`}>
+          Empresa / Organização <span class="req">*</span>
+        </label>
+        <input
+          class="input"
+          id={`${id}-empresa`}
+          name="empresa"
+          type="text"
+          autocomplete="organization"
+          placeholder="Nome da organização"
+          data-validate="required|minlen:2"
+          aria-describedby={`${id}-empresa-erro`}
+          required
+        />
+        <span class="error-text" id={`${id}-empresa-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>Informe a empresa ou organização.</span>
+        </span>
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-cargo`}>Cargo</label>
+        <input
+          class="input"
+          id={`${id}-cargo`}
+          name="cargo"
+          type="text"
+          autocomplete="organization-title"
+          placeholder="Ex.: Gerente de auditoria"
+          data-validate=""
+        />
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-email`}>E-mail <span class="req">*</span></label>
+        <input
+          class="input"
+          id={`${id}-email`}
+          name="email"
+          type="email"
+          autocomplete="email"
+          inputmode="email"
+          placeholder="nome@organizacao.com.br"
+          data-validate="required|email"
+          aria-describedby={`${id}-email-erro`}
+          required
+        />
+        <span class="error-text" id={`${id}-email-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>Informe um e-mail válido.</span>
+        </span>
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-telefone`}>
+          Telefone / WhatsApp <span class="req">*</span>
+        </label>
+        <input
+          class="input"
+          id={`${id}-telefone`}
+          name="telefone"
+          type="tel"
+          autocomplete="tel"
+          inputmode="tel"
+          placeholder="(00) 00000-0000"
+          data-validate="required|phone"
+          data-mask="phone"
+          aria-describedby={`${id}-telefone-erro`}
+          required
+        />
+        <span class="error-text" id={`${id}-telefone-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>Informe um telefone com DDD.</span>
+        </span>
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-tipo`}>
+          Tipo de organização <span class="req">*</span>
+        </label>
+        <select
+          class="select"
+          id={`${id}-tipo`}
+          name="tipo_organizacao"
+          data-validate="required"
+          aria-describedby={`${id}-tipo-erro`}
+          required
+        >
+          <option value="">Selecione</option>
+          {organizationTypes.map((type) => <option value={type}>{type}</option>)}
+        </select>
+        <span class="error-text" id={`${id}-tipo-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>Selecione o tipo de organização.</span>
+        </span>
+      </div>
+
+      <div class="field" data-field>
+        <label class="label" for={`${id}-servico`}>Serviço de interesse</label>
+        <select class="select" id={`${id}-servico`} name="servico" data-validate="">
+          <option value="">Selecione (opcional)</option>
+          {
+            publishedServices.map((service) => (
+              <option value={service.name} selected={service.name === preselectedService}>
+                {service.name}
+              </option>
+            ))
+          }
+          <option value="Outro assunto" selected={preselectedService === 'Outro assunto'}>
+            Outro assunto
+          </option>
+        </select>
+        <span class="hint">Lista alimentada pelo cadastro de serviços.</span>
+      </div>
+
+      {
+        !isCommercial && (
+          <div class="field field--full" data-field>
+            <label class="label" for={`${id}-assunto`}>
+              Assunto <span class="req">*</span>
+            </label>
+            <input
+              class="input"
+              id={`${id}-assunto`}
+              name="assunto"
+              type="text"
+              placeholder="Resumo do que você precisa"
+              data-validate="required|minlen:4"
+              aria-describedby={`${id}-assunto-erro`}
+              required
+            />
+            <span class="error-text" id={`${id}-assunto-erro`} data-error>
+              <Icon name="alert-circle" size={14} />
+              <span data-error-text>Informe o assunto.</span>
+            </span>
+          </div>
+        )
+      }
+
+      <div class="field field--full" data-field>
+        <label class="label" for={`${id}-mensagem`}>Mensagem <span class="req">*</span></label>
+        <textarea
+          class="textarea"
+          id={`${id}-mensagem`}
+          name="mensagem"
+          placeholder="Conte brevemente o cenário da sua organização e como podemos ajudar."
+          data-validate="required|minlen:20"
+          data-counter
+          maxlength="2000"
+          aria-describedby={`${id}-mensagem-erro ${id}-mensagem-contador`}
+          required></textarea>
+        <div class="field__row">
+          <span class="error-text" id={`${id}-mensagem-erro`} data-error>
+            <Icon name="alert-circle" size={14} />
+            <span data-error-text>Escreva ao menos 20 caracteres.</span>
+          </span>
+          <span class="hint counter" id={`${id}-mensagem-contador`} data-counter-output>
+            0 / 2000
+          </span>
+        </div>
+      </div>
+
+      <div class="field field--full" data-field>
+        <label class="checkbox">
+          <input
+            type="checkbox"
+            name="consentimento"
+            data-validate="required"
+            aria-describedby={`${id}-consent-erro`}
+            required
+          />
+          <span>
+            Autorizo o tratamento dos meus dados pessoais informados neste formulário para que a
+            Essencial Saúde Auditoria possa responder a este contato, conforme a
+            <a href="/politica-de-privacidade"> Política de Privacidade</a> e a LGPD (Lei 13.709/2018).
+            <span class="req">*</span>
+          </span>
+        </label>
+        <span class="error-text" id={`${id}-consent-erro`} data-error>
+          <Icon name="alert-circle" size={14} />
+          <span data-error-text>É necessário autorizar o tratamento dos dados.</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="form__foot">
+      <button type="submit" class="btn btn--lg" data-submit>
+        <span data-submit-label>Enviar mensagem</span>
+        <Icon name="arrow-right" size={18} class="icon--arrow" />
+      </button>
+      <p class="form-note">
+        Campos marcados com <span class="req">*</span> são obrigatórios. Responderemos em horário
+        comercial.
+      </p>
+    </div>
+
+    <div class="form-alert form-alert--error" role="alert" data-form-error hidden>
+      <Icon name="alert" size={18} />
+      <span>
+        <strong>Não foi possível enviar</strong>
+        <span data-form-error-text>Revise os campos destacados e tente novamente.</span>
+      </span>
+    </div>
+  </form>
+
+  <div class="success" role="status" data-form-success hidden>
+    <span class="success__icon"><Icon name="check-circle" size={30} /></span>
+    <h3 class="title-sm">Mensagem enviada com sucesso</h3>
+    <p>
+      Recebemos seus dados e nossa equipe vai retornar em horário comercial. Se preferir uma
+      resposta mais rápida, use o WhatsApp ou o e-mail informados nesta página.
+    </p>
+    <button type="button" class="btn btn--secondary btn--sm" data-form-reset>
+      <Icon name="refresh" size={16} />
+      Enviar outra mensagem
+    </button>
+  </div>
+</div>
+
+<style>
+  .formwrap {
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .formwrap__head {
+    margin-bottom: var(--sp-4);
+  }
+
+  .formwrap__head p {
+    margin-top: var(--sp-2);
+  }
+
+  .formwrap__stage {
+    margin-bottom: var(--sp-5);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-normal);
+  }
+
+  .hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .field__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    min-height: 18px;
+  }
+
+  .counter {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .form__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-4);
+    margin-top: var(--sp-6);
+  }
+
+  .form__foot .btn {
+    min-width: 220px;
+  }
+
+  .form__foot .form-note {
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .req {
+    color: var(--c-danger-600);
+  }
+
+  [data-form-error] {
+    margin-top: var(--sp-4);
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  /* estado de carregamento */
+  .form.is-loading [data-submit] {
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  /* sucesso */
+  .success {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-4);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background: var(--c-accent-50);
+    border: 1px solid var(--c-accent-100);
+    border-radius: var(--r-md);
+  }
+
+  .success__icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--c-accent-600);
+    color: #fff;
+  }
+
+  .success p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  .success__data {
+    width: 100%;
+    display: grid;
+    gap: 0.35rem;
+    padding: var(--sp-4);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px dashed var(--c-accent-300);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+
+  .success__data :global(dl) {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+  }
+
+  .success__data :global(div) {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: var(--sp-3);
+  }
+
+  .success__data :global(dt) {
+    color: var(--text-faint);
+  }
+
+  .success__data :global(dd) {
+    margin: 0;
+    color: var(--text-strong);
+    word-break: break-word;
+  }
+
+  @media (max-width: 520px) {
+    .success__data :global(div) {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+  }
+</style>
+
+<script>
+  type Rule = { name: string; arg?: string };
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+
+  function parseRules(raw: string | null): Rule[] {
+    if (!raw) return [];
+    return raw
+      .split('|')
+      .filter(Boolean)
+      .map((part) => {
+        const [name, arg] = part.split(':');
+        return { name: name ?? '', arg };
+      });
+  }
+
+  function fieldValue(el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+    if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+      return el.checked ? 'on' : '';
+    }
+    return el.value.trim();
+  }
+
+  function validateControl(
+    el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  ): string | null {
+    const rules = parseRules(el.getAttribute('data-validate'));
+    const value = fieldValue(el);
+
+    for (const rule of rules) {
+      if (rule.name === 'required' && !value) {
+        return el instanceof HTMLSelectElement
+          ? 'Selecione uma opção.'
+          : el instanceof HTMLInputElement && el.type === 'checkbox'
+            ? 'É necessário autorizar o tratamento dos dados.'
+            : 'Este campo é obrigatório.';
+      }
+      if (!value) continue;
+      if (rule.name === 'email' && !EMAIL_RE.test(value)) {
+        return 'Informe um e-mail válido (ex.: nome@organizacao.com.br).';
+      }
+      if (rule.name === 'phone' && value.replace(/\D/g, '').length < 10) {
+        return 'Informe o telefone com DDD (10 ou 11 dígitos).';
+      }
+      if (rule.name === 'minlen' && value.length < Number(rule.arg ?? 0)) {
+        return `Use ao menos ${rule.arg} caracteres.`;
+      }
+    }
+    return null;
+  }
+
+  function setFieldState(
+    el: HTMLElement,
+    state: 'valid' | 'invalid' | 'idle',
+    message?: string
+  ): void {
+    const field = el.closest<HTMLElement>('[data-field]');
+    if (!field) return;
+    if (state === 'idle') {
+      field.removeAttribute('data-state');
+    } else {
+      field.setAttribute('data-state', state);
+    }
+    el.setAttribute('aria-invalid', state === 'invalid' ? 'true' : 'false');
+    if (message) {
+      const output = field.querySelector<HTMLElement>('[data-error-text]');
+      if (output) output.textContent = message;
+    }
+  }
+
+  function maskPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits.replace(/^(\d{0,2})/, '($1');
+    if (digits.length <= 6) return digits.replace(/^(\d{2})(\d{0,4})/, '($1) $2');
+    if (digits.length <= 10) return digits.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+    return digits.replace(/^(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+  }
+
+  document.querySelectorAll<HTMLFormElement>('[data-contact-form]').forEach((form) => {
+    const wrap = form.closest<HTMLElement>('[data-form-wrap]');
+    const submitBtn = form.querySelector<HTMLButtonElement>('[data-submit]');
+    const submitLabel = form.querySelector<HTMLElement>('[data-submit-label]');
+    const errorBox = form.querySelector<HTMLElement>('[data-form-error]');
+    const errorText = form.querySelector<HTMLElement>('[data-form-error-text]');
+    const successBox = wrap?.querySelector<HTMLElement>('[data-form-success]');
+    const controls = Array.from(
+      form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        '[data-validate]'
+      )
+    );
+    let sending = false;
+
+    // máscara de telefone
+    form.querySelectorAll<HTMLInputElement>('[data-mask="phone"]').forEach((input) => {
+      input.addEventListener('input', () => {
+        input.value = maskPhone(input.value);
+      });
+    });
+
+    // contador de caracteres
+    const counted = form.querySelector<HTMLTextAreaElement>('[data-counter]');
+    const counterOut = form.querySelector<HTMLElement>('[data-counter-output]');
+    if (counted && counterOut) {
+      const update = () => {
+        counterOut.textContent = `${counted.value.length} / ${counted.maxLength}`;
+      };
+      counted.addEventListener('input', update);
+      update();
+    }
+
+    // validação em blur + limpeza do erro ao corrigir
+    controls.forEach((control) => {
+      const check = () => {
+        const message = validateControl(control);
+        if (message) {
+          setFieldState(control, 'invalid', message);
+        } else {
+          setFieldState(control, fieldValue(control) ? 'valid' : 'idle');
+        }
+      };
+      control.addEventListener('blur', check);
+      control.addEventListener('change', check);
+      control.addEventListener('input', () => {
+        const field = control.closest<HTMLElement>('[data-field]');
+        if (field?.getAttribute('data-state') === 'invalid' && !validateControl(control)) {
+          setFieldState(control, 'valid');
+        }
+      });
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (sending) return;
+
+      // honeypot: bot preencheu o campo oculto
+      const honey = form.querySelector<HTMLInputElement>('input[name="website"]');
+      if (honey?.value) return;
+
+      let firstInvalid: HTMLElement | null = null;
+      controls.forEach((control) => {
+        const message = validateControl(control);
+        if (message) {
+          setFieldState(control, 'invalid', message);
+          if (!firstInvalid) firstInvalid = control;
+        } else {
+          setFieldState(control, fieldValue(control) ? 'valid' : 'idle');
+        }
+      });
+
+      if (firstInvalid) {
+        errorBox?.removeAttribute('hidden');
+        (firstInvalid as HTMLElement).focus();
+        (firstInvalid as HTMLElement).scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+      }
+
+      errorBox?.setAttribute('hidden', '');
+      sending = true;
+      form.classList.add('is-loading');
+      submitBtn?.setAttribute('aria-disabled', 'true');
+      if (submitLabel) submitLabel.textContent = 'Enviando…';
+
+      try {
+        const res = await fetch('/api/contato', { method: 'POST', body: new FormData(form) });
+        const payload = (await res.json().catch(() => null)) as {
+          success?: boolean;
+          error?: string;
+          message?: string;
+          fields?: Record<string, string>;
+        } | null;
+
+        if (res.ok && payload?.success) {
+          form.hidden = true;
+          successBox?.removeAttribute('hidden');
+          successBox?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else if (res.status === 422 && payload?.fields) {
+          let firstBadField: HTMLElement | null = null;
+          for (const [name, message] of Object.entries(payload.fields)) {
+            const control = form.querySelector<HTMLElement>(`[name="${name}"]`);
+            if (control) {
+              setFieldState(control, 'invalid', message);
+              if (!firstBadField) firstBadField = control;
+            }
+          }
+          errorBox?.removeAttribute('hidden');
+          firstBadField?.focus();
+          firstBadField?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else {
+          if (errorText) {
+            errorText.textContent =
+              payload?.message ||
+              (res.status === 429
+                ? 'Muitas mensagens enviadas. Tente novamente mais tarde.'
+                : 'Não foi possível enviar agora. Tente novamente em instantes.');
+          }
+          errorBox?.removeAttribute('hidden');
+        }
+      } catch {
+        if (errorText) {
+          errorText.textContent = 'Falha de conexão. Verifique sua internet e tente novamente.';
+        }
+        errorBox?.removeAttribute('hidden');
+      } finally {
+        sending = false;
+        form.classList.remove('is-loading');
+        submitBtn?.removeAttribute('aria-disabled');
+        if (submitLabel) submitLabel.textContent = 'Enviar mensagem';
+      }
+    });
+
+    wrap
+      ?.querySelector<HTMLButtonElement>('[data-form-reset]')
+      ?.addEventListener('click', () => {
+        form.reset();
+        controls.forEach((control) => setFieldState(control, 'idle'));
+        successBox?.setAttribute('hidden', '');
+        form.hidden = false;
+        form.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        if (counted && counterOut) counterOut.textContent = `0 / ${counted.maxLength}`;
+      });
+  });
+</script>

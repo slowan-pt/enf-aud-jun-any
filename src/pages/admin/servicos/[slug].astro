@@ -1,0 +1,414 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { findBySlug, updateService, type Service } from '../../../lib/services';
+
+const slug = Astro.params.slug ?? '';
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const existing = findBySlug(Astro.locals.services, slug);
+  if (existing) {
+    const form = await Astro.request.formData();
+    const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+    const lines = (key: string, fallback: string[]) =>
+      String(form.get(key) ?? fallback.join('\n'))
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+    await updateService(
+      db,
+      slug,
+      {
+        name: text('nome', existing.name),
+        shortName: text('nome_curto', existing.shortName),
+        summary: text('resumo', existing.summary),
+        heroTitle: text('hero_titulo', existing.heroTitle),
+        heroLead: text('hero_lead', existing.heroLead),
+        image: text('imagem', existing.image),
+        imageAlt: text('alt', existing.imageAlt),
+        whatsappMessage: text('wa', existing.whatsappMessage),
+        seoTitle: text('seo_title', existing.seo.title),
+        seoDescription: text('seo_desc', existing.seo.description),
+        status: text('status', existing.status) as Service['status'],
+        featured: form.get('featured') === 'on',
+        intro: lines('intro', existing.intro),
+        deliverables: lines('entregaveis', existing.deliverables),
+        audience: lines('publico', existing.audience),
+      },
+      existing
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'service.update',
+      target: `Serviço: ${existing.name}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+  }
+  return Astro.redirect(`/admin/servicos/${slug}?saved=1`);
+}
+
+const service = findBySlug(Astro.locals.services, slug);
+if (!service) return Astro.rewrite('/404');
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+function formatDate(iso: string): string {
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+---
+
+<AdminLayout
+  title={`Serviço: ${service.name}`}
+  description="Edição do serviço — conteúdo, mídia, CTA de WhatsApp contextual, ordenação e SEO próprio."
+  active="/admin/servicos"
+>
+  <div slot="actions">
+    <a href="/admin/servicos" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Voltar
+    </a>
+    <a
+      href={`/servicos/${service.slug}`}
+      class="btn btn--secondary btn--sm"
+      target="_blank"
+      rel="noopener"
+    >
+      <Icon name="eye" size={16} />
+      Ver no site
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Serviço salvo. Já vale para o site publicado.</span>
+      </div>
+    )
+  }
+
+  <form class="editor-layout" method="post" id="form-servico">
+    <div class="panel">
+      <div class="tabs" data-tabs>
+        <button type="button" class="tab is-active" data-tab="conteudo" aria-selected="true"
+          >Conteúdo</button
+        >
+        <button type="button" class="tab" data-tab="detalhes" aria-selected="false"
+          >Blocos e listas</button
+        >
+        <button type="button" class="tab" data-tab="midia" aria-selected="false"
+          >Mídia e ícone</button
+        >
+        <button type="button" class="tab" data-tab="seo" aria-selected="false">SEO</button>
+      </div>
+
+      <!-- CONTEÚDO -->
+      <div class="panel__body" data-tab-panel="conteudo">
+        <div class="form-section">
+          <div class="form-grid form-grid--2">
+            <div class="field">
+              <label class="label" for="nome">Nome do serviço</label>
+              <input class="input" id="nome" name="nome" value={service.name} />
+            </div>
+            <div class="field">
+              <label class="label" for="nome_curto">Nome curto (menus e cards)</label>
+              <input
+                class="input"
+                id="nome_curto"
+                name="nome_curto"
+                value={service.shortName}
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="slug-disp">Slug</label>
+            <input class="input" id="slug-disp" value={service.slug} disabled />
+            <span class="hint">
+              Edição de slug com redirecionamento 301 automático ainda não disponível.
+            </span>
+          </div>
+
+          <div class="field">
+            <label class="label" for="resumo">Resumo (card e listagens)</label>
+            <textarea class="textarea" id="resumo" name="resumo" style="min-height:96px"
+              >{service.summary}</textarea
+            >
+          </div>
+
+          <div class="field">
+            <label class="label" for="hero_titulo">Título da página</label>
+            <input
+              class="input"
+              id="hero_titulo"
+              name="hero_titulo"
+              value={service.heroTitle}
+            />
+          </div>
+
+          <div class="field">
+            <label class="label" for="hero_lead">Subtítulo da página</label>
+            <textarea class="textarea" id="hero_lead" name="hero_lead" style="min-height:96px"
+              >{service.heroLead}</textarea
+            >
+          </div>
+
+          <div class="field">
+            <label class="label" for="intro">Introdução (um parágrafo por linha)</label>
+            <textarea class="textarea" id="intro" name="intro" style="min-height:180px"
+              >{service.intro.join('\n')}</textarea
+            >
+            <span class="hint">Cada linha vira um parágrafo na página do serviço.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOCOS -->
+      <div class="panel__body" data-tab-panel="detalhes" hidden>
+        <div class="form-alert form-alert--info" style="margin-bottom: var(--sp-5)">
+          <Icon name="info" size={16} />
+          <span>
+            Destaques e blocos de conteúdo ainda são editados só por aqui como referência — a
+            edição via formulário chega numa próxima fase. Ficam preservados ao salvar.
+          </span>
+        </div>
+
+        <div class="form-section">
+          <h3 class="form-section__title">Destaques (cards)</h3>
+          <ul class="list-clean">
+            {
+              service.highlights.map((item, index) => (
+                <li class="list-row">
+                  <span class="order">{index + 1}</span>
+                  <span class="list-row__main">
+                    <strong>{item.title}</strong>
+                    <span>{item.text}</span>
+                  </span>
+                  <span class="kbd">{item.icon}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="form-section">
+          <h3 class="form-section__title">Blocos de conteúdo</h3>
+          <ul class="list-clean">
+            {
+              service.blocks.map((block, index) => (
+                <li class="list-row">
+                  <span class="order">{index + 1}</span>
+                  <span class="list-row__main">
+                    <strong>{block.title}</strong>
+                    <span>
+                      {block.items ? `${block.items.length} itens em lista` : 'Bloco de texto'}
+                    </span>
+                  </span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="form-section">
+          <h3 class="form-section__title">O que entregamos (um item por linha)</h3>
+          <textarea class="textarea" name="entregaveis" style="min-height:140px"
+            >{service.deliverables.join('\n')}</textarea
+          >
+        </div>
+
+        <div class="form-section">
+          <h3 class="form-section__title">Público-alvo (um item por linha)</h3>
+          <textarea class="textarea" name="publico" style="min-height:110px"
+            >{service.audience.join('\n')}</textarea
+          >
+        </div>
+      </div>
+
+      <!-- MÍDIA -->
+      <div class="panel__body" data-tab-panel="midia" hidden>
+        <div class="form-section">
+          <div class="field">
+            <span class="label">Imagem principal</span>
+            <div class="image-picker">
+              <img src={service.image} alt="" width="180" height="135" />
+              <div>
+                <label class="label" for="imagem">Caminho da imagem</label>
+                <input class="input" id="imagem" name="imagem" value={service.image} />
+                <span class="hint">
+                  Upload real (Cloudflare R2) ainda não conectado — informe o caminho do arquivo
+                  já publicado em <span class="kbd">/images/</span>.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="alt">Texto alternativo</label>
+            <input class="input" id="alt" name="alt" value={service.imageAlt} />
+          </div>
+
+          <div class="form-grid form-grid--2">
+            <div class="field">
+              <label class="label" for="icone">Ícone do serviço</label>
+              <select class="select" id="icone" name="icone" disabled>
+                <option>{service.icon}</option>
+              </select>
+              <span class="hint">Seleção de ícone chega numa próxima fase.</span>
+            </div>
+            <div class="field">
+              <label class="label" for="ordem">Ordem de exibição</label>
+              <input
+                class="input"
+                id="ordem"
+                name="ordem"
+                type="number"
+                value={service.order}
+                min="1"
+                disabled
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="wa">Mensagem de WhatsApp contextual</label>
+            <textarea class="textarea" id="wa" name="wa" style="min-height:88px"
+              >{service.whatsappMessage}</textarea
+            >
+            <span class="hint">Usada no botão flutuante e nos CTAs desta página.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="panel__body" data-tab-panel="seo" hidden>
+        <div class="form-section">
+          <div class="field">
+            <label class="label" for="seo_title">SEO Title</label>
+            <input class="input" id="seo_title" name="seo_title" value={service.seo.title} />
+          </div>
+          <div class="field">
+            <label class="label" for="seo_desc">Meta description</label>
+            <textarea class="textarea" id="seo_desc" name="seo_desc" style="min-height:96px"
+              >{service.seo.description}</textarea
+            >
+          </div>
+          <div class="field">
+            <label class="label" for="canonical">URL canônica</label>
+            <input
+              class="input"
+              id="canonical"
+              value={`https://essencialsaudeauditoria.com.br/servicos/${service.slug}`}
+              disabled
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="panel__foot">
+        <span class="muted small">Última atualização: {formatDate(service.updatedAt)}</span>
+        <button type="submit" class="btn btn--sm">
+          <Icon name="save" size={16} />
+          Salvar serviço
+        </button>
+      </div>
+    </div>
+
+    <aside class="editor-side">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Publicação</h2>
+        </div>
+        <div class="panel__body stack">
+          <div class="field">
+            <label class="label" for="status">Status</label>
+            <select class="select" id="status" name="status">
+              <option value="published" selected={service.status === 'published'}
+                >Publicado</option
+              >
+              <option value="draft" selected={service.status === 'draft'}>Rascunho</option>
+              <option value="archived" selected={service.status === 'archived'}
+                >Arquivado</option
+              >
+            </select>
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" name="featured" checked={service.featured} />
+            <span>Exibir como serviço em destaque</span>
+          </label>
+          <button type="submit" class="btn btn--block">
+            <Icon name="save" size={16} />
+            Salvar e atualizar status
+          </button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Pré-visualização do card</h2>
+        </div>
+        <div class="panel__body">
+          <article class="card">
+            <span class="icon-badge">
+              <Icon name={service.icon} size={22} />
+            </span>
+            <h3>{service.name}</h3>
+            <p>{service.summary}</p>
+          </article>
+        </div>
+      </section>
+    </aside>
+  </form>
+</AdminLayout>
+
+<style>
+  .order {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-xs);
+    background: var(--c-ink-100);
+    color: var(--c-ink-600);
+    font-size: var(--fs-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .image-picker {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .image-picker img {
+    width: 180px;
+    height: 135px;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
+
+  @media (max-width: 560px) {
+    .image-picker {
+      grid-template-columns: 1fr;
+    }
+
+    .image-picker img {
+      width: 100%;
+    }
+  }
+</style>

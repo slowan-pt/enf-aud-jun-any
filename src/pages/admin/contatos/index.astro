@@ -1,0 +1,217 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import {
+  listContacts,
+  updateContactStatus,
+  countContactsByStatus,
+  type ContactStatus,
+} from '../../../lib/contacts';
+
+const statusLabels: Record<ContactStatus, string> = {
+  novo: 'Novo',
+  em_atendimento: 'Em atendimento',
+  respondido: 'Respondido',
+  arquivado: 'Arquivado',
+};
+
+const statusTone: Record<ContactStatus, string> = {
+  novo: 'badge--brand',
+  em_atendimento: 'badge--warning',
+  respondido: 'badge--success',
+  arquivado: 'badge--neutral',
+};
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  const status = String(form.get('status')) as ContactStatus;
+  if (id && statusLabels[status]) {
+    await updateContactStatus(db, id, status);
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'contact.status_update',
+      target: `Contato #${id} → ${statusLabels[status]}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+  }
+  return Astro.redirect('/admin/contatos');
+}
+
+const contacts = await listContacts(db);
+const counts = await countContactsByStatus(db);
+
+function formatDate(iso: string): string {
+  // "YYYY-MM-DD HH:MM:SS" (UTC, do datetime('now') do SQLite) -> DD/MM/YYYY HH:MM
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  const hm = (timePart ?? '').slice(0, 5);
+  return `${d}/${m}/${y} ${hm}`;
+}
+---
+
+<AdminLayout
+  title="Contatos"
+  description="Mensagens recebidas pelo formulário do site, com origem, serviço de interesse e status de atendimento."
+  active="/admin/contatos"
+>
+  <section class="stat-grid">
+    <div class="stat">
+      <span class="stat__icon"><Icon name="inbox" size={20} /></span>
+      <span class="stat__label">Novos</span>
+      <span class="stat__value">{counts.novo}</span>
+      <span class="stat__hint">aguardando primeiro contato</span>
+    </div>
+    <div class="stat">
+      <span class="stat__icon stat__icon--accent"><Icon name="message" size={20} /></span>
+      <span class="stat__label">Em atendimento</span>
+      <span class="stat__value">{counts.em_atendimento}</span>
+      <span class="stat__hint">em conversa com a equipe</span>
+    </div>
+    <div class="stat">
+      <span class="stat__icon stat__icon--neutral"><Icon name="check-circle" size={20} /></span>
+      <span class="stat__label">Respondidos</span>
+      <span class="stat__value">{counts.respondido}</span>
+      <span class="stat__hint">no total</span>
+    </div>
+    <div class="stat">
+      <span class="stat__icon stat__icon--neutral"><Icon name="folder" size={20} /></span>
+      <span class="stat__label">Arquivados</span>
+      <span class="stat__value">{counts.arquivado}</span>
+      <span class="stat__hint">mantidos para histórico</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="toolbar">
+      <label class="toolbar__search">
+        <Icon name="search" size={16} />
+        <input
+          type="search"
+          class="input"
+          placeholder="Buscar por nome, empresa, e-mail ou assunto"
+          aria-label="Buscar contatos"
+          data-table-search="tabela-contatos"
+        />
+      </label>
+      <select
+        class="select"
+        aria-label="Filtrar por status"
+        data-table-filter="tabela-contatos"
+      >
+        <option value="">Todos os status</option>
+        <option value="novo">Novo</option>
+        <option value="em_atendimento">Em atendimento</option>
+        <option value="respondido">Respondido</option>
+        <option value="arquivado">Arquivado</option>
+      </select>
+      <span class="toolbar__count" data-table-count="tabela-contatos"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table" id="tabela-contatos">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Nome</th>
+            <th>Empresa</th>
+            <th>Contato</th>
+            <th>Serviço</th>
+            <th>Origem</th>
+            <th>Status</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            contacts.map((contact) => (
+              <tr
+                data-status={contact.status}
+                class:list={[{ table__unread: contact.status === 'novo' }]}
+              >
+                <td class="nowrap muted small">{formatDate(contact.created_at)}</td>
+                <td>
+                  <a class="table__main" href={`/admin/contatos/${contact.id}`}>
+                    {contact.name}
+                  </a>
+                  <span class="table__sub">{contact.role}</span>
+                </td>
+                <td>
+                  {contact.company}
+                  <span class="table__sub">{contact.org_type}</span>
+                </td>
+                <td>
+                  <span class="small">{contact.email}</span>
+                  <span class="table__sub">{contact.phone}</span>
+                </td>
+                <td class="small">{contact.service}</td>
+                <td>
+                  <span class="kbd">{contact.origin}</span>
+                </td>
+                <td>
+                  <span class:list={['badge', statusTone[contact.status]]}>
+                    {statusLabels[contact.status]}
+                  </span>
+                </td>
+                <td>
+                  <div class="table__actions">
+                    <a
+                      class="row-btn"
+                      href={`/admin/contatos/${contact.id}`}
+                      aria-label="Abrir contato"
+                    >
+                      <Icon name="eye" size={16} />
+                    </a>
+                    <form method="post" style="display:contents">
+                      <input type="hidden" name="id" value={contact.id} />
+                      <input type="hidden" name="status" value="respondido" />
+                      <button type="submit" class="row-btn" aria-label="Marcar como respondido">
+                        <Icon name="check" size={16} />
+                      </button>
+                    </form>
+                    <form method="post" style="display:contents">
+                      <input type="hidden" name="id" value={contact.id} />
+                      <input type="hidden" name="status" value="arquivado" />
+                      <button
+                        type="submit"
+                        class="row-btn row-btn--danger"
+                        aria-label="Arquivar"
+                      >
+                        <Icon name="folder" size={16} />
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" data-table-empty="tabela-contatos" hidden={contacts.length > 0}>
+      <span class="empty-state__icon"><Icon name="inbox" size={22} /></span>
+      <h2 class="title-sm">Nenhum contato ainda</h2>
+      <p>Assim que alguém preencher o formulário do site, a mensagem aparece aqui.</p>
+    </div>
+
+    <div class="panel__foot">
+      <span class="muted small">{contacts.length} contato(s)</span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+</style>

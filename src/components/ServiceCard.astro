@@ -1,0 +1,66 @@
+---
+import Icon from './Icon.astro';
+import type { Service } from '../lib/services';
+
+interface Props {
+  service: Service;
+  variant?: 'default' | 'compact';
+}
+
+const { service, variant = 'default' } = Astro.props;
+---
+
+<article class:list={['card card--link svc', `svc--${variant}`]} data-reveal>
+  <span class="icon-badge">
+    <Icon name={service.icon} size={24} />
+  </span>
+  <h3>
+    <a href={`/servicos/${service.slug}`} class="stretched-link">{service.name}</a>
+  </h3>
+  <p>{service.summary}</p>
+  <div class="card__foot">
+    <span class="link-arrow">
+      Ver o serviço
+      <Icon name="arrow-right" size={16} />
+    </span>
+  </div>
+  {service.featured && <span class="svc__flag">Destaque</span>}
+</article>
+
+<style>
+  .svc h3 a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .svc:hover h3 a {
+    color: var(--c-brand-700);
+  }
+
+  .svc__flag {
+    position: absolute;
+    top: var(--sp-4);
+    right: var(--sp-4);
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--r-pill);
+    background: var(--c-accent-50);
+    color: var(--c-accent-700);
+    border: 1px solid var(--c-accent-100);
+    font-size: 0.6875rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .svc--compact {
+    padding: var(--sp-5);
+  }
+
+  .svc--compact p {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

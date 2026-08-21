@@ -1,0 +1,322 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+import EloDiagram from '../components/EloDiagram.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import CtaBand from '../components/CtaBand.astro';
+import {
+  about,
+  missionVisionValues,
+  elo,
+  howWeWork,
+  clientSegments,
+} from '../data/institutional';
+import { publishedOnly } from '../lib/services';
+
+const publishedServices = publishedOnly(Astro.locals.services);
+---
+
+<BaseLayout
+  title="Quem Somos"
+  description="Conheça a Essencial Saúde Auditoria: empresa técnica de gestão e auditoria em saúde em Brasília - DF, atuando como elo entre fontes pagadoras, prestadores e beneficiários."
+  path="/quem-somos"
+>
+  <PageHero
+    eyebrow={about.eyebrow}
+    title={about.title}
+    lead={about.lead}
+    crumbs={[{ label: 'Quem Somos' }]}
+    image={about.image}
+    imageAlt={about.imageAlt}
+  />
+
+  <section class="section">
+    <div class="container split split--wide-text">
+      <div data-reveal>
+        <p class="eyebrow">Nossa atuação</p>
+        <h2 class="title-md">Técnica, presente e orientada por evidência</h2>
+        <div class="stack" style="margin-top: var(--sp-5)">
+          {about.paragraphs.map((paragraph) => <p class="about__p">{paragraph}</p>)}
+        </div>
+      </div>
+
+      <div class="principles" data-reveal>
+        {
+          about.principles.map((item) => (
+            <article class="principle">
+              <span class="icon-badge icon-badge--sm">
+                <Icon name={item.icon} size={20} />
+              </span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--brand">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{elo.eyebrow}</p>
+        <h2 class="title-lg">{elo.title}</h2>
+        <p class="lead">{elo.text}</p>
+      </div>
+      <div data-reveal>
+        <EloDiagram />
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">{howWeWork.eyebrow}</p>
+        <h2 class="title-lg">{howWeWork.title}</h2>
+        <p class="lead">{howWeWork.text}</p>
+      </div>
+      <ProcessSteps />
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{missionVisionValues.eyebrow}</p>
+        <h2 class="title-lg">{missionVisionValues.title}</h2>
+      </div>
+
+      <div class="mvv" data-reveal>
+        {
+          [missionVisionValues.mission, missionVisionValues.vision].map((item) => (
+            <article class="mvv__card">
+              <span class="icon-badge">
+                <Icon name={item.icon} size={22} />
+              </span>
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="grid grid--3" style="margin-top: var(--sp-8)">
+        {
+          missionVisionValues.values.map((value) => (
+            <article class="card" data-reveal>
+              <span class="icon-badge icon-badge--accent icon-badge--sm">
+                <Icon name={value.icon} size={18} />
+              </span>
+              <h3>{value.title}</h3>
+              <p>{value.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--subtle">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-lg">{clientSegments.title}</h2>
+        <p class="lead">{clientSegments.text}</p>
+      </div>
+
+      <div class="segments" data-reveal>
+        {
+          clientSegments.items.map((item) => (
+            <article class="segment">
+              <span class="icon-badge icon-badge--sm">
+                <Icon name={item.icon} size={18} />
+              </span>
+              <h3>{item.label}</h3>
+              <p class="segment__detail">{item.detail}</p>
+              <p class="segment__behavior">{item.behavior}</p>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="services-line" data-reveal>
+        <p class="muted small">Serviços disponíveis:</p>
+        <ul>
+          {
+            publishedServices.map((service) => (
+              <li>
+                <a href={`/servicos/${service.slug}`}>
+                  <Icon name={service.icon} size={16} />
+                  {service.name}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <CtaBand
+    eyebrow="Fale com a Essencial"
+    title="Quer entender como aplicamos isso na sua operação?"
+    text="Nossa equipe apresenta o método, o escopo e os indicadores de acompanhamento conforme o seu contrato."
+  />
+</BaseLayout>
+
+<style>
+  .about__p {
+    color: var(--text-muted);
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
+  }
+
+  .principles {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .principle {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--sp-4);
+    align-items: start;
+    padding: var(--sp-5);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .principle h3 {
+    font-size: var(--fs-base);
+    margin-bottom: 0.25rem;
+  }
+
+  .principle p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  .mvv {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  @media (min-width: 760px) {
+    .mvv {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .mvv__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: clamp(1.35rem, 2.5vw, 2rem);
+    border-radius: var(--r-lg);
+    background: linear-gradient(150deg, var(--c-brand-50), var(--c-white));
+    border: 1px solid var(--c-brand-100);
+  }
+
+  .mvv__card h3 {
+    font-size: var(--fs-xl);
+  }
+
+  .mvv__card p {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+  }
+
+  .segments {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  @media (min-width: 640px) {
+    .segments {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 980px) {
+    .segments {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .segment {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--c-white);
+  }
+
+  .segment h3 {
+    font-size: var(--fs-base);
+    margin-top: 0.25rem;
+  }
+
+  .segment__detail {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    line-height: var(--lh-normal);
+  }
+
+  .segment__behavior {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--line);
+    margin-top: 0.25rem;
+  }
+
+  .services-line {
+    margin-top: var(--sp-10);
+    padding-top: var(--sp-6);
+    border-top: 1px solid var(--line);
+  }
+
+  .services-line ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    list-style: none;
+    margin: var(--sp-3) 0 0;
+    padding: 0;
+  }
+
+  .services-line a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--line);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition:
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .services-line a:hover {
+    border-color: var(--c-brand-300);
+    color: var(--c-brand-700);
+  }
+
+  .services-line :global(.icon) {
+    color: var(--c-accent-500);
+  }
+</style>

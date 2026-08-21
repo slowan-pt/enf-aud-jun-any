@@ -1,0 +1,229 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { getContact, updateContactStatus, type ContactStatus } from '../../../lib/contacts';
+
+const statusLabels: Record<ContactStatus, string> = {
+  novo: 'Novo',
+  em_atendimento: 'Em atendimento',
+  respondido: 'Respondido',
+  arquivado: 'Arquivado',
+};
+
+const statusTone: Record<ContactStatus, string> = {
+  novo: 'badge--brand',
+  em_atendimento: 'badge--warning',
+  respondido: 'badge--success',
+  arquivado: 'badge--neutral',
+};
+
+const db = getDB();
+const id = Number(Astro.params.id);
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const status = String(form.get('status')) as ContactStatus;
+  const note = String(form.get('nota') ?? '');
+  if (statusLabels[status]) {
+    await updateContactStatus(db, id, status, note);
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'contact.status_update',
+      target: `Contato #${id} → ${statusLabels[status]}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+  }
+  return Astro.redirect(`/admin/contatos/${id}?saved=1`);
+}
+
+const contact = await getContact(db, id);
+if (!contact) return Astro.rewrite('/404');
+
+const waHref = `https://wa.me/55${contact.phone.replace(/\D/g, '')}`;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+function formatDate(iso: string): string {
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  const hm = (timePart ?? '').slice(0, 5);
+  return `${d}/${m}/${y} ${hm}`;
+}
+---
+
+<AdminLayout
+  title={`Contato #${contact.id}`}
+  description="Detalhe da mensagem recebida pelo site, com ações de atendimento."
+  active="/admin/contatos"
+>
+  <div slot="actions">
+    <a href="/admin/contatos" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Voltar
+    </a>
+    <a href={waHref} class="btn btn--accent btn--sm" target="_blank" rel="noopener">
+      <Icon name="whatsapp" size={16} />
+      Abrir WhatsApp
+    </a>
+    <a href={`mailto:${contact.email}`} class="btn btn--secondary btn--sm">
+      <Icon name="mail" size={16} />
+      Enviar e-mail
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Atendimento atualizado.</span>
+      </div>
+    )
+  }
+
+  <div class="editor-layout">
+    <section class="panel">
+      <div class="panel__head">
+        <div>
+          <h2 class="panel__title">{contact.subject}</h2>
+          <span class="muted small">Recebido em {formatDate(contact.created_at)}</span>
+        </div>
+        <span class:list={['badge', statusTone[contact.status]]}
+          >{statusLabels[contact.status]}</span
+        >
+      </div>
+
+      <div class="panel__body">
+        <dl class="detail-list">
+          <div><dt>Nome</dt><dd>{contact.name}</dd></div>
+          <div><dt>Empresa / Organização</dt><dd>{contact.company}</dd></div>
+          <div><dt>Cargo</dt><dd>{contact.role || '—'}</dd></div>
+          <div><dt>Tipo de organização</dt><dd>{contact.org_type}</dd></div>
+          <div>
+            <dt>E-mail</dt>
+            <dd><a href={`mailto:${contact.email}`}>{contact.email}</a></dd>
+          </div>
+          <div>
+            <dt>Telefone / WhatsApp</dt>
+            <dd><a href={waHref} target="_blank" rel="noopener">{contact.phone}</a></dd>
+          </div>
+          <div><dt>Serviço de interesse</dt><dd>{contact.service || '—'}</dd></div>
+          <div><dt>Página de origem</dt><dd><span class="kbd">{contact.origin}</span></dd></div>
+          <div>
+            <dt>Consentimento LGPD</dt>
+            <dd>{contact.consent ? 'Autorizado no envio do formulário' : 'Não registrado'}</dd>
+          </div>
+        </dl>
+
+        <div class="message">
+          <h3 class="form-section__title">Mensagem</h3>
+          <p>{contact.message}</p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="editor-side">
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Atendimento</h2>
+        </div>
+        <form class="panel__body stack" method="post">
+          <div class="field">
+            <label class="label" for="status">Status</label>
+            <select class="select" id="status" name="status">
+              {
+                (Object.keys(statusLabels) as ContactStatus[]).map((key) => (
+                  <option value={key} selected={key === contact.status}>
+                    {statusLabels[key]}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="nota">Nota interna</label>
+            <textarea
+              class="textarea"
+              id="nota"
+              name="nota"
+              style="min-height:110px"
+              placeholder="Registro do atendimento (visível apenas no painel)."
+              >{contact.internal_note}</textarea
+            >
+          </div>
+          <button type="submit" class="btn btn--block">
+            <Icon name="save" size={16} />
+            Salvar atendimento
+          </button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Privacidade</h2>
+        </div>
+        <div class="panel__body">
+          <p class="muted small">
+            Não registre dados clínicos de pacientes neste cadastro. O contato armazena apenas
+            dados profissionais necessários ao atendimento comercial (LGPD).
+          </p>
+        </div>
+      </section>
+    </aside>
+  </div>
+</AdminLayout>
+
+<style>
+  .detail-list {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0 0 var(--sp-6);
+    font-size: var(--fs-sm);
+  }
+
+  @media (min-width: 700px) {
+    .detail-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--sp-4) var(--sp-6);
+    }
+  }
+
+  .detail-list dt {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    margin-bottom: 0.15rem;
+  }
+
+  .detail-list dd {
+    margin: 0;
+    color: var(--text-strong);
+  }
+
+  .detail-list a {
+    color: var(--c-brand-600);
+    text-decoration: none;
+  }
+
+  .detail-list a:hover {
+    text-decoration: underline;
+  }
+
+  .message {
+    padding: var(--sp-5);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .message p {
+    margin-top: var(--sp-3);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+    color: var(--text-muted);
+    white-space: pre-wrap;
+  }
+</style>

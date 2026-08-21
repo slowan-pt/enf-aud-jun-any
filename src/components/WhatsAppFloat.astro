@@ -1,0 +1,141 @@
+---
+import Icon from './Icon.astro';
+import { waLink } from '../data/site';
+
+interface Props {
+  /** Mensagem contextual da página (serviço, artigo, contato). */
+  message?: string;
+}
+
+const { whatsapp } = Astro.locals.settings;
+const { message = whatsapp.defaultMessage } = Astro.props;
+const href = waLink(whatsapp.number, message);
+---
+
+{
+  whatsapp.enabled && (
+    <a
+      class="wa"
+      href={href}
+      target="_blank"
+      rel="noopener"
+      aria-label={whatsapp.label}
+      data-wa
+    >
+      <span class="wa__tooltip" aria-hidden="true">
+        {whatsapp.tooltip}
+      </span>
+      <span class="wa__btn">
+        <Icon name="whatsapp" size={28} />
+      </span>
+    </a>
+  )
+}
+
+<style>
+  .wa {
+    position: fixed;
+    right: clamp(1rem, 3vw, 1.75rem);
+    bottom: clamp(1rem, 3vw, 1.75rem);
+    z-index: var(--z-float);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    text-decoration: none;
+    /* respeita a área segura do iOS */
+    margin-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .wa__btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
+    box-shadow:
+      0 10px 24px -8px rgba(37, 211, 102, 0.6),
+      0 2px 6px rgba(9, 44, 78, 0.2);
+    transition:
+      transform var(--dur) var(--ease),
+      box-shadow var(--dur) var(--ease);
+  }
+
+  .wa:hover .wa__btn {
+    transform: scale(1.06);
+    box-shadow:
+      0 14px 30px -8px rgba(37, 211, 102, 0.7),
+      0 2px 8px rgba(9, 44, 78, 0.24);
+  }
+
+  .wa:active .wa__btn {
+    transform: scale(0.98);
+  }
+
+  .wa__btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(37, 211, 102, 0.55);
+    animation: wa-pulse 2.8s var(--ease-out) infinite;
+  }
+
+  @keyframes wa-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+    70% {
+      transform: scale(1.45);
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .wa__tooltip {
+    display: none;
+    padding: 0.5rem 0.875rem;
+    background: var(--c-brand-900);
+    color: #fff;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: translateX(8px);
+    transition:
+      opacity var(--dur) var(--ease),
+      transform var(--dur) var(--ease);
+  }
+
+  @media (min-width: 900px) and (hover: hover) {
+    .wa__tooltip {
+      display: block;
+    }
+
+    .wa:hover .wa__tooltip,
+    .wa:focus-visible .wa__tooltip {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .wa__btn {
+      width: 54px;
+      height: 54px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wa__btn::after {
+      animation: none;
+    }
+  }
+</style>
