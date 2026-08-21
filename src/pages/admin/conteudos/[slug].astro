@@ -251,7 +251,9 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
                       <span class="hint">Separador visual — sem texto.</span>
                     ) : block.type === 'image' ? (
                       <div class="block-media">
-                        {block.url && <img src={block.url} alt="" class="block-media__preview" />}
+                        {block.url && (
+                          <img src={block.url} alt="" class="block-media__preview" />
+                        )}
                         <input
                           class="input"
                           name={`block_url_${index}`}
@@ -447,9 +449,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       const status = document.querySelector<HTMLElement>(`[data-block-status="${index}"]`);
       const urlField = document.querySelector<HTMLInputElement>(`[name="block_url_${index}"]`);
       const preview = input.closest('.block-media')?.querySelector('img, video') as
-        | HTMLImageElement
-        | HTMLVideoElement
-        | null;
+        HTMLImageElement | HTMLVideoElement | null;
       if (status) status.textContent = `Enviando ${file.name}…`;
       const body = new FormData();
       body.set('file', file);

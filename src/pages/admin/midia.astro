@@ -185,7 +185,13 @@ function formatSize(bytes: number): string {
               {item.mimeType.startsWith('video/') ? (
                 <video src={item.url} width="320" height="240" muted preload="metadata" />
               ) : (
-                <img src={item.url} alt={item.altText} width="320" height="240" loading="lazy" />
+                <img
+                  src={item.url}
+                  alt={item.altText}
+                  width="320"
+                  height="240"
+                  loading="lazy"
+                />
               )}
               <span class="media-item__meta">
                 <span class="media-item__name">{item.filename}</span>

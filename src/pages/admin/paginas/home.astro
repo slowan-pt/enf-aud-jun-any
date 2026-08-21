@@ -795,17 +795,17 @@ function formatDate(iso: string): string {
             </p>
             {
               promoVideo.url && (
-                <video
-                  id="video-preview"
-                  src={promoVideo.url}
-                  controls
-                  class="video-preview"
-                />
+                <video id="video-preview" src={promoVideo.url} controls class="video-preview" />
               )
             }
             <div class="field">
               <label class="label" for="video_title">Título</label>
-              <input class="input" id="video_title" name="video_title" value={promoVideo.title} />
+              <input
+                class="input"
+                id="video_title"
+                name="video_title"
+                value={promoVideo.title}
+              />
             </div>
             <div class="field">
               <label class="label" for="video_text">Texto</label>
@@ -826,7 +826,7 @@ function formatDate(iso: string): string {
                 style="display:none"
               />
             </label>
-            <span class="hint" id="video-upload-status" />
+            <span class="hint" id="video-upload-status"></span>
           </div>
         </div>
       </section>
@@ -951,4 +951,40 @@ function formatDate(iso: string): string {
       grid-template-columns: 1fr 2fr;
     }
   }
+
+  .video-preview {
+    width: 100%;
+    max-height: 260px;
+    background: #000;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+  }
 </style>
+
+<script>
+  const videoInput = document.querySelector<HTMLInputElement>('#video-upload-input');
+  const videoStatus = document.getElementById('video-upload-status');
+  const videoUrlField = document.querySelector<HTMLInputElement>('#video_url');
+
+  videoInput?.addEventListener('change', async () => {
+    const file = videoInput.files?.[0];
+    if (!file) return;
+    if (videoStatus) videoStatus.textContent = `Enviando ${file.name}…`;
+    const body = new FormData();
+    body.set('file', file);
+    body.set('alt', '');
+    body.set('title', file.name);
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) {
+        if (videoStatus) videoStatus.textContent = data.error ?? 'Falha no envio.';
+        return;
+      }
+      if (videoUrlField) videoUrlField.value = data.url;
+      if (videoStatus) videoStatus.textContent = 'Enviado. Clique em "Salvar" para aplicar.';
+    } catch {
+      if (videoStatus) videoStatus.textContent = 'Falha no envio. Tente novamente.';
+    }
+  });
+</script>

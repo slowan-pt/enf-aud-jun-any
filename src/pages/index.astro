@@ -26,6 +26,7 @@ const {
   missionVisionValues,
   clientSegments,
   finalCta,
+  promoVideo,
 } = await getHomeContent(db);
 const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
 const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
@@ -88,6 +89,22 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
       </div>
     </div>
   </section>
+
+  {
+    promoVideo.url && (
+      <section class="section section--tight">
+        <div class="container">
+          <div class="section-head section-head--center" data-reveal>
+            <h2 class="title-lg">{promoVideo.title}</h2>
+            {promoVideo.text && <p class="lead">{promoVideo.text}</p>}
+          </div>
+          <div class="promo-video" data-reveal>
+            <video src={promoVideo.url} controls preload="metadata" />
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   <!-- =========================================== PROPOSTA DE VALOR -->
   <section class="section">
@@ -479,6 +496,23 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
 </BaseLayout>
 
 <style>
+  /* ---------------------------------------------------- vídeo promo */
+  .promo-video {
+    max-width: 860px;
+    margin: 0 auto;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .promo-video video {
+    width: 100%;
+    display: block;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+
   /* ---------------------------------------------------------- hero */
   .hero {
     position: relative;
