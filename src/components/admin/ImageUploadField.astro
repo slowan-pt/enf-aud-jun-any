@@ -1,0 +1,118 @@
+---
+/**
+ * Campo de imagem reutilizável: preview + caminho (texto) + botão de
+ * upload real (Cloudflare R2, via /admin/api/upload). Ao enviar um
+ * arquivo, o caminho é preenchido automaticamente com a URL real do
+ * arquivo — evita o erro de colar um nome de arquivo que não existe no
+ * site (em vez do link publicado).
+ */
+import Icon from '../Icon.astro';
+
+interface Props {
+  id: string;
+  name: string;
+  value: string;
+  label: string;
+  hint?: string;
+}
+
+const { id, name, value, label, hint } = Astro.props;
+---
+
+<div class="field image-upload" data-image-upload>
+  <label class="label" for={id}>{label}</label>
+  <div class="image-upload__row">
+    <img
+      class="image-upload__preview"
+      src={value || '/favicon-192.png'}
+      alt=""
+      width="120"
+      height="90"
+      data-image-preview
+      style={value ? '' : 'visibility:hidden'}
+    />
+    <div class="image-upload__controls">
+      <input class="input" id={id} name={name} value={value} data-image-url />
+      <label class="btn btn--secondary btn--sm image-upload__btn">
+        <Icon name="upload" size={14} />
+        Enviar arquivo
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml"
+          style="display:none"
+          data-image-file
+        />
+      </label>
+      <span class="hint" data-image-status></span>
+    </div>
+  </div>
+  {hint && <span class="hint">{hint}</span>}
+</div>
+
+<style>
+  .image-upload__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+
+  .image-upload__preview {
+    width: 90px;
+    height: 68px;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--c-ink-50);
+    flex: none;
+  }
+
+  .image-upload__controls {
+    display: grid;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .image-upload__btn {
+    justify-self: start;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-image-upload]').forEach((root) => {
+    if (root.dataset.bound) return;
+    root.dataset.bound = '1';
+
+    const urlInput = root.querySelector<HTMLInputElement>('[data-image-url]');
+    const fileInput = root.querySelector<HTMLInputElement>('[data-image-file]');
+    const preview = root.querySelector<HTMLImageElement>('[data-image-preview]');
+    const status = root.querySelector<HTMLElement>('[data-image-status]');
+
+    fileInput?.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file || !urlInput) return;
+      if (status) status.textContent = `Enviando ${file.name}…`;
+      const body = new FormData();
+      body.set('file', file);
+      body.set('alt', file.name);
+      body.set('title', file.name);
+      try {
+        const res = await fetch('/admin/api/upload', { method: 'POST', body });
+        const data = await res.json();
+        if (!res.ok) {
+          if (status) status.textContent = data.error ?? 'Falha no envio.';
+          return;
+        }
+        urlInput.value = data.url;
+        if (preview) {
+          preview.src = data.url;
+          preview.style.visibility = 'visible';
+        }
+        if (status) status.textContent = 'Enviado.';
+      } catch {
+        if (status) status.textContent = 'Falha no envio. Tente novamente.';
+      }
+    });
+  });
+</script>

@@ -2,6 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import IconPicker from '../../../components/admin/IconPicker.astro';
+import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { findBySlug, updateService, type Service } from '../../../lib/services';
 
@@ -239,20 +240,12 @@ function formatDate(iso: string): string {
       <!-- MÍDIA -->
       <div class="panel__body" data-tab-panel="midia" hidden>
         <div class="form-section">
-          <div class="field">
-            <span class="label">Imagem principal</span>
-            <div class="image-picker">
-              <img src={service.image} alt="" width="180" height="135" />
-              <div>
-                <label class="label" for="imagem">Caminho da imagem</label>
-                <input class="input" id="imagem" name="imagem" value={service.image} />
-                <span class="hint">
-                  Upload real (Cloudflare R2) ainda não conectado — informe o caminho do arquivo
-                  já publicado em <span class="kbd">/images/</span>.
-                </span>
-              </div>
-            </div>
-          </div>
+          <ImageUploadField
+            id="imagem"
+            name="imagem"
+            value={service.image}
+            label="Imagem principal"
+          />
 
           <div class="field">
             <label class="label" for="alt">Texto alternativo</label>

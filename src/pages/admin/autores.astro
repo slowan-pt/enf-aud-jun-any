@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import Icon from '../../components/Icon.astro';
+import ImageUploadField from '../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../lib/db';
 import { listAuthors, createAuthor, updateAuthor, deleteAuthor } from '../../lib/authors';
 
@@ -19,8 +20,9 @@ if (Astro.request.method === 'POST') {
     const name = String(form.get('name') ?? '').trim();
     const role = String(form.get('role') ?? '').trim();
     const bio = String(form.get('bio') ?? '').trim();
+    const photoUrl = String(form.get('photo_url') ?? '').trim();
     if (name) {
-      await createAuthor(db, { name, role, bio, status });
+      await createAuthor(db, { name, role, bio, status, photoUrl });
       await writeAuditLog(db, {
         userId,
         userName,
@@ -34,8 +36,9 @@ if (Astro.request.method === 'POST') {
     const name = String(form.get('name') ?? '').trim();
     const role = String(form.get('role') ?? '').trim();
     const bio = String(form.get('bio') ?? '').trim();
+    const photoUrl = String(form.get('photo_url') ?? '').trim();
     if (id && name) {
-      await updateAuthor(db, id, { name, role, bio, status });
+      await updateAuthor(db, id, { name, role, bio, status, photoUrl });
       await writeAuditLog(db, {
         userId,
         userName,
@@ -147,6 +150,13 @@ const creating = Astro.url.searchParams.get('novo') === '1';
                       </option>
                     </select>
                   </div>
+                  <ImageUploadField
+                    id={`aut-photo-${author.id}`}
+                    name="photo_url"
+                    value={author.photoUrl}
+                    label="Foto"
+                    hint="Sem foto, o autor usa as iniciais do nome."
+                  />
                   <div class="cluster">
                     <button type="submit" class="btn btn--sm">
                       <Icon name="save" size={16} />
@@ -160,7 +170,11 @@ const creating = Astro.url.searchParams.get('novo') === '1';
               </article>
             ) : (
               <article class="author-card">
-                <span class="avatar avatar--lg">{author.initials}</span>
+                {author.photoUrl ? (
+                  <img class="avatar avatar--lg avatar--photo" src={author.photoUrl} alt="" />
+                ) : (
+                  <span class="avatar avatar--lg">{author.initials}</span>
+                )}
                 <div class="author-card__body">
                   <h3>{author.name}</h3>
                   <span class="author-card__role">{author.role}</span>
@@ -236,13 +250,13 @@ const creating = Astro.url.searchParams.get('novo') === '1';
                     placeholder="Breve apresentação profissional."
                   />
                 </div>
-                <div class="field">
-                  <span class="label">Foto</span>
-                  <span class="hint">
-                    Upload real (R2) ainda não conectado — o autor usa as iniciais do nome
-                    enquanto isso.
-                  </span>
-                </div>
+                <ImageUploadField
+                  id="new-aut-photo"
+                  name="photo_url"
+                  value=""
+                  label="Foto"
+                  hint="Sem foto, o autor usa as iniciais do nome."
+                />
                 <div class="cluster">
                   <button type="submit" class="btn btn--sm">
                     <Icon name="plus" size={16} />
@@ -314,6 +328,11 @@ const creating = Astro.url.searchParams.get('novo') === '1';
     width: 56px;
     height: 56px;
     font-size: var(--fs-base);
+  }
+
+  .avatar--photo {
+    object-fit: cover;
+    border-radius: 50%;
   }
 
   .author-card__body {

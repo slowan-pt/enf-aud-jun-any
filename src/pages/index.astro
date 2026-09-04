@@ -91,13 +91,6 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
             />
           )
         }
-        <div class="hero__card">
-          <span class="hero__card-icon"><Icon name="heart-pulse" size={22} /></span>
-          <div>
-            <strong>Paciente no centro</strong>
-            <span>Cada decisão técnica começa pelo que é mais seguro para quem é cuidado.</span>
-          </div>
-        </div>
       </div>
     </div>
   </section>
@@ -538,39 +531,43 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     overflow: hidden;
     background: var(--bg);
     color: var(--text);
-    padding-block: clamp(2.5rem, 6vw, 5rem);
+    padding-block: clamp(2rem, 4vw, 3.5rem);
     border-bottom: 1px solid var(--line);
   }
 
   .hero__inner {
     position: relative;
     display: grid;
-    gap: clamp(2.5rem, 5vw, 4rem);
+    gap: clamp(1.75rem, 4vw, 3rem);
     align-items: center;
+    max-width: 1040px;
+    margin-inline: auto;
   }
 
-  @media (min-width: 980px) {
+  @media (min-width: 900px) {
     .hero__inner {
-      grid-template-columns: 0.95fr 1.05fr;
+      grid-template-columns: 1fr 1fr;
     }
   }
 
   .hero__eyebrow-box {
     display: inline-block;
-    padding: 0.5rem 1.1rem;
+    padding: 0.4rem 0.85rem;
     border-radius: var(--r-md);
     background: var(--c-brand-800);
     color: #fff;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: var(--fs-sm);
+    font-size: 0.75rem;
     letter-spacing: 0.02em;
     text-transform: uppercase;
   }
 
   .hero__title {
-    margin-top: var(--sp-4);
+    margin-top: var(--sp-3);
     color: var(--text-strong);
+    font-size: clamp(1.6rem, 1.6vw + 1.2rem, 2.35rem);
+    line-height: 1.18;
   }
 
   .hero__highlight {
@@ -579,24 +576,24 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   }
 
   .hero__lead {
-    margin-top: var(--sp-5);
-    font-size: var(--fs-lg);
+    margin-top: var(--sp-4);
+    font-size: var(--fs-sm);
     color: var(--text-muted);
-    max-width: 44ch;
+    max-width: 38ch;
   }
 
   .hero__actions {
-    margin-top: var(--sp-8);
+    margin-top: var(--sp-5);
   }
 
   .hero__cta {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.9rem 1.6rem;
+    padding: 0.65rem 1.25rem;
     border-radius: var(--r-pill);
     font-weight: 600;
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
     text-decoration: none;
     transition:
       transform var(--dur) var(--ease),
@@ -628,18 +625,18 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   .hero__pillars {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--sp-3) var(--sp-6);
+    gap: var(--sp-2) var(--sp-5);
     list-style: none;
-    margin: var(--sp-8) 0 0;
-    padding: var(--sp-5) 0 0;
+    margin: var(--sp-5) 0 0;
+    padding: var(--sp-4) 0 0;
     border-top: 1px solid var(--line);
   }
 
   .hero__pillars li {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    font-size: var(--fs-xs);
+    gap: 0.4rem;
+    font-size: 0.75rem;
     font-weight: var(--fw-medium);
     letter-spacing: 0.02em;
     color: var(--text-muted);
@@ -651,6 +648,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
 
   .hero__media {
     position: relative;
+    width: min(100%, 440px);
+    margin-inline: auto;
   }
 
   .hero__media img,
@@ -662,43 +661,6 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     border: 1px solid var(--line);
     box-shadow: var(--shadow-lg);
     background: #000;
-  }
-
-  .hero__card {
-    position: absolute;
-    left: clamp(-0.5rem, 2vw, -2rem);
-    bottom: clamp(-1rem, -1vw, -0.5rem);
-    display: flex;
-    align-items: flex-start;
-    gap: var(--sp-3);
-    width: min(330px, 86%);
-    padding: var(--sp-4);
-    background: var(--c-white);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .hero__card strong {
-    display: block;
-    font-size: var(--fs-sm);
-    color: var(--c-brand-900);
-  }
-
-  .hero__card span {
-    font-size: var(--fs-xs);
-    line-height: 1.5;
-    color: var(--c-ink-600);
-  }
-
-  .hero__card-icon {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    flex: none;
-    border-radius: var(--r-sm);
-    background: var(--c-accent-50);
-    color: var(--c-accent-600);
   }
 
   @media (max-width: 640px) {

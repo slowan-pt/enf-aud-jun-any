@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
+import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { listCategories } from '../../../lib/categories';
 import { listAuthors } from '../../../lib/authors';
@@ -396,18 +397,12 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           <h2 class="panel__title">Imagem de capa</h2>
         </div>
         <div class="panel__body stack">
-          {
-            fresh.cover && (
-              <img class="cover-preview" src={fresh.cover} alt="" width="320" height="240" />
-            )
-          }
-          <div class="field">
-            <label class="label" for="cover_url">Caminho da imagem</label>
-            <input class="input" id="cover_url" name="cover_url" value={fresh.cover} />
-            <span class="hint">
-              Publique em <a href="/admin/midia">Mídia</a> e cole aqui o caminho (ex.: /media/arquivo.jpg).
-            </span>
-          </div>
+          <ImageUploadField
+            id="cover_url"
+            name="cover_url"
+            value={fresh.cover}
+            label="Imagem de capa"
+          />
           <div class="field">
             <label class="label" for="cover_alt">Texto alternativo</label>
             <input class="input" id="cover_alt" name="cover_alt" value={fresh.coverAlt} />

@@ -187,7 +187,15 @@ const headings = post.body.filter((block) => block.type === 'h2');
         {
           author && (
             <div class="author">
-              <span class="author__avatar">{author.initials}</span>
+              {author.photoUrl ? (
+                <img
+                  class="author__avatar author__avatar--photo"
+                  src={author.photoUrl}
+                  alt=""
+                />
+              ) : (
+                <span class="author__avatar">{author.initials}</span>
+              )}
               <div>
                 <strong>{author.name}</strong>
                 <span class="author__role">{author.role}</span>
@@ -400,6 +408,7 @@ const headings = post.body.filter((block) => block.type === 'h2');
     place-items: center;
     width: 52px;
     height: 52px;
+    flex: none;
     border-radius: 50%;
     background: var(--c-brand-700);
     color: #fff;
@@ -407,6 +416,10 @@ const headings = post.body.filter((block) => block.type === 'h2');
     font-weight: var(--fw-semibold);
     font-size: var(--fs-sm);
     letter-spacing: 0.04em;
+  }
+
+  .author__avatar--photo {
+    object-fit: cover;
   }
 
   .author strong {

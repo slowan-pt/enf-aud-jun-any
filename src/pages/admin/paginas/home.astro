@@ -3,6 +3,7 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import IconPicker from '../../../components/admin/IconPicker.astro';
 import SectionColorFields from '../../../components/admin/SectionColorFields.astro';
+import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { homeSections } from '../../../data/admin';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getHomeContent, updateHomeContent, HOME_SECTION_KEYS } from '../../../lib/pages';
@@ -315,19 +316,12 @@ function formatDate(iso: string): string {
               </div>
             </div>
 
-            <div class="field">
-              <label class="label" for="hero_image">Caminho da imagem do hero</label>
-              <div class="image-picker">
-                <img src={hero.image} alt="" width="160" height="120" />
-                <div>
-                  <input class="input" id="hero_image" name="hero_image" value={hero.image} />
-                  <span class="hint">
-                    Upload real (R2) ainda não conectado — informe o caminho já publicado em
-                    <span class="kbd">/images/</span>.
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ImageUploadField
+              id="hero_image"
+              name="hero_image"
+              value={hero.image}
+              label="Imagem do hero"
+            />
 
             <div class="field">
               <label class="label" for="hero_alt"
@@ -379,24 +373,12 @@ function formatDate(iso: string): string {
                 >{valueProposition.text}</textarea
               >
             </div>
-            <div class="field">
-              <label class="label" for="vp_image">Caminho da imagem</label>
-              <div class="image-picker">
-                <img src={valueProposition.image} alt="" width="160" height="120" />
-                <div>
-                  <input
-                    class="input"
-                    id="vp_image"
-                    name="vp_image"
-                    value={valueProposition.image}
-                  />
-                  <span class="hint">
-                    Upload real (R2) ainda não conectado — informe o caminho já publicado em
-                    <span class="kbd">/images/</span>.
-                  </span>
-                </div>
-              </div>
-            </div>
+            <ImageUploadField
+              id="vp_image"
+              name="vp_image"
+              value={valueProposition.image}
+              label="Imagem"
+            />
             <div class="field">
               <label class="label" for="vp_alt">Texto alternativo</label>
               <input

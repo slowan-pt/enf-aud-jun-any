@@ -1,8 +1,11 @@
 ---
 /**
- * Par de campos "cor de fundo" / "cor do texto" para uma seção específica
- * da Home. Vazio = herda a paleta global (Configurações → Aparência).
+ * Par de seletores de cor "fundo" / "texto" para uma seção específica da
+ * Home. Cada um é uma paleta de verdade (input type=color, clique abre o
+ * seletor do navegador) sincronizada com um campo hex — vazio = herda a
+ * paleta global (Configurações → Aparência).
  */
+import Icon from '../Icon.astro';
 import type { SectionStyle } from '../../lib/pages';
 
 interface Props {
@@ -11,33 +14,48 @@ interface Props {
 }
 
 const { sectionKey, value } = Astro.props;
+const fields: Array<{ key: 'bg' | 'text'; label: string }> = [
+  { key: 'bg', label: 'Fundo' },
+  { key: 'text', label: 'Texto' },
+];
 ---
 
 <details class="section-colors">
   <summary>Cor desta seção (opcional)</summary>
   <div class="section-colors__row">
-    <div class="field">
-      <label class="label" for={`style_${sectionKey}_bg`}>Fundo</label>
-      <input
-        class="input"
-        id={`style_${sectionKey}_bg`}
-        name={`style_${sectionKey}_bg`}
-        value={value.bg}
-        placeholder="herda o padrão do site"
-        data-section-color
-      />
-    </div>
-    <div class="field">
-      <label class="label" for={`style_${sectionKey}_text`}>Texto</label>
-      <input
-        class="input"
-        id={`style_${sectionKey}_text`}
-        name={`style_${sectionKey}_text`}
-        value={value.text}
-        placeholder="herda o padrão do site"
-        data-section-color
-      />
-    </div>
+    {
+      fields.map((f) => (
+        <div class="field">
+          <label class="label" for={`style_${sectionKey}_${f.key}`}>
+            {f.label}
+          </label>
+          <div class="color-swatch-row" data-color-field>
+            <input
+              type="color"
+              value={value[f.key] || '#ffffff'}
+              data-color-swatch
+              aria-label={`Escolher cor: ${f.label}`}
+            />
+            <input
+              class="input"
+              id={`style_${sectionKey}_${f.key}`}
+              name={`style_${sectionKey}_${f.key}`}
+              value={value[f.key]}
+              placeholder="herda o padrão do site"
+              data-color-hex
+            />
+            <button
+              type="button"
+              class="row-btn"
+              data-color-clear
+              title="Herdar o padrão do site"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        </div>
+      ))
+    }
   </div>
 </details>
 
@@ -63,15 +81,51 @@ const { sectionKey, value } = Astro.props;
     gap: var(--sp-3);
     margin-top: var(--sp-3);
   }
+
+  .color-swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .color-swatch-row input[type='color'] {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .color-swatch-row .input {
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+  }
 </style>
 
 <script>
-  document.querySelectorAll<HTMLInputElement>('[data-section-color]').forEach((input) => {
-    if (input.dataset.bound) return;
-    input.dataset.bound = '1';
-    input.addEventListener('input', () => {
-      input.style.borderColor =
-        input.value && /^#[0-9a-fA-F]{6}$/.test(input.value) ? input.value : '';
+  document.querySelectorAll<HTMLElement>('[data-color-field]').forEach((row) => {
+    if (row.dataset.bound) return;
+    row.dataset.bound = '1';
+
+    const swatch = row.querySelector<HTMLInputElement>('[data-color-swatch]');
+    const hex = row.querySelector<HTMLInputElement>('[data-color-hex]');
+    const clear = row.querySelector<HTMLButtonElement>('[data-color-clear]');
+
+    swatch?.addEventListener('input', () => {
+      if (hex) hex.value = swatch.value;
+    });
+
+    hex?.addEventListener('input', () => {
+      if (swatch && /^#[0-9a-fA-F]{6}$/.test(hex.value)) swatch.value = hex.value;
+    });
+
+    clear?.addEventListener('click', () => {
+      if (hex) hex.value = '';
+      if (swatch) swatch.value = '#ffffff';
     });
   });
 </script>
