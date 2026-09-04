@@ -1,0 +1,171 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { iconPaths } from '../../data/icons';
+import { getDB } from '../../lib/db';
+import { listMedia } from '../../lib/media';
+
+const db = getDB();
+const media = await listMedia(db);
+const customIcons = media.filter((m) => m.mimeType.startsWith('image/'));
+const builtIn = Object.keys(iconPaths).sort();
+---
+
+<AdminLayout
+  title="Ícones"
+  description="Biblioteca de ícones do site: use os embutidos ou envie os seus (SVG ou PNG). O nome/caminho copiado aqui pode ser colado em qualquer campo de ícone (Serviços, Home, etc.)."
+  active="/admin/icones"
+>
+  <section class="panel" style="margin-bottom: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">Ícones personalizados</h2>
+      <span class="muted small">Enviados por você — ficam no mesmo armazenamento da Mídia</span>
+    </div>
+    <div class="panel__body">
+      <form id="icon-upload-form" class="dropzone" style="cursor:pointer">
+        <Icon name="upload" size={22} />
+        <strong>Enviar novo ícone</strong>
+        <span class="hint" id="icon-upload-hint"
+          >SVG (recomendado) ou PNG com fundo transparente</span
+        >
+        <input
+          type="file"
+          id="icon-upload-input"
+          accept="image/svg+xml,image/png"
+          style="display:none"
+        />
+      </form>
+
+      <div class="icon-grid" style="margin-top: var(--sp-5)">
+        {
+          customIcons.map((item) => (
+            <button
+              type="button"
+              class="icon-card"
+              data-copy-icon={item.url}
+              title="Clique para copiar o caminho"
+            >
+              <Icon name={item.url} size={28} />
+              <span class="icon-card__name">{item.filename}</span>
+            </button>
+          ))
+        }
+      </div>
+      {
+        customIcons.length === 0 && (
+          <p class="muted small" style="margin-top: var(--sp-4)">
+            Nenhum ícone personalizado enviado ainda.
+          </p>
+        )
+      }
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Biblioteca embutida</h2>
+      <span class="muted small">{builtIn.length} ícones — clique para copiar o nome</span>
+    </div>
+    <div class="panel__body">
+      <div class="icon-grid">
+        {
+          builtIn.map((name) => (
+            <button type="button" class="icon-card" data-copy-icon={name} title={name}>
+              <Icon name={name} size={26} />
+              <span class="icon-card__name">{name}</span>
+            </button>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <span
+    class="hint"
+    id="icon-copy-status"
+    role="status"
+    style="position:fixed; bottom:1rem; right:1rem;"></span>
+</AdminLayout>
+
+<style>
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--sp-3);
+  }
+
+  .icon-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-white);
+    color: var(--text);
+    transition:
+      border-color var(--dur) var(--ease),
+      background var(--dur) var(--ease);
+  }
+
+  .icon-card:hover {
+    border-color: var(--c-brand-300);
+    background: var(--c-brand-50);
+  }
+
+  .icon-card__name {
+    font-size: 0.6875rem;
+    text-align: center;
+    word-break: break-all;
+    color: var(--text-faint);
+    line-height: 1.3;
+  }
+</style>
+
+<script>
+  const uploadForm = document.getElementById('icon-upload-form');
+  const uploadInput = document.querySelector<HTMLInputElement>('#icon-upload-input');
+  const uploadHint = document.getElementById('icon-upload-hint');
+
+  uploadForm?.addEventListener('click', () => uploadInput?.click());
+
+  uploadInput?.addEventListener('change', async () => {
+    const file = uploadInput.files?.[0];
+    if (!file) return;
+    if (uploadHint) uploadHint.textContent = `Enviando ${file.name}…`;
+    const body = new FormData();
+    body.set('file', file);
+    body.set('alt', file.name);
+    body.set('title', file.name);
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (uploadHint) uploadHint.textContent = data.error ?? 'Falha no envio.';
+        return;
+      }
+      window.location.reload();
+    } catch {
+      if (uploadHint) uploadHint.textContent = 'Falha no envio. Tente novamente.';
+    }
+  });
+
+  const status = document.getElementById('icon-copy-status');
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-icon]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const value = btn.dataset.copyIcon ?? '';
+      try {
+        await navigator.clipboard.writeText(value);
+        if (status) {
+          status.textContent = `Copiado: ${value}`;
+          window.setTimeout(() => {
+            if (status) status.textContent = '';
+          }, 2000);
+        }
+      } catch {
+        if (status) status.textContent = 'Não foi possível copiar.';
+      }
+    });
+  });
+</script>

@@ -9,6 +9,8 @@ interface Props {
   primaryLabel?: string;
   primaryHref?: string;
   whatsappMessage?: string;
+  /** Sobrescreve o fundo em degradê (ex.: "background:#0d8b7d"). Vazio herda o padrão. */
+  style?: string;
 }
 
 const { company, whatsapp } = Astro.locals.settings;
@@ -19,12 +21,13 @@ const {
   primaryLabel = 'Solicitar uma apresentação',
   primaryHref = '/contato',
   whatsappMessage = whatsapp.defaultMessage,
+  style,
 } = Astro.props;
 ---
 
 <section class="cta-band">
   <div class="container">
-    <div class="cta-band__inner" data-reveal>
+    <div class="cta-band__inner" data-reveal style={style}>
       <div class="cta-band__text">
         {eyebrow && <p class="eyebrow">{eyebrow}</p>}
         <h2 class="title-md">{title}</h2>

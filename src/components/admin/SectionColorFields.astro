@@ -1,0 +1,77 @@
+---
+/**
+ * Par de campos "cor de fundo" / "cor do texto" para uma seção específica
+ * da Home. Vazio = herda a paleta global (Configurações → Aparência).
+ */
+import type { SectionStyle } from '../../lib/pages';
+
+interface Props {
+  sectionKey: string;
+  value: SectionStyle;
+}
+
+const { sectionKey, value } = Astro.props;
+---
+
+<details class="section-colors">
+  <summary>Cor desta seção (opcional)</summary>
+  <div class="section-colors__row">
+    <div class="field">
+      <label class="label" for={`style_${sectionKey}_bg`}>Fundo</label>
+      <input
+        class="input"
+        id={`style_${sectionKey}_bg`}
+        name={`style_${sectionKey}_bg`}
+        value={value.bg}
+        placeholder="herda o padrão do site"
+        data-section-color
+      />
+    </div>
+    <div class="field">
+      <label class="label" for={`style_${sectionKey}_text`}>Texto</label>
+      <input
+        class="input"
+        id={`style_${sectionKey}_text`}
+        name={`style_${sectionKey}_text`}
+        value={value.text}
+        placeholder="herda o padrão do site"
+        data-section-color
+      />
+    </div>
+  </div>
+</details>
+
+<style>
+  .section-colors {
+    margin-bottom: var(--sp-4);
+    padding: var(--sp-3);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--c-ink-50);
+  }
+
+  .section-colors summary {
+    cursor: pointer;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    color: var(--text-faint);
+  }
+
+  .section-colors__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-3);
+    margin-top: var(--sp-3);
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLInputElement>('[data-section-color]').forEach((input) => {
+    if (input.dataset.bound) return;
+    input.dataset.bound = '1';
+    input.addEventListener('input', () => {
+      input.style.borderColor =
+        input.value && /^#[0-9a-fA-F]{6}$/.test(input.value) ? input.value : '';
+    });
+  });
+</script>

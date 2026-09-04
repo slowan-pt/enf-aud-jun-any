@@ -12,7 +12,7 @@ import { publishedOnly as publishedServicesOnly, findBySlug } from '../lib/servi
 import { publishedOnly as publishedPostsOnly } from '../lib/posts';
 import { waLink } from '../data/site';
 import { getDB } from '../lib/db';
-import { getHomeContent } from '../lib/pages';
+import { getHomeContent, sectionStyleAttr } from '../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
 const db = getDB();
@@ -27,6 +27,7 @@ const {
   clientSegments,
   finalCta,
   promoVideo,
+  sectionStyles,
 } = await getHomeContent(db);
 const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
 const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
@@ -39,22 +40,21 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   path="/"
 >
   <!-- ==================================================== HERO -->
-  <section class="hero">
-    <div class="hero__bg" aria-hidden="true"></div>
+  <section class="hero" style={sectionStyleAttr(sectionStyles.hero)}>
     <div class="container hero__inner">
       <div class="hero__text">
-        <p class="eyebrow">{hero.eyebrow}</p>
-        <h1 class="title-xl">
+        <p class="hero__eyebrow-box">{hero.eyebrow}</p>
+        <h1 class="title-xl hero__title">
           {hero.title}
           <span class="hero__highlight">{hero.titleHighlight}</span>
         </h1>
         <p class="hero__lead">{hero.lead}</p>
         <div class="cluster hero__actions">
-          <a href={hero.primaryCta.href} class="btn btn--on-brand btn--lg">
+          <a href={hero.primaryCta.href} class="hero__cta hero__cta--primary">
             {hero.primaryCta.label}
             <Icon name="arrow-right" size={18} class="icon--arrow" />
           </a>
-          <a href={hero.secondaryCta.href} class="btn btn--outline-on-brand btn--lg">
+          <a href={hero.secondaryCta.href} class="hero__cta hero__cta--secondary">
             {hero.secondaryCta.label}
           </a>
         </div>
@@ -71,14 +71,26 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
       </div>
 
       <div class="hero__media">
-        <img
-          src={hero.image}
-          alt={hero.imageAlt}
-          width="1200"
-          height="900"
-          fetchpriority="high"
-          decoding="async"
-        />
+        {
+          promoVideo.url ? (
+            <video
+              src={promoVideo.url}
+              class="hero__video"
+              controls
+              preload="metadata"
+              poster={/^\/(media|images)\//.test(hero.image) ? hero.image : undefined}
+            />
+          ) : (
+            <img
+              src={hero.image}
+              alt={hero.imageAlt}
+              width="1200"
+              height="900"
+              fetchpriority="high"
+              decoding="async"
+            />
+          )
+        }
         <div class="hero__card">
           <span class="hero__card-icon"><Icon name="heart-pulse" size={22} /></span>
           <div>
@@ -91,11 +103,14 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   {
-    promoVideo.url && (
-      <section class="section section--tight">
+    promoVideo.url && (promoVideo.title || promoVideo.text) && (
+      <section
+        class="section section--tight"
+        style={sectionStyleAttr(sectionStyles.promoVideo)}
+      >
         <div class="container">
           <div class="section-head section-head--center" data-reveal>
-            <h2 class="title-lg">{promoVideo.title}</h2>
+            {promoVideo.title && <h2 class="title-lg">{promoVideo.title}</h2>}
             {promoVideo.text && <p class="lead">{promoVideo.text}</p>}
           </div>
           <div class="promo-video" data-reveal>
@@ -107,7 +122,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   }
 
   <!-- =========================================== PROPOSTA DE VALOR -->
-  <section class="section">
+  <section class="section" style={sectionStyleAttr(sectionStyles.proposta)}>
     <div class="container split split--wide-text">
       <div data-reveal>
         <p class="eyebrow">{valueProposition.eyebrow}</p>
@@ -145,7 +160,10 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   <!-- ================================================ ELO / MODELO -->
-  <section class="section section--brand elo-section">
+  <section
+    class="section section--brand elo-section"
+    style={sectionStyleAttr(sectionStyles.elo)}
+  >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
         <p class="eyebrow">{elo.eyebrow}</p>
@@ -272,7 +290,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   <!-- =================================================== BENEFÍCIOS -->
-  <section class="section">
+  <section class="section" style={sectionStyleAttr(sectionStyles.beneficios)}>
     <div class="container">
       <div class="section-head" data-reveal>
         <p class="eyebrow">{benefits.eyebrow}</p>
@@ -296,7 +314,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   <!-- ================================================ COMO ATUAMOS -->
-  <section class="section section--subtle">
+  <section class="section section--subtle" style={sectionStyleAttr(sectionStyles.comoAtuamos)}>
     <div class="container">
       <div class="section-head" data-reveal>
         <p class="eyebrow">{howWeWork.eyebrow}</p>
@@ -344,7 +362,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   <!-- =================================== MISSÃO, VISÃO E VALORES -->
-  <section class="section section--brand">
+  <section class="section section--brand" style={sectionStyleAttr(sectionStyles.mvv)}>
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
         <p class="eyebrow">{missionVisionValues.eyebrow}</p>
@@ -382,7 +400,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   </section>
 
   <!-- ================================================ PARA QUEM -->
-  <section class="section section--tight">
+  <section class="section section--tight" style={sectionStyleAttr(sectionStyles.segmentos)}>
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
         <p class="eyebrow">{clientSegments.eyebrow}</p>
@@ -427,6 +445,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     text={finalCta.text}
     primaryLabel={finalCta.primary.label}
     primaryHref={finalCta.primary.href}
+    style={sectionStyleAttr(sectionStyles.cta)}
   />
 
   <!-- ================================================= FORMULÁRIO -->
@@ -517,17 +536,10 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   .hero {
     position: relative;
     overflow: hidden;
-    background: var(--c-brand-900);
-    color: var(--text-on-brand);
-    padding-block: clamp(3rem, 7vw, 6rem);
-  }
-
-  .hero__bg {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(90% 80% at 85% 5%, rgba(18, 167, 148, 0.3), transparent 55%),
-      radial-gradient(80% 70% at 5% 95%, rgba(47, 142, 205, 0.32), transparent 60%);
+    background: var(--bg);
+    color: var(--text);
+    padding-block: clamp(2.5rem, 6vw, 5rem);
+    border-bottom: 1px solid var(--line);
   }
 
   .hero__inner {
@@ -539,27 +551,37 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
 
   @media (min-width: 980px) {
     .hero__inner {
-      grid-template-columns: 1.08fr 0.92fr;
+      grid-template-columns: 0.95fr 1.05fr;
     }
   }
 
-  .hero h1 {
+  .hero__eyebrow-box {
+    display: inline-block;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--r-md);
+    background: var(--c-brand-800);
     color: #fff;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--fs-sm);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }
 
-  .hero .eyebrow {
-    color: var(--c-accent-300);
+  .hero__title {
+    margin-top: var(--sp-4);
+    color: var(--text-strong);
   }
 
   .hero__highlight {
     display: block;
-    color: var(--c-accent-300);
+    color: var(--c-accent-600);
   }
 
   .hero__lead {
     margin-top: var(--sp-5);
     font-size: var(--fs-lg);
-    color: rgba(234, 243, 251, 0.84);
+    color: var(--text-muted);
     max-width: 44ch;
   }
 
@@ -567,9 +589,39 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     margin-top: var(--sp-8);
   }
 
+  .hero__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.9rem 1.6rem;
+    border-radius: var(--r-pill);
+    font-weight: 600;
+    font-size: var(--fs-sm);
+    text-decoration: none;
+    transition:
+      transform var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
+  }
+
+  .hero__cta:hover {
+    transform: translateY(-1px);
+    opacity: 0.92;
+  }
+
+  .hero__cta--primary {
+    background: var(--c-accent-600);
+    color: #fff;
+  }
+
+  .hero__cta--secondary {
+    background: var(--c-brand-900);
+    color: #fff;
+  }
+
   @media (max-width: 480px) {
-    .hero__actions .btn {
+    .hero__actions .hero__cta {
       width: 100%;
+      justify-content: center;
     }
   }
 
@@ -580,7 +632,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     list-style: none;
     margin: var(--sp-8) 0 0;
     padding: var(--sp-5) 0 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    border-top: 1px solid var(--line);
   }
 
   .hero__pillars li {
@@ -590,24 +642,26 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     font-size: var(--fs-xs);
     font-weight: var(--fw-medium);
     letter-spacing: 0.02em;
-    color: rgba(234, 243, 251, 0.8);
+    color: var(--text-muted);
   }
 
   .hero__pillars :global(.icon) {
-    color: var(--c-accent-300);
+    color: var(--c-accent-600);
   }
 
   .hero__media {
     position: relative;
   }
 
-  .hero__media img {
+  .hero__media img,
+  .hero__video {
     width: 100%;
     aspect-ratio: 4 / 3;
     object-fit: cover;
     border-radius: var(--r-xl);
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid var(--line);
     box-shadow: var(--shadow-lg);
+    background: #000;
   }
 
   .hero__card {

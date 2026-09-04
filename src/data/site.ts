@@ -137,8 +137,8 @@ export const seo = {
  * será substituído por conteúdo real cadastrado no CMS (ETAPA 2).
  */
 export const flags = {
-  stage: 1 as const,
-  demoContent: true,
+  stage: 2 as const,
+  demoContent: false,
   showTestimonials: false, // sem depoimentos reais disponíveis
   showClients: false, // sem carteira de clientes divulgável
   showNumbers: false, // sem indicadores reais divulgáveis

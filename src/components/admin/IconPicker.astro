@@ -1,0 +1,130 @@
+---
+/**
+ * Seletor de ícone reutilizável para os formulários do admin: escolher da
+ * biblioteca embutida (select) ou enviar um ícone personalizado (SVG/PNG,
+ * via Mídia/R2). Grava sempre uma string simples no campo de formulário
+ * `name` — nome da biblioteca (ex.: "heart") ou caminho de mídia (ex.:
+ * "/media/arquivo.svg") — o componente <Icon> já entende os dois formatos.
+ */
+import Icon from '../Icon.astro';
+import { iconPaths } from '../../data/icons';
+
+interface Props {
+  name: string;
+  value: string;
+  label?: string;
+}
+
+const { name, value, label = 'Ícone' } = Astro.props;
+const builtIn = Object.keys(iconPaths).sort();
+const isCustomValue = Boolean(value) && !builtIn.includes(value);
+const inputId = `icon-${name}`;
+---
+
+<div class="icon-picker" data-icon-picker>
+  {label && <span class="label">{label}</span>}
+  <div class="icon-picker__row">
+    <span class="icon-picker__preview" data-icon-picker-preview>
+      <Icon name={value || 'star'} size={20} />
+    </span>
+    <select class="select select--sm" id={inputId} name={name} data-icon-picker-select>
+      {
+        isCustomValue && (
+          <option value={value} selected>
+            Personalizado (enviado)
+          </option>
+        )
+      }
+      {
+        builtIn.map((n) => (
+          <option value={n} selected={n === value}>
+            {n}
+          </option>
+        ))
+      }
+    </select>
+    <label class="btn btn--secondary btn--sm icon-picker__upload">
+      <Icon name="upload" size={14} />
+      Enviar
+      <input
+        type="file"
+        accept="image/svg+xml,image/png"
+        style="display:none"
+        data-icon-picker-file
+      />
+    </label>
+  </div>
+  <span class="hint" data-icon-picker-status></span>
+</div>
+
+<style>
+  .icon-picker {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .icon-picker__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .icon-picker__preview {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: none;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--c-ink-50);
+    color: var(--c-brand-700);
+  }
+
+  .icon-picker select {
+    max-width: 200px;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-icon-picker]').forEach((root) => {
+    if (root.dataset.iconPickerBound) return;
+    root.dataset.iconPickerBound = '1';
+
+    const select = root.querySelector<HTMLSelectElement>('[data-icon-picker-select]');
+    const fileInput = root.querySelector<HTMLInputElement>('[data-icon-picker-file]');
+    const status = root.querySelector<HTMLElement>('[data-icon-picker-status]');
+
+    select?.addEventListener('change', () => {
+      if (status) status.textContent = 'Salve o formulário para aplicar.';
+    });
+
+    fileInput?.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (!file || !select) return;
+      if (status) status.textContent = `Enviando ${file.name}…`;
+      const body = new FormData();
+      body.set('file', file);
+      body.set('alt', file.name);
+      body.set('title', file.name);
+      try {
+        const res = await fetch('/admin/api/upload', { method: 'POST', body });
+        const data = await res.json();
+        if (!res.ok) {
+          if (status) status.textContent = data.error ?? 'Falha no envio.';
+          return;
+        }
+        const opt = document.createElement('option');
+        opt.value = data.url;
+        opt.textContent = 'Personalizado (enviado agora)';
+        opt.selected = true;
+        select.insertBefore(opt, select.firstChild);
+        select.value = data.url;
+        if (status) status.textContent = 'Enviado — salve o formulário para aplicar.';
+      } catch {
+        if (status) status.textContent = 'Falha no envio. Tente novamente.';
+      }
+    });
+  });
+</script>

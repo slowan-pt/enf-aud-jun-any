@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
+import IconPicker from '../../../components/admin/IconPicker.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { findBySlug, updateService, type Service } from '../../../lib/services';
 
@@ -23,6 +24,7 @@ if (Astro.request.method === 'POST') {
       slug,
       {
         name: text('nome', existing.name),
+        icon: text('icone', existing.icon),
         shortName: text('nome_curto', existing.shortName),
         summary: text('resumo', existing.summary),
         heroTitle: text('hero_titulo', existing.heroTitle),
@@ -259,11 +261,7 @@ function formatDate(iso: string): string {
 
           <div class="form-grid form-grid--2">
             <div class="field">
-              <label class="label" for="icone">Ícone do serviço</label>
-              <select class="select" id="icone" name="icone" disabled>
-                <option>{service.icon}</option>
-              </select>
-              <span class="hint">Seleção de ícone chega numa próxima fase.</span>
+              <IconPicker name="icone" value={service.icon} label="Ícone do serviço" />
             </div>
             <div class="field">
               <label class="label" for="ordem">Ordem de exibição</label>

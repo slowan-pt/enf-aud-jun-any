@@ -1,0 +1,316 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { updateSetting } from '../../lib/settings';
+
+const db = getDB();
+const userId = Astro.locals.user?.id;
+const userName = Astro.locals.user?.name ?? '';
+const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+let formError = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const brandColor = String(form.get('brandColor') ?? '');
+  const accentColor = String(form.get('accentColor') ?? '');
+  const backgroundColor = String(form.get('backgroundColor') ?? '');
+  const headingColor = String(form.get('headingColor') ?? '');
+
+  const values = { brandColor, accentColor, backgroundColor, headingColor };
+  const invalid = Object.entries(values).find(([, v]) => !HEX.test(v));
+
+  if (invalid) {
+    formError = 'Todas as cores devem estar no formato hexadecimal (ex.: #06203A).';
+  } else {
+    await updateSetting(db, 'theme', values, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'settings.update',
+      target: 'Configurações: Aparência (cores globais)',
+      ip,
+    });
+    return Astro.redirect('/admin/aparencia?saved=1');
+  }
+}
+
+const { theme } = Astro.locals.settings;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+const DEFAULTS = {
+  brandColor: '#06203a',
+  accentColor: '#0d8b7d',
+  backgroundColor: '#ffffff',
+  headingColor: '#06203a',
+};
+---
+
+<AdminLayout
+  title="Aparência"
+  description="Paleta global do site: cor da marca, cor de destaque/botões, fundo e título. Muda uma vez, reflete em todo o site publicado."
+  active="/admin/aparencia"
+>
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Cores salvas. Já valem para o site publicado.</span>
+      </div>
+    )
+  }
+  {
+    formError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{formError}</span>
+      </div>
+    )
+  }
+
+  <div class="grid-2 grid-2--wide">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Paleta global</h2>
+      </div>
+      <form class="panel__body stack" method="post" id="theme-form">
+        <div class="color-field">
+          <label class="label" for="brandColor">Cor da marca</label>
+          <div class="color-field__row">
+            <input
+              type="color"
+              id="brandColor"
+              name="brandColor"
+              value={theme.brandColor}
+              data-color-sync="brandColorHex"
+            />
+            <input
+              class="input"
+              id="brandColorHex"
+              value={theme.brandColor}
+              data-color-sync-hex="brandColor"
+            />
+          </div>
+          <span class="hint"
+            >Cabeçalhos, fundo do menu, rodapé e áreas de destaque escuras.</span
+          >
+        </div>
+
+        <div class="color-field">
+          <label class="label" for="accentColor">Cor de destaque / botões</label>
+          <div class="color-field__row">
+            <input
+              type="color"
+              id="accentColor"
+              name="accentColor"
+              value={theme.accentColor}
+              data-color-sync="accentColorHex"
+            />
+            <input
+              class="input"
+              id="accentColorHex"
+              value={theme.accentColor}
+              data-color-sync-hex="accentColor"
+            />
+          </div>
+          <span class="hint"
+            >Botões de destaque, ícones em realce, links e foco de teclado.</span
+          >
+        </div>
+
+        <div class="color-field">
+          <label class="label" for="backgroundColor">Cor de fundo do site</label>
+          <div class="color-field__row">
+            <input
+              type="color"
+              id="backgroundColor"
+              name="backgroundColor"
+              value={theme.backgroundColor}
+              data-color-sync="backgroundColorHex"
+            />
+            <input
+              class="input"
+              id="backgroundColorHex"
+              value={theme.backgroundColor}
+              data-color-sync-hex="backgroundColor"
+            />
+          </div>
+          <span class="hint">Fundo das páginas, cards e painéis.</span>
+        </div>
+
+        <div class="color-field">
+          <label class="label" for="headingColor">Cor dos títulos</label>
+          <div class="color-field__row">
+            <input
+              type="color"
+              id="headingColor"
+              name="headingColor"
+              value={theme.headingColor}
+              data-color-sync="headingColorHex"
+            />
+            <input
+              class="input"
+              id="headingColorHex"
+              value={theme.headingColor}
+              data-color-sync-hex="headingColor"
+            />
+          </div>
+          <span class="hint">Títulos e textos em destaque no fundo claro.</span>
+        </div>
+
+        <div class="cluster">
+          <button type="submit" class="btn">
+            <Icon name="save" size={16} />
+            Salvar cores
+          </button>
+          <button type="button" class="btn btn--secondary" id="reset-theme">
+            <Icon name="refresh" size={16} />
+            Restaurar padrão
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Pré-visualização</h2>
+      </div>
+      <div class="panel__body">
+        <div class="theme-preview" id="theme-preview">
+          <div class="theme-preview__hero">
+            <span class="theme-preview__eyebrow">Rótulo</span>
+            <h3>Título de exemplo</h3>
+            <p>Texto corrido de exemplo mostrando como o conteúdo aparece.</p>
+            <button type="button" class="theme-preview__btn">Botão de destaque</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-top: var(--sp-3)">
+          Atualiza ao digitar — salve para aplicar no site publicado.
+        </p>
+      </div>
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .color-field {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .color-field__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+
+  .color-field__row input[type='color'] {
+    width: 44px;
+    height: 40px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .color-field__row .input {
+    max-width: 140px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .theme-preview {
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+
+  .theme-preview__hero {
+    padding: var(--sp-8);
+    background: var(--preview-brand, #06203a);
+    color: #fff;
+  }
+
+  .theme-preview__eyebrow {
+    display: inline-block;
+    margin-bottom: var(--sp-2);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--preview-accent, #0d8b7d);
+    font-weight: 600;
+  }
+
+  .theme-preview__hero h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    margin-bottom: var(--sp-3);
+  }
+
+  .theme-preview__hero p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: var(--sp-5);
+    max-width: 40ch;
+  }
+
+  .theme-preview__btn {
+    padding: 0.65rem 1.4rem;
+    border-radius: var(--r-pill);
+    background: var(--preview-accent, #0d8b7d);
+    color: #fff;
+    font-weight: 600;
+    font-size: var(--fs-sm);
+  }
+</style>
+
+<script define:vars={{ defaults: DEFAULTS }}>
+  document.querySelectorAll('[data-color-sync]').forEach((colorInput) => {
+    const hexId = colorInput.dataset.colorSync;
+    const hexInput = document.getElementById(hexId);
+    colorInput.addEventListener('input', () => {
+      if (hexInput) hexInput.value = colorInput.value;
+      updatePreview();
+    });
+  });
+
+  document.querySelectorAll('[data-color-sync-hex]').forEach((hexInput) => {
+    const colorId = hexInput.dataset.colorSyncHex;
+    const colorInput = document.getElementById(colorId);
+    hexInput.addEventListener('input', () => {
+      if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value) && colorInput) {
+        colorInput.value = hexInput.value;
+        updatePreview();
+      }
+    });
+  });
+
+  function updatePreview() {
+    const preview = document.getElementById('theme-preview');
+    const brand = document.getElementById('brandColor');
+    const accent = document.getElementById('accentColor');
+    if (preview && brand instanceof HTMLInputElement) {
+      preview.style.setProperty('--preview-brand', brand.value);
+    }
+    if (preview && accent instanceof HTMLInputElement) {
+      preview.style.setProperty('--preview-accent', accent.value);
+    }
+  }
+  updatePreview();
+
+  document.getElementById('reset-theme')?.addEventListener('click', () => {
+    for (const [key, value] of Object.entries(defaults)) {
+      const colorInput = document.getElementById(key);
+      const hexInput = document.getElementById(`${key}Hex`);
+      if (colorInput instanceof HTMLInputElement) colorInput.value = value;
+      if (hexInput instanceof HTMLInputElement) hexInput.value = value;
+    }
+    updatePreview();
+  });
+</script>

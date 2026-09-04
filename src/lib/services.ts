@@ -116,6 +116,7 @@ export function findBySlug(services: Service[], slug: string): Service | undefin
 
 export interface ServiceUpdate {
   name: string;
+  icon: string;
   shortName: string;
   summary: string;
   heroTitle: string;
@@ -153,8 +154,8 @@ export async function updateService(
       `UPDATE services SET
          name = ?1, short_name = ?2, summary = ?3, hero_title = ?4, hero_lead = ?5,
          whatsapp_message = ?6, seo_title = ?7, seo_description = ?8,
-         status = ?9, featured = ?10, content_json = ?11, updated_at = datetime('now')
-       WHERE slug = ?12`
+         status = ?9, featured = ?10, content_json = ?11, icon = ?12, updated_at = datetime('now')
+       WHERE slug = ?13`
     )
     .bind(
       patch.name,
@@ -168,6 +169,7 @@ export async function updateService(
       patch.status,
       patch.featured ? 1 : 0,
       JSON.stringify(content),
+      patch.icon,
       slug
     )
     .run();

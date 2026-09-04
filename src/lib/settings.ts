@@ -26,12 +26,21 @@ export interface BrandSettings {
   markUrl: string;
 }
 
+/** Paleta global do site — poucas cores-chave que derivam o resto por CSS. */
+export interface ThemeSettings {
+  brandColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  headingColor: string;
+}
+
 export interface SiteSettings {
   company: typeof defaultCompany;
   whatsapp: typeof defaultWhatsapp;
   social: typeof defaultSocial;
   seo: SeoSettings;
   brand: BrandSettings;
+  theme: ThemeSettings;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -44,19 +53,28 @@ const DEFAULT_BRAND: BrandSettings = {
   markUrl: '/logo/essencial-saude-mark.png',
 };
 
+/** Mesmas cores já usadas em tokens.css (--c-brand-900, --c-accent-600, --bg, --text-strong). */
+const DEFAULT_THEME: ThemeSettings = {
+  brandColor: '#06203a',
+  accentColor: '#0d8b7d',
+  backgroundColor: '#ffffff',
+  headingColor: '#06203a',
+};
+
 const DEFAULTS: SiteSettings = {
   company: defaultCompany,
   whatsapp: defaultWhatsapp,
   social: defaultSocial,
   seo: DEFAULT_SEO,
   brand: DEFAULT_BRAND,
+  theme: DEFAULT_THEME,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
-      .prepare('SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5)')
-      .bind('company', 'whatsapp', 'social', 'seo', 'brand')
+      .prepare('SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6)')
+      .bind('company', 'whatsapp', 'social', 'seo', 'brand', 'theme')
       .all<{ key: string; value_json: string }>();
 
     const out: SiteSettings = {
@@ -65,6 +83,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       social: DEFAULTS.social,
       seo: DEFAULTS.seo,
       brand: DEFAULTS.brand,
+      theme: DEFAULTS.theme,
     };
 
     for (const row of results) {
@@ -75,6 +94,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         if (row.key === 'social') out.social = Array.isArray(value) ? value : DEFAULTS.social;
         if (row.key === 'seo') out.seo = { ...DEFAULTS.seo, ...value };
         if (row.key === 'brand') out.brand = { ...DEFAULTS.brand, ...value };
+        if (row.key === 'theme') out.theme = { ...DEFAULTS.theme, ...value };
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -88,7 +108,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
 
 export async function updateSetting(
   db: D1Database,
-  key: 'company' | 'whatsapp' | 'social' | 'seo' | 'brand',
+  key: 'company' | 'whatsapp' | 'social' | 'seo' | 'brand' | 'theme',
   value: unknown,
   userId?: number
 ): Promise<void> {

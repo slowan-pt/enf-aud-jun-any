@@ -1,7 +1,7 @@
 ---
-import { seo, flags } from '../data/site';
+import { seo } from '../data/site';
 
-const { company, seo: seoSettings } = Astro.locals.settings;
+const { company, seo: seoSettings, theme } = Astro.locals.settings;
 
 interface Props {
   title?: string;
@@ -70,6 +70,19 @@ const gaId = /^G-[A-Z0-9]{4,12}$/.test(seoSettings.gaId) ? seoSettings.gaId : ''
 const gaInlineScript = gaId
   ? `window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments)};gtag('js',new Date());gtag('config',${JSON.stringify(gaId)});`
   : '';
+
+/**
+ * Paleta global (Configurações → Aparência): 4 cores-base editáveis, das
+ * quais o resto do degradê de marca/destaque é derivado com color-mix() —
+ * evita precisar de uma biblioteca de cor só para clarear/escurecer.
+ * Valida formato hex antes de injetar, por segurança (defesa em profundidade).
+ */
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const safeHex = (value: string, fallback: string) => (HEX.test(value) ? value : fallback);
+const brand = safeHex(theme.brandColor, '#06203a');
+const accent = safeHex(theme.accentColor, '#0d8b7d');
+const background = safeHex(theme.backgroundColor, '#ffffff');
+const heading = safeHex(theme.headingColor, '#06203a');
 ---
 
 <meta charset="utf-8" />
@@ -81,6 +94,34 @@ const gaInlineScript = gaId
 <meta name="author" content={company.name} />
 <meta name="theme-color" content={seo.themeColor} />
 <meta name="generator" content={Astro.generator} />
+
+<style
+  set:html={`:root {
+  --c-brand-950: color-mix(in srgb, ${brand} 92%, black) !important;
+  --c-brand-900: ${brand} !important;
+  --c-brand-800: color-mix(in srgb, ${brand} 85%, white) !important;
+  --c-brand-700: color-mix(in srgb, ${brand} 68%, white) !important;
+  --c-brand-600: color-mix(in srgb, ${brand} 52%, white) !important;
+  --c-brand-500: color-mix(in srgb, ${brand} 38%, white) !important;
+  --c-brand-400: color-mix(in srgb, ${brand} 26%, white) !important;
+  --c-brand-300: color-mix(in srgb, ${brand} 16%, white) !important;
+  --c-brand-200: color-mix(in srgb, ${brand} 9%, white) !important;
+  --c-brand-100: color-mix(in srgb, ${brand} 5%, white) !important;
+  --c-brand-50: color-mix(in srgb, ${brand} 2%, white) !important;
+  --c-accent-700: color-mix(in srgb, ${accent} 88%, black) !important;
+  --c-accent-600: ${accent} !important;
+  --c-accent-500: color-mix(in srgb, ${accent} 82%, white) !important;
+  --c-accent-300: color-mix(in srgb, ${accent} 45%, white) !important;
+  --c-accent-100: color-mix(in srgb, ${accent} 15%, white) !important;
+  --c-accent-50: color-mix(in srgb, ${accent} 6%, white) !important;
+  --c-white: ${background} !important;
+  --bg: ${background} !important;
+  --bg-subtle: color-mix(in srgb, ${background} 96%, ${brand}) !important;
+  --bg-muted: color-mix(in srgb, ${background} 90%, ${brand}) !important;
+  --text-strong: ${heading} !important;
+  --focus: ${accent} !important;
+}`}
+></style>
 {
   seoSettings.gscVerification && (
     <meta name="google-site-verification" content={seoSettings.gscVerification} />
@@ -108,12 +149,6 @@ const gaInlineScript = gaId
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
 <link rel="icon" href="/favicon-192.png" type="image/png" sizes="192x192" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-{
-  flags.stage === 1 && (
-    <meta name="x-etapa" content="Etapa 1 — frontend/visual. Sem backend, sem persistência." />
-  )
-}
 
 {
   blocks.map((block) => (

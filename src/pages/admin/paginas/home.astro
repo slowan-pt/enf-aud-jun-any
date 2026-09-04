@@ -1,9 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
+import IconPicker from '../../../components/admin/IconPicker.astro';
+import SectionColorFields from '../../../components/admin/SectionColorFields.astro';
 import { homeSections } from '../../../data/admin';
 import { getDB, writeAuditLog } from '../../../lib/db';
-import { getHomeContent, updateHomeContent } from '../../../lib/pages';
+import { getHomeContent, updateHomeContent, HOME_SECTION_KEYS } from '../../../lib/pages';
 
 const db = getDB();
 
@@ -19,36 +21,42 @@ if (Astro.request.method === 'POST') {
 
   const updatedBenefits = current.benefits.items.map((item, index) => ({
     ...item,
+    icon: text(`benefit_icon_${index}`, item.icon),
     title: text(`benefit_title_${index}`, item.title),
     text: text(`benefit_text_${index}`, item.text),
   }));
 
   const updatedVpPoints = current.valueProposition.points.map((item, index) => ({
     ...item,
+    icon: text(`vp_point_icon_${index}`, item.icon),
     title: text(`vp_point_title_${index}`, item.title),
     text: text(`vp_point_text_${index}`, item.text),
   }));
 
   const updatedEloNodes = current.elo.nodes.map((node, index) => ({
     ...node,
+    icon: text(`elo_node_icon_${index}`, node.icon),
     label: text(`elo_node_label_${index}`, node.label),
     text: text(`elo_node_text_${index}`, node.text),
   }));
 
   const updatedSteps = current.howWeWork.steps.map((step, index) => ({
     ...step,
+    icon: text(`how_step_icon_${index}`, step.icon),
     title: text(`how_step_title_${index}`, step.title),
     text: text(`how_step_text_${index}`, step.text),
   }));
 
   const updatedValues = current.missionVisionValues.values.map((value, index) => ({
     ...value,
+    icon: text(`mvv_value_icon_${index}`, value.icon),
     title: text(`mvv_value_title_${index}`, value.title),
     text: text(`mvv_value_text_${index}`, value.text),
   }));
 
   const updatedSegmentItems = current.clientSegments.items.map((item, index) => ({
     ...item,
+    icon: text(`seg_item_icon_${index}`, item.icon),
     label: text(`seg_item_label_${index}`, item.label),
     detail: text(`seg_item_detail_${index}`, item.detail),
     behavior: text(`seg_item_behavior_${index}`, item.behavior),
@@ -135,6 +143,15 @@ if (Astro.request.method === 'POST') {
       text: text('video_text', current.promoVideo.text),
       url: text('video_url', current.promoVideo.url),
     },
+    sectionStyles: Object.fromEntries(
+      HOME_SECTION_KEYS.map((key) => [
+        key,
+        {
+          bg: text(`style_${key}_bg`, current.sectionStyles[key].bg),
+          text: text(`style_${key}_text`, current.sectionStyles[key].text),
+        },
+      ])
+    ) as typeof current.sectionStyles,
   };
 
   await updateHomeContent(db, updated, Astro.locals.user?.id);
@@ -159,6 +176,7 @@ const {
   clientSegments,
   finalCta,
   promoVideo,
+  sectionStyles,
   updatedAt,
 } = await getHomeContent(db);
 const justSaved = Astro.url.searchParams.get('saved') === '1';
@@ -249,6 +267,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="hero" value={sectionStyles.hero} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="hero_eyebrow">Rótulo (eyebrow)</label>
@@ -334,6 +353,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="proposta" value={sectionStyles.proposta} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="vp_eyebrow">Rótulo (eyebrow)</label>
@@ -393,9 +413,7 @@ function formatDate(iso: string): string {
               {
                 valueProposition.points.map((point, index) => (
                   <li class="list-row benefit-row">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={point.icon} size={16} />
-                    </span>
+                    <IconPicker name={`vp_point_icon_${index}`} value={point.icon} label="" />
                     <div class="benefit-row__fields">
                       <input
                         class="input"
@@ -414,7 +432,6 @@ function formatDate(iso: string): string {
                 ))
               }
             </ul>
-            <span class="hint">Ícone de cada ponto ainda não é editável por aqui.</span>
           </div>
         </div>
       </section>
@@ -426,6 +443,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="elo" value={sectionStyles.elo} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="elo_eyebrow">Rótulo (eyebrow)</label>
@@ -446,9 +464,7 @@ function formatDate(iso: string): string {
               {
                 elo.nodes.map((node, index) => (
                   <li class="list-row benefit-row">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={node.icon} size={16} />
-                    </span>
+                    <IconPicker name={`elo_node_icon_${index}`} value={node.icon} label="" />
                     <div class="benefit-row__fields">
                       <input
                         class="input"
@@ -467,9 +483,7 @@ function formatDate(iso: string): string {
                 ))
               }
             </ul>
-            <span class="hint"
-              >Ícone e posição de cada nó ainda não são editáveis por aqui.</span
-            >
+            <span class="hint">Posição de cada nó ainda não é editável por aqui.</span>
           </div>
         </div>
       </section>
@@ -481,14 +495,13 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="beneficios" value={sectionStyles.beneficios} />
           <div class="form-section">
             <ul class="list-clean">
               {
                 benefits.items.map((item, index) => (
                   <li class="list-row benefit-row">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={item.icon} size={16} />
-                    </span>
+                    <IconPicker name={`benefit_icon_${index}`} value={item.icon} label="" />
                     <div class="benefit-row__fields">
                       <input
                         class="input"
@@ -507,7 +520,6 @@ function formatDate(iso: string): string {
                 ))
               }
             </ul>
-            <span class="hint">Ícone de cada benefício ainda não é editável por aqui.</span>
           </div>
         </div>
       </section>
@@ -519,6 +531,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="comoAtuamos" value={sectionStyles.comoAtuamos} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="how_eyebrow">Rótulo (eyebrow)</label>
@@ -547,6 +560,7 @@ function formatDate(iso: string): string {
                 howWeWork.steps.map((step, index) => (
                   <li class="list-row benefit-row">
                     <span class="icon-badge icon-badge--sm">{step.number}</span>
+                    <IconPicker name={`how_step_icon_${index}`} value={step.icon} label="" />
                     <div class="benefit-row__fields">
                       <input
                         class="input"
@@ -565,9 +579,7 @@ function formatDate(iso: string): string {
                 ))
               }
             </ul>
-            <span class="hint"
-              >Número e ícone de cada etapa ainda não são editáveis por aqui.</span
-            >
+            <span class="hint">Número de cada etapa ainda não é editável por aqui.</span>
           </div>
         </div>
       </section>
@@ -579,6 +591,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="mvv" value={sectionStyles.mvv} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="mvv_eyebrow">Rótulo (eyebrow)</label>
@@ -637,9 +650,7 @@ function formatDate(iso: string): string {
               {
                 missionVisionValues.values.map((value, index) => (
                   <li class="list-row benefit-row">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={value.icon} size={16} />
-                    </span>
+                    <IconPicker name={`mvv_value_icon_${index}`} value={value.icon} label="" />
                     <div class="benefit-row__fields">
                       <input
                         class="input"
@@ -658,7 +669,6 @@ function formatDate(iso: string): string {
                 ))
               }
             </ul>
-            <span class="hint">Ícone de cada valor ainda não é editável por aqui.</span>
           </div>
         </div>
       </section>
@@ -670,6 +680,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="segmentos" value={sectionStyles.segmentos} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="seg_eyebrow">Rótulo (eyebrow)</label>
@@ -702,9 +713,7 @@ function formatDate(iso: string): string {
               {
                 clientSegments.items.map((item, index) => (
                   <li class="list-row">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={item.icon} size={16} />
-                    </span>
+                    <IconPicker name={`seg_item_icon_${index}`} value={item.icon} label="" />
                     <div class="list-row__main" style="display:grid;gap:var(--sp-2);flex:1">
                       <input
                         class="input"
@@ -739,6 +748,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="cta" value={sectionStyles.cta} />
           <div class="form-section">
             <div class="field">
               <label class="label" for="cta_eyebrow">Rótulo (eyebrow)</label>
@@ -789,6 +799,7 @@ function formatDate(iso: string): string {
           <span class="badge badge--brand">Em edição</span>
         </div>
         <div class="panel__body">
+          <SectionColorFields sectionKey="promoVideo" value={sectionStyles.promoVideo} />
           <div class="form-section">
             <p class="hint">
               Some da Home enquanto o vídeo não estiver enviado. MP4 ou WebM, até 90 MB.
