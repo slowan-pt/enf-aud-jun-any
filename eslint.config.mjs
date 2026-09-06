@@ -5,7 +5,14 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', '.astro/**', 'scripts/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      '.astro/**',
+      'scripts/**',
+      // App Capacitor: código de terceiros e bundles gerados, fora deste projeto.
+      'mobile-app/**',
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

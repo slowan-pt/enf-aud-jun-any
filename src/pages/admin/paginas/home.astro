@@ -153,6 +153,10 @@ if (Astro.request.method === 'POST') {
         },
       ])
     ) as typeof current.sectionStyles,
+    // Ordem e visibilidade são definidas no editor visual; o formulário não as
+    // edita, então repassa o que já está salvo em vez de zerar.
+    sectionOrder: current.sectionOrder,
+    hiddenSections: current.hiddenSections,
   };
 
   await updateHomeContent(db, updated, Astro.locals.user?.id);

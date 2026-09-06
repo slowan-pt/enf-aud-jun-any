@@ -31,8 +31,13 @@ export interface SectionStyle {
   text: string;
 }
 
+/**
+ * Na mesma sequência em que as seções aparecem na Home — é essa ordem que vira
+ * o padrão de `sectionOrder`, então ela precisa espelhar a página real.
+ */
 export const HOME_SECTION_KEYS = [
   'hero',
+  'promoVideo',
   'proposta',
   'elo',
   'beneficios',
@@ -40,8 +45,15 @@ export const HOME_SECTION_KEYS = [
   'mvv',
   'segmentos',
   'cta',
-  'promoVideo',
 ] as const;
+
+/**
+ * Posições que as seções editáveis ocupam na Home. As demais seções (Serviços,
+ * Conteúdos, formulário) são alimentadas por outras telas do painel e mantêm
+ * seus lugares fixos — reordenar no editor troca quem ocupa cada posição desta
+ * lista, preservando o ritmo geral da página.
+ */
+export const HOME_EDITABLE_SLOTS = [0, 1, 2, 3, 7, 8, 10, 11, 13] as const;
 
 export type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 export type SectionStyles = Record<HomeSectionKey, SectionStyle>;
@@ -59,6 +71,10 @@ export interface HomeContent {
   promoVideo: PromoVideo;
   /** Cor de fundo/texto por seção (opcional) — ver SectionStyle. */
   sectionStyles: SectionStyles;
+  /** Ordem de exibição das seções, definida ao arrastar no editor visual. */
+  sectionOrder: HomeSectionKey[];
+  /** Seções ocultadas no editor visual — continuam salvas, apenas não renderizam. */
+  hiddenSections: HomeSectionKey[];
 }
 
 const DEFAULT_PROMO_VIDEO: PromoVideo = {
@@ -92,7 +108,29 @@ const DEFAULT_HOME: HomeContent = {
   finalCta: defaultFinalCta,
   promoVideo: DEFAULT_PROMO_VIDEO,
   sectionStyles: DEFAULT_SECTION_STYLES,
+  sectionOrder: [...HOME_SECTION_KEYS],
+  hiddenSections: [],
 };
+
+/**
+ * Mantém apenas chaves conhecidas e completa o que faltar. Conteúdo salvo antes
+ * do editor visual não tem `sectionOrder`; nesse caso a ordem original do site é
+ * usada, então a página continua aparecendo exatamente como está hoje.
+ */
+function normalizeSectionKeys(value: unknown, fallback: HomeSectionKey[]): HomeSectionKey[] {
+  if (!Array.isArray(value)) return fallback;
+  const seen = new Set<HomeSectionKey>();
+  for (const item of value) {
+    if (typeof item === 'string' && (HOME_SECTION_KEYS as readonly string[]).includes(item)) {
+      seen.add(item as HomeSectionKey);
+    }
+  }
+  // Seções novas (criadas depois do conteúdo ter sido salvo) entram no fim.
+  for (const key of HOME_SECTION_KEYS) {
+    if (!seen.has(key) && fallback.includes(key)) seen.add(key);
+  }
+  return [...seen];
+}
 
 /** Gera `background:#…;color:#…` só para os campos preenchidos (senão herda o global). */
 export function sectionStyleAttr(style: SectionStyle | undefined): string | undefined {
@@ -139,6 +177,8 @@ export async function getHomeContent(
           ])
         ),
       } as SectionStyles,
+      sectionOrder: normalizeSectionKeys(stored.sectionOrder, [...HOME_SECTION_KEYS]),
+      hiddenSections: normalizeSectionKeys(stored.hiddenSections, []),
       updatedAt: row.updated_at,
     };
   } catch {

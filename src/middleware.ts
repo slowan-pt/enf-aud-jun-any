@@ -29,6 +29,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.posts = await listPosts(db);
 
   if (!pathname.startsWith('/admin')) {
+    // O editor visual abre a própria página pública dentro de um iframe. Só
+    // nesse caso resolvemos a sessão aqui, para a página saber que deve
+    // carregar o runtime de edição. Visitante comum nunca passa por isso.
+    if (context.url.searchParams.get('__edit') === '1') {
+      const editSessionId = context.cookies.get(SESSION_COOKIE)?.value;
+      if (editSessionId) {
+        const editUser = await getSessionUser(db, editSessionId);
+        if (editUser) context.locals.user = editUser;
+      }
+    }
     return next();
   }
 

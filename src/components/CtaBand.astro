@@ -11,6 +11,14 @@ interface Props {
   whatsappMessage?: string;
   /** Sobrescreve o fundo em degradê (ex.: "background:#0d8b7d"). Vazio herda o padrão. */
   style?: string;
+  /** Prefixo do caminho no JSON da página; sem ele a faixa não entra no editor visual. */
+  editPath?: string;
+  /** Chave da seção usada pelo editor visual (ordem, visibilidade e cor). */
+  sectionKey?: string;
+  sectionLabel?: string;
+  /** Posição/visibilidade da faixa, definidas no editor visual. */
+  sectionStyle?: string;
+  sectionClass?: string;
 }
 
 const { company, whatsapp } = Astro.locals.settings;
@@ -22,20 +30,47 @@ const {
   primaryHref = '/contato',
   whatsappMessage = whatsapp.defaultMessage,
   style,
+  editPath,
+  sectionKey,
+  sectionLabel,
+  sectionStyle,
+  sectionClass,
 } = Astro.props;
+const at = (field: string) => (editPath ? `${editPath}.${field}` : undefined);
 ---
 
-<section class="cta-band">
+<section
+  class:list={['cta-band', sectionClass]}
+  style={sectionStyle}
+  data-section={sectionKey}
+  data-section-label={sectionLabel}
+>
   <div class="container">
     <div class="cta-band__inner" data-reveal style={style}>
       <div class="cta-band__text">
-        {eyebrow && <p class="eyebrow">{eyebrow}</p>}
-        <h2 class="title-md">{title}</h2>
-        {text && <p>{text}</p>}
+        {
+          eyebrow && (
+            <p class="eyebrow" data-edit={at('eyebrow')} data-edit-label="Etiqueta">
+              {eyebrow}
+            </p>
+          )
+        }
+        <h2 class="title-md" data-edit={at('title')} data-edit-label="Título">{title}</h2>
+        {
+          text && (
+            <p
+              data-edit={at('text')}
+              data-edit-kind={editPath ? 'multiline' : undefined}
+              data-edit-label="Texto"
+            >
+              {text}
+            </p>
+          )
+        }
       </div>
       <div class="cta-band__actions">
         <a href={primaryHref} class="btn btn--on-brand btn--lg">
-          {primaryLabel}
+          <span data-edit={at('primary.label')} data-edit-label="Botão">{primaryLabel}</span>
           <Icon name="arrow-right" size={18} class="icon--arrow" />
         </a>
         <a

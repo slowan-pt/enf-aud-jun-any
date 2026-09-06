@@ -5,22 +5,48 @@ import { howWeWork as defaultHowWeWork } from '../data/institutional';
 interface Props {
   /** Passe o conteúdo vindo do banco (Home); sem prop, usa o padrão estático. */
   steps?: typeof defaultHowWeWork.steps;
+  /** Caminho no JSON da página; sem ele os passos não entram no editor visual. */
+  editPath?: string;
 }
 
-const { steps = defaultHowWeWork.steps } = Astro.props;
+const { steps = defaultHowWeWork.steps, editPath } = Astro.props;
+const at = (index: number, field: string) =>
+  editPath ? `${editPath}.${index}.${field}` : undefined;
 ---
 
-<ol class="steps">
+<ol class="steps" data-edit-list={editPath}>
   {
-    steps.map((step) => (
-      <li class="step" data-reveal>
+    steps.map((step, index) => (
+      <li class="step" data-reveal data-edit-item={editPath ? index : undefined}>
         <span class="step__rail" aria-hidden="true" />
-        <span class="step__num">{step.number}</span>
-        <span class="step__icon">
-          <Icon name={step.icon} size={20} />
+        <span class="step__num" data-edit={at(index, 'number')} data-edit-label="Número">
+          {step.number}
         </span>
-        <h3 class="step__title">{step.title}</h3>
-        <p class="step__text">{step.text}</p>
+        <span class="step__icon">
+          <Icon
+            name={step.icon}
+            size={20}
+            data-edit={at(index, 'icon')}
+            data-edit-kind={editPath ? 'icon' : undefined}
+            data-edit-value={editPath ? step.icon : undefined}
+            data-edit-label="Ícone"
+          />
+        </span>
+        <h3
+          class="step__title"
+          data-edit={at(index, 'title')}
+          data-edit-label="Título da etapa"
+        >
+          {step.title}
+        </h3>
+        <p
+          class="step__text"
+          data-edit={at(index, 'text')}
+          data-edit-kind={editPath ? 'multiline' : undefined}
+          data-edit-label="Texto da etapa"
+        >
+          {step.text}
+        </p>
       </li>
     ))
   }

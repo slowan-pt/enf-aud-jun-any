@@ -27,6 +27,7 @@ export const adminNav: AdminNavItem[] = [
     href: '#',
     icon: 'file-text',
     children: [
+      { label: 'Editor visual', href: '/admin/editor/home' },
       { label: 'Páginas', href: '/admin/paginas' },
       { label: 'Serviços', href: '/admin/servicos' },
       { label: 'Matérias', href: '/admin/conteudos' },
