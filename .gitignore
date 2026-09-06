@@ -7,3 +7,6 @@ dist/
 .DS_Store
 *.log
 .wrangler/
+
+# App Android (Capacitor) — contém node_modules e a keystore de assinatura
+mobile-app/
