@@ -26,6 +26,9 @@
     '[data-section].is-edit-section-hover{outline:2px dashed rgba(37,99,235,.35);outline-offset:-2px}',
     '[data-reveal]{opacity:1!important;transform:none!important}',
     '.is-edit-hidden-section{display:none!important}',
+    '[data-edit-item]{cursor:grab}',
+    '[data-edit-item].is-edit-dragging{opacity:.35}',
+    '[data-edit-item].is-edit-drop{outline:2px solid #12a794;outline-offset:4px}',
   ].join('');
   document.head.appendChild(style);
 
@@ -231,11 +234,37 @@
     if (element.textContent.trim() !== value) element.textContent = value;
   }
 
-  function applySectionStyle(section, property, value) {
+  var BACKGROUND_PROPS = [
+    'background',
+    'background-image',
+    'background-size',
+    'background-position',
+    'background-color',
+    'color',
+  ];
+
+  /**
+   * O editor manda o CSS já montado e validado (mesmas regras de
+   * `sectionStyleAttr`, em src/lib/pages.ts). Aplicamos declaração por
+   * declaração para não apagar o `order`, que também vive no style inline.
+   */
+  function applySectionStyle(section, css) {
     var element = document.querySelector('[data-section="' + CSS.escape(section) + '"]');
     if (!element) return;
-    if (property === 'bg') element.style.background = value;
-    if (property === 'text') element.style.color = value;
+
+    BACKGROUND_PROPS.forEach(function (property) {
+      element.style.removeProperty(property);
+    });
+
+    String(css || '')
+      .split(';')
+      .forEach(function (declaration) {
+        var split = declaration.indexOf(':');
+        if (split === -1) return;
+        var property = declaration.slice(0, split).trim();
+        var value = declaration.slice(split + 1).trim();
+        if (property && value) element.style.setProperty(property, value);
+      });
   }
 
   // A Home posiciona as seções por `order` do flexbox, então reordenar é
@@ -263,7 +292,7 @@
         applySet(data.path, data.value, data.extra);
         break;
       case 'editor:section-style':
-        applySectionStyle(data.section, data.property, data.value);
+        applySectionStyle(data.section, data.css);
         break;
       case 'editor:section-order':
         applySectionOrder(data.orderMap || {});
@@ -290,6 +319,88 @@
         clearSelection();
         break;
     }
+  });
+
+  // ------------------------------------------- arrastar itens de uma lista
+  // Depois de mover um item, os caminhos (`benefits.items.2.title`) ficam
+  // apontando para a posição antiga. Renumerar aqui evita ter que recarregar a
+  // pré-visualização a cada arrasto.
+  function renumberList(container, listPath) {
+    var prefix = listPath + '.';
+    container.querySelectorAll('[data-edit-item]').forEach(function (item, index) {
+      if (item.parentElement !== container) return;
+      item.setAttribute('data-edit-item', String(index));
+
+      var targets = [].slice.call(item.querySelectorAll('[data-edit]'));
+      if (item.hasAttribute('data-edit')) targets.push(item);
+
+      targets.forEach(function (el) {
+        var path = el.getAttribute('data-edit');
+        if (!path || path.indexOf(prefix) !== 0) return;
+        var rest = path.slice(prefix.length);
+        var dot = rest.indexOf('.');
+        el.setAttribute('data-edit', prefix + index + (dot === -1 ? '' : rest.slice(dot)));
+      });
+    });
+  }
+
+  var dragItem = null;
+
+  function itemIndex(element) {
+    return Number(element.getAttribute('data-edit-item'));
+  }
+
+  document.querySelectorAll('[data-edit-list]').forEach(function (container) {
+    var listPath = container.getAttribute('data-edit-list');
+    if (!listPath) return;
+
+    container.querySelectorAll('[data-edit-item]').forEach(function (item) {
+      if (item.parentElement !== container) return;
+      item.draggable = true;
+    });
+
+    container.addEventListener('dragstart', function (event) {
+      var item = event.target.closest('[data-edit-item]');
+      if (!item || item.parentElement !== container) return;
+      dragItem = item;
+      item.classList.add('is-edit-dragging');
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    });
+
+    container.addEventListener('dragend', function () {
+      if (dragItem) dragItem.classList.remove('is-edit-dragging');
+      dragItem = null;
+      container.querySelectorAll('.is-edit-drop').forEach(function (n) {
+        n.classList.remove('is-edit-drop');
+      });
+    });
+
+    container.addEventListener('dragover', function (event) {
+      if (!dragItem || dragItem.parentElement !== container) return;
+      event.preventDefault();
+      var over = event.target.closest('[data-edit-item]');
+      if (over && over.parentElement === container && over !== dragItem) {
+        container.querySelectorAll('.is-edit-drop').forEach(function (n) {
+          n.classList.remove('is-edit-drop');
+        });
+        over.classList.add('is-edit-drop');
+      }
+    });
+
+    container.addEventListener('drop', function (event) {
+      if (!dragItem || dragItem.parentElement !== container) return;
+      event.preventDefault();
+      var over = event.target.closest('[data-edit-item]');
+      if (!over || over.parentElement !== container || over === dragItem) return;
+
+      var from = itemIndex(dragItem);
+      var to = itemIndex(over);
+      container.insertBefore(dragItem, from < to ? over.nextSibling : over);
+      renumberList(container, listPath);
+      clearSelection();
+
+      post({ type: 'editor:reorder', listPath: listPath, from: from, to: to });
+    });
   });
 
   // ------------------------------------------------------------ inicialização

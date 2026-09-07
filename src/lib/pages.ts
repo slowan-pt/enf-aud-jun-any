@@ -25,10 +25,14 @@ export interface PromoVideo {
   url: string;
 }
 
-/** Cor de fundo/texto por seção — vazio herda a paleta global (Aparência). */
+/** Fundo/texto por seção — campo vazio herda a paleta global (Aparência). */
 export interface SectionStyle {
   bg: string;
   text: string;
+  /** Imagem de fundo (caminho da Mídia); fica por cima da cor de `bg`. */
+  image: string;
+  /** Escurecimento sobre a imagem, 0 a 100, para o texto continuar legível. */
+  overlay: string;
 }
 
 /**
@@ -83,7 +87,7 @@ const DEFAULT_PROMO_VIDEO: PromoVideo = {
   url: '',
 };
 
-const EMPTY_STYLE: SectionStyle = { bg: '', text: '' };
+const EMPTY_STYLE: SectionStyle = { bg: '', text: '', image: '', overlay: '' };
 
 const DEFAULT_SECTION_STYLES: SectionStyles = {
   hero: { ...EMPTY_STYLE },
@@ -132,12 +136,42 @@ function normalizeSectionKeys(value: unknown, fallback: HomeSectionKey[]): HomeS
   return [...seen];
 }
 
-/** Gera `background:#…;color:#…` só para os campos preenchidos (senão herda o global). */
+const HEX = /^#[0-9a-fA-F]{6}$/;
+/** Caminho da Mídia ou URL https, sem aspas/parênteses que quebrem o `url(...)`. */
+const MEDIA_PATH = /^(\/[\w\-./]*|https:\/\/[\w\-./?=&%]+)$/;
+
+/**
+ * Monta o `style` da seção a partir do que o editor gravou. Cada valor é
+ * validado antes de virar CSS: o conteúdo vem do banco, e um valor inesperado
+ * não pode escapar do atributo nem injetar outras declarações.
+ */
 export function sectionStyleAttr(style: SectionStyle | undefined): string | undefined {
   if (!style) return undefined;
   const parts: string[] = [];
-  if (style.bg) parts.push(`background:${style.bg}`);
-  if (style.text) parts.push(`color:${style.text}`);
+
+  const bg = HEX.test(style.bg) ? style.bg : '';
+  const image = MEDIA_PATH.test(style.image ?? '') ? style.image : '';
+  const overlayValue = Number(style.overlay);
+  const overlay =
+    Number.isFinite(overlayValue) && overlayValue > 0 && overlayValue <= 100
+      ? Math.round(overlayValue) / 100
+      : 0;
+
+  if (image) {
+    const layers: string[] = [];
+    if (overlay > 0) {
+      layers.push(`linear-gradient(rgba(0,0,0,${overlay}),rgba(0,0,0,${overlay}))`);
+    }
+    layers.push(`url("${image}")`);
+    parts.push(`background-image:${layers.join(',')}`);
+    parts.push('background-size:cover');
+    parts.push('background-position:center');
+    if (bg) parts.push(`background-color:${bg}`);
+  } else if (bg) {
+    parts.push(`background:${bg}`);
+  }
+
+  if (HEX.test(style.text)) parts.push(`color:${style.text}`);
   return parts.length ? parts.join(';') : undefined;
 }
 

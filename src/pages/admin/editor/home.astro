@@ -323,7 +323,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   /* ------------------------------------------------------- corpo */
   .editor__body {
     display: grid;
-    grid-template-columns: 84px 300px 1fr;
+    grid-template-columns: 84px 328px 1fr;
     flex: 1;
     min-height: 0;
   }
@@ -414,66 +414,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     background: var(--c-ink-50);
   }
 
-  /* ------------------------------------------------- lista de seções */
-  .section-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.35rem;
-  }
-
-  .section-list li {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-    background: var(--c-white);
-    font-size: var(--fs-xs);
-    cursor: grab;
-  }
-
-  .section-list li.is-dragging {
-    opacity: 0.4;
-  }
-
-  .section-list li.is-over {
-    border-color: var(--c-brand-500);
-    box-shadow: 0 0 0 2px var(--c-brand-100);
-  }
-
-  .section-list li.is-off .section-list__name {
-    text-decoration: line-through;
-    color: var(--text-faint);
-  }
-
-  .section-list__name {
-    flex: 1;
-    text-align: left;
-    border: 0;
-    background: none;
-    font: inherit;
-    color: inherit;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .section-list__toggle {
-    border: 0;
-    background: none;
-    color: var(--text-faint);
-    cursor: pointer;
-    padding: 0.15rem;
-    display: inline-grid;
-    place-items: center;
-  }
-
-  .section-list__toggle:hover {
-    color: var(--c-brand-600);
-  }
-
   /* ------------------------------------------------------- campos */
   .media-box {
     display: grid;
@@ -512,83 +452,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     overflow-y: auto;
     margin: var(--sp-2) 0;
     padding: 0.25rem;
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-  }
-
-  .icon-grid button {
-    display: grid;
-    place-items: center;
-    aspect-ratio: 1;
-    border: 1px solid transparent;
-    border-radius: var(--r-sm);
-    background: none;
-    color: var(--text-muted);
-    cursor: pointer;
-  }
-
-  .icon-grid button:hover {
-    background: var(--c-ink-50);
-    color: var(--c-brand-700);
-  }
-
-  .icon-grid button.is-active {
-    border-color: var(--c-brand-500);
-    background: var(--c-brand-50);
-    color: var(--c-brand-700);
-  }
-
-  .color-list {
-    display: grid;
-    gap: var(--sp-3);
-  }
-
-  .color-row {
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-    padding: 0.6rem;
-  }
-
-  .color-row__title {
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-medium);
-    margin-bottom: 0.4rem;
-  }
-
-  .color-row__fields {
-    display: grid;
-    gap: 0.4rem;
-  }
-
-  .color-pair {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-
-  .color-pair span {
-    font-size: 0.6875rem;
-    color: var(--text-faint);
-    width: 42px;
-  }
-
-  .color-pair input[type='color'] {
-    width: 30px;
-    height: 30px;
-    flex: none;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: var(--r-sm);
-    background: none;
-    cursor: pointer;
-  }
-
-  .color-pair input[type='text'] {
-    flex: 1;
-    min-width: 0;
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    padding: 0.3rem 0.4rem;
     border: 1px solid var(--line);
     border-radius: var(--r-sm);
   }
@@ -662,11 +525,225 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 </style>
 
+<!-- A lista de seções, a grade de ícones e os campos de cor são criados por
+     JavaScript, então não recebem o atributo de escopo do Astro. Estas regras
+     precisam ser globais, limitadas a .editor para não vazarem para o painel. -->
+<style is:global>
+  /* ------------------------------------------------- lista de seções */
+  .editor .section-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .editor .section-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+    cursor: grab;
+  }
+
+  .editor .section-list li.is-dragging {
+    opacity: 0.4;
+  }
+
+  .editor .section-list li.is-over {
+    border-color: var(--c-brand-500);
+    box-shadow: 0 0 0 2px var(--c-brand-100);
+  }
+
+  .editor .section-list li.is-off .section-list__name {
+    text-decoration: line-through;
+    color: var(--text-faint);
+  }
+
+  .editor .section-list__name {
+    flex: 1;
+    text-align: left;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .editor .section-list__toggle {
+    border: 0;
+    background: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0.15rem;
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .editor .section-list__toggle:hover {
+    color: var(--c-brand-600);
+  }
+
+  .editor .icon-grid button {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .editor .icon-grid button:hover {
+    background: var(--c-ink-50);
+    color: var(--c-brand-700);
+  }
+
+  .editor .icon-grid button.is-active {
+    border-color: var(--c-brand-500);
+    background: var(--c-brand-50);
+    color: var(--c-brand-700);
+  }
+
+  .editor .color-list {
+    display: grid;
+    gap: var(--sp-3);
+  }
+
+  .editor .color-row {
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 0.6rem;
+  }
+
+  .editor .color-row__title {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    margin-bottom: 0.4rem;
+  }
+
+  .editor .color-row__fields {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .editor .color-pair {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+  }
+
+  .editor .color-pair span {
+    flex: none;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+    width: 38px;
+  }
+
+  .editor .color-pair input[type='color'] {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .editor .color-pair input[type='text'] {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+  }
+
+  .editor .color-pair input[type='range'] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .editor .color-clear {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    color: var(--text-faint);
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .editor .color-clear:hover {
+    color: var(--c-brand-700);
+    border-color: var(--c-brand-400);
+  }
+
+  .editor .bg-field {
+    display: grid;
+    gap: 0.35rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--line);
+  }
+
+  .editor .bg-field__caption {
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+  }
+
+  .editor .bg-thumb {
+    display: grid;
+    place-items: center;
+    height: 62px;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-sm);
+    background-color: var(--c-ink-50);
+    background-size: cover;
+    background-position: center;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+  }
+
+  .editor .bg-field__actions {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  .editor .bg-field__actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .editor .bg-field__readout {
+    width: 34px !important;
+    text-align: right;
+  }
+</style>
+
 <script>
+  interface SectionStyle {
+    bg: string;
+    text: string;
+    image: string;
+    overlay: string;
+  }
+
   interface Bootstrap {
     sectionOrder: string[];
     hiddenSections: string[];
-    sectionStyles: Record<string, { bg: string; text: string }>;
+    sectionStyles: Record<string, SectionStyle>;
     labels: Record<string, string>;
     keys: string[];
     slots: number[];
@@ -800,6 +877,19 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (payload.type === 'editor:deselect') {
       selection = null;
       showProps(null);
+      return;
+    }
+
+    // Item arrastado dentro da própria página: o runtime já moveu e renumerou,
+    // aqui só registramos a operação para gravar.
+    if (payload.type === 'editor:reorder') {
+      const moved = event.data as { listPath: string; from: number; to: number };
+      selection = null;
+      showProps(null);
+      push(
+        { op: 'reorder', path: moved.listPath, from: moved.from, to: moved.to },
+        { op: 'reorder', path: moved.listPath, from: moved.to, to: moved.from }
+      );
       return;
     }
 
@@ -1129,8 +1219,194 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
   renderSections();
 
-  // ------------------------------------------------------ cores
+  // ------------------------------------------------------ cores e fundos
   const colorList = document.querySelector<HTMLElement>('[data-color-list]')!;
+  const HEX = /^#[0-9a-fA-F]{6}$/;
+
+  /**
+   * Espelha `sectionStyleAttr` (src/lib/pages.ts) para a pré-visualização
+   * mostrar exatamente o que o servidor vai renderizar. Mudou lá, muda aqui.
+   */
+  function styleCss(style: SectionStyle): string {
+    const parts: string[] = [];
+    const bg = HEX.test(style.bg) ? style.bg : '';
+    const image = /^(\/[\w\-./]*|https:\/\/[\w\-./?=&%]+)$/.test(style.image)
+      ? style.image
+      : '';
+    const raw = Number(style.overlay);
+    const overlay = Number.isFinite(raw) && raw > 0 && raw <= 100 ? Math.round(raw) / 100 : 0;
+
+    if (image) {
+      const layers: string[] = [];
+      if (overlay > 0) {
+        layers.push(`linear-gradient(rgba(0,0,0,${overlay}),rgba(0,0,0,${overlay}))`);
+      }
+      layers.push(`url("${image}")`);
+      parts.push(`background-image:${layers.join(',')}`);
+      parts.push('background-size:cover');
+      parts.push('background-position:center');
+      if (bg) parts.push(`background-color:${bg}`);
+    } else if (bg) {
+      parts.push(`background:${bg}`);
+    }
+
+    if (HEX.test(style.text)) parts.push(`color:${style.text}`);
+    return parts.join(';');
+  }
+
+  function styleOf(key: string): SectionStyle {
+    return styles[key] ?? { bg: '', text: '', image: '', overlay: '' };
+  }
+
+  function commitStyle(key: string, property: keyof SectionStyle, value: string) {
+    const previous = styleOf(key)[property];
+    if (value === previous) return;
+    styles[key] = { ...styleOf(key), [property]: value };
+    toFrame({ type: 'editor:section-style', section: key, css: styleCss(styles[key]) });
+    push(
+      { op: 'set', path: `sectionStyles.${key}.${property}`, value },
+      { op: 'set', path: `sectionStyles.${key}.${property}`, value: previous }
+    );
+  }
+
+  function colorPair(key: string, property: 'bg' | 'text', label: string): HTMLElement {
+    const pair = document.createElement('div');
+    pair.className = 'color-pair';
+
+    const caption = document.createElement('span');
+    caption.textContent = label;
+    pair.appendChild(caption);
+
+    const swatch = document.createElement('input');
+    swatch.type = 'color';
+    swatch.value = styleOf(key)[property] || '#ffffff';
+    pair.appendChild(swatch);
+
+    const hex = document.createElement('input');
+    hex.type = 'text';
+    hex.value = styleOf(key)[property];
+    hex.placeholder = 'herda';
+    pair.appendChild(hex);
+
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'color-clear';
+    clear.title = 'Herdar o padrão do site';
+    clear.textContent = '×';
+    clear.addEventListener('click', () => {
+      hex.value = '';
+      swatch.value = '#ffffff';
+      commitStyle(key, property, '');
+    });
+    pair.appendChild(clear);
+
+    swatch.addEventListener('input', () => {
+      hex.value = swatch.value;
+      commitStyle(key, property, swatch.value);
+    });
+    hex.addEventListener('change', () => {
+      const value = hex.value.trim();
+      if (value && !HEX.test(value)) {
+        hex.value = styleOf(key)[property];
+        return;
+      }
+      if (value) swatch.value = value;
+      commitStyle(key, property, value);
+    });
+
+    return pair;
+  }
+
+  function backgroundImageField(key: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'bg-field';
+
+    const caption = document.createElement('span');
+    caption.className = 'bg-field__caption';
+    caption.textContent = 'Imagem de fundo';
+    wrap.appendChild(caption);
+
+    const thumb = document.createElement('div');
+    thumb.className = 'bg-thumb';
+    const paint = () => {
+      const url = styleOf(key).image;
+      thumb.style.backgroundImage = url ? `url("${url}")` : '';
+      thumb.textContent = url ? '' : 'sem imagem';
+    };
+    paint();
+    wrap.appendChild(thumb);
+
+    const actions = document.createElement('div');
+    actions.className = 'bg-field__actions';
+
+    const upload = document.createElement('label');
+    upload.className = 'btn btn--secondary btn--sm';
+    upload.textContent = 'Enviar imagem';
+    const file = document.createElement('input');
+    file.type = 'file';
+    file.accept = 'image/*';
+    file.hidden = true;
+    upload.appendChild(file);
+    actions.appendChild(upload);
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ed-btn';
+    remove.textContent = 'Remover';
+    remove.addEventListener('click', () => {
+      commitStyle(key, 'image', '');
+      paint();
+    });
+    actions.appendChild(remove);
+    wrap.appendChild(actions);
+
+    file.addEventListener('change', async () => {
+      const chosen = file.files?.[0];
+      if (!chosen) return;
+      upload.textContent = 'Enviando…';
+      const body = new FormData();
+      body.append('file', chosen);
+      try {
+        const response = await fetch('/admin/api/upload', { method: 'POST', body });
+        const result = (await response.json()) as { url?: string; error?: string };
+        if (!response.ok || !result.url) throw new Error(result.error || 'falha no envio');
+        commitStyle(key, 'image', result.url);
+        paint();
+      } catch {
+        window.alert('Não foi possível enviar a imagem.');
+      } finally {
+        upload.textContent = 'Enviar imagem';
+        upload.appendChild(file);
+        file.value = '';
+      }
+    });
+
+    // Escurecimento: sem isto, texto claro some sobre foto clara.
+    const overlayRow = document.createElement('div');
+    overlayRow.className = 'color-pair';
+    const overlayCaption = document.createElement('span');
+    overlayCaption.textContent = 'Escurecer';
+    overlayRow.appendChild(overlayCaption);
+
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = '0';
+    range.max = '100';
+    range.step = '5';
+    range.value = styleOf(key).overlay || '0';
+    const readout = document.createElement('span');
+    readout.className = 'bg-field__readout';
+    readout.textContent = `${range.value}%`;
+    range.addEventListener('input', () => {
+      readout.textContent = `${range.value}%`;
+    });
+    range.addEventListener('change', () => commitStyle(key, 'overlay', range.value));
+    overlayRow.appendChild(range);
+    overlayRow.appendChild(readout);
+    wrap.appendChild(overlayRow);
+
+    return wrap;
+  }
 
   function renderColors() {
     colorList.replaceChildren();
@@ -1146,55 +1422,11 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
       const fields = document.createElement('div');
       fields.className = 'color-row__fields';
-
-      (['bg', 'text'] as const).forEach((property) => {
-        const pair = document.createElement('div');
-        pair.className = 'color-pair';
-
-        const caption = document.createElement('span');
-        caption.textContent = property === 'bg' ? 'Fundo' : 'Texto';
-        pair.appendChild(caption);
-
-        const swatch = document.createElement('input');
-        swatch.type = 'color';
-        swatch.value = styles[key]?.[property] || '#ffffff';
-        pair.appendChild(swatch);
-
-        const hex = document.createElement('input');
-        hex.type = 'text';
-        hex.value = styles[key]?.[property] || '';
-        hex.placeholder = 'herda';
-        pair.appendChild(hex);
-
-        const commit = (value: string) => {
-          const previous = styles[key]?.[property] ?? '';
-          if (value === previous) return;
-          styles[key] = { ...(styles[key] ?? { bg: '', text: '' }), [property]: value };
-          toFrame({ type: 'editor:section-style', section: key, property, value });
-          push(
-            { op: 'set', path: `sectionStyles.${key}.${property}`, value },
-            { op: 'set', path: `sectionStyles.${key}.${property}`, value: previous }
-          );
-        };
-
-        swatch.addEventListener('input', () => {
-          hex.value = swatch.value;
-          commit(swatch.value);
-        });
-        hex.addEventListener('change', () => {
-          const value = hex.value.trim();
-          if (value && !/^#[0-9a-fA-F]{6}$/.test(value)) {
-            hex.value = styles[key]?.[property] || '';
-            return;
-          }
-          if (value) swatch.value = value;
-          commit(value);
-        });
-
-        fields.appendChild(pair);
-      });
-
+      fields.appendChild(colorPair(key, 'bg', 'Fundo'));
+      fields.appendChild(colorPair(key, 'text', 'Texto'));
+      fields.appendChild(backgroundImageField(key));
       row.appendChild(fields);
+
       colorList.appendChild(row);
     });
   }
@@ -1205,6 +1437,11 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   function runHistory(from: Op[][], to: Op[][]) {
     const batch = from.pop();
     if (!batch) return;
+
+    // Reordenar muda os índices dos caminhos: a pré-visualização é recarregada
+    // para voltar a refletir o conteúdo gravado.
+    const needsReload = batch.some((operation) => operation.op === 'reorder');
+
     batch.forEach((operation) => {
       queue.push(operation);
       if (operation.op === 'set') {
@@ -1230,7 +1467,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     refreshHistoryButtons();
     setStatus('dirty', 'Alterações pendentes');
     window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(flush, 700);
+    if (needsReload) void reloadPreview();
+    else saveTimer = window.setTimeout(flush, 700);
   }
 
   undoBtn.addEventListener('click', () => runHistory(undoStack, redoStack));

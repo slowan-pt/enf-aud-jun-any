@@ -13,6 +13,7 @@ import { publishedOnly as publishedPostsOnly } from '../lib/posts';
 import { waLink } from '../data/site';
 import { getDB } from '../lib/db';
 import { getHomeContent, sectionStyleAttr, HOME_EDITABLE_SLOTS } from '../lib/pages';
+import type { SectionStyle } from '../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
 const db = getDB();
@@ -49,8 +50,8 @@ const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
 const secClass = (key: string) =>
   isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
 
-/** Junta a cor da seção (se houver) com a posição definida no editor. */
-const secStyle = (key: string, style: { bg: string; text: string }) =>
+/** Junta o fundo/cor da seção (se houver) com a posição definida no editor. */
+const secStyle = (key: string, style: SectionStyle) =>
   [sectionStyleAttr(style), orderStyle(key)].filter(Boolean).join(';');
 const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
 const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
@@ -109,10 +110,10 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
             {hero.secondaryCta.label}
           </a>
         </div>
-        <ul class="hero__pillars">
+        <ul class="hero__pillars" data-edit-list="hero.pillars">
           {
             hero.pillars.map((pillar, index) => (
-              <li>
+              <li data-edit-item={index}>
                 <Icon name="check" size={15} />
                 <span data-edit={`hero.pillars.${index}`} data-edit-label="Pilar">
                   {pillar}

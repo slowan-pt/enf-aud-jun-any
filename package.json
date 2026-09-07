@@ -12,10 +12,12 @@
     "typecheck": "astro check",
     "lint": "eslint . && prettier --check \"src/**/*.{astro,ts,css}\"",
     "format": "prettier --write \"src/**/*.{astro,ts,css}\"",
-    "qa": "npm run lint && npm run typecheck && npm run build",
+    "qa": "npm run lint && npm run typecheck && npm run test && npm run build",
     "db:migrate:local": "wrangler d1 execute essencial-saude-db --local --file=migrations/0001_init.sql && wrangler d1 execute essencial-saude-db --local --file=migrations/0002_posts_cover_url.sql",
     "db:migrate:remote": "wrangler d1 execute essencial-saude-db --remote --file=migrations/0001_init.sql && wrangler d1 execute essencial-saude-db --remote --file=migrations/0002_posts_cover_url.sql",
-    "db:studio:local": "wrangler d1 execute essencial-saude-db --local --command=\"SELECT id,name,email,role,status FROM users\""
+    "db:studio:local": "wrangler d1 execute essencial-saude-db --local --command=\"SELECT id,name,email,role,status FROM users\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",
@@ -34,6 +36,7 @@
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.11",
     "wrangler": "^4.125.0"
   }
 }
