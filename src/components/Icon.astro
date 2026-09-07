@@ -40,11 +40,16 @@ const customUrl = builtIn ? '' : safeMediaUrl(name);
 const isCustom = Boolean(customUrl);
 const d = isCustom ? '' : (iconPaths[builtIn] ?? iconPaths['info']);
 
-// O editor lê `data-edit-value` para saber qual ícone está aplicado. Publicamos
-// o valor que realmente foi usado, não o que veio do banco — assim um nome
-// recusado não chega ao HTML nem como texto.
+// `data-edit-value` diz ao editor qual ícone está aplicado; fora do editor não
+// serve para nada e sai do HTML. Dentro dele, publica o valor efetivamente
+// usado — não o que veio do banco —, então um nome recusado não chega nem
+// como texto.
+const edit = Boolean(Astro.locals.editMode);
+const { 'data-edit-value': _incoming, ...withoutEditValue } = rest as Record<string, unknown>;
 const attrs =
-  'data-edit-value' in rest ? { ...rest, 'data-edit-value': builtIn || customUrl } : rest;
+  edit && 'data-edit-value' in rest
+    ? { ...withoutEditValue, 'data-edit-value': builtIn || customUrl }
+    : withoutEditValue;
 const aria = label
   ? { role: 'img' as const, 'aria-label': label }
   : { 'aria-hidden': 'true' as const };

@@ -23,6 +23,12 @@ import {
 import type { SectionStyle } from '../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
+// Atributos usados só pelo editor não vão para o HTML de quem visita o site.
+// É limpeza de marcação, não controle de acesso — quem autoriza e valida é o
+// servidor, em toda requisição.
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
 const db = getDB();
 const publishedServices = publishedServicesOnly(Astro.locals.services);
 const {
@@ -82,19 +88,25 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['hero', secClass('hero')]}
     style={secStyle('hero', sectionStyles.hero)}
     data-section="hero"
-    data-section-label="Destaque principal"
+    data-section-label={ed('Destaque principal')}
   >
     <div class="container hero__inner">
       <div class="hero__text">
-        <p class="hero__eyebrow-box" data-edit="hero.eyebrow" data-edit-label="Selo do topo">
+        <p
+          class="hero__eyebrow-box"
+          data-edit="hero.eyebrow"
+          data-edit-label={ed('Selo do topo')}
+        >
           {hero.eyebrow}
         </p>
         <h1 class="title-xl hero__title">
-          <span data-edit="hero.title" data-edit-label="Título principal">{hero.title}</span>
+          <span data-edit="hero.title" data-edit-label={ed('Título principal')}
+            >{hero.title}</span
+          >
           <span
             class="hero__highlight"
             data-edit="hero.titleHighlight"
-            data-edit-label="Complemento do título"
+            data-edit-label={ed('Complemento do título')}
           >
             {hero.titleHighlight}
           </span>
@@ -102,14 +114,14 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         <p
           class="hero__lead"
           data-edit="hero.lead"
-          data-edit-kind="multiline"
-          data-edit-label="Texto de apoio"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto de apoio')}
         >
           {hero.lead}
         </p>
         <div class="cluster hero__actions">
           <a href={safeHref(hero.primaryCta.href)} class="hero__cta hero__cta--primary">
-            <span data-edit="hero.primaryCta.label" data-edit-label="Botão principal">
+            <span data-edit="hero.primaryCta.label" data-edit-label={ed('Botão principal')}>
               {hero.primaryCta.label}
             </span>
             <Icon name="arrow-right" size={18} class="icon--arrow" />
@@ -118,17 +130,17 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
             href={safeHref(hero.secondaryCta.href)}
             class="hero__cta hero__cta--secondary"
             data-edit="hero.secondaryCta.label"
-            data-edit-label="Botão secundário"
+            data-edit-label={ed('Botão secundário')}
           >
             {hero.secondaryCta.label}
           </a>
         </div>
-        <ul class="hero__pillars" data-edit-list="hero.pillars">
+        <ul class="hero__pillars" data-edit-list={ed('hero.pillars')}>
           {
             hero.pillars.map((pillar, index) => (
-              <li data-edit-item={index}>
+              <li data-edit-item={ed(index)}>
                 <Icon name="check" size={15} />
-                <span data-edit={`hero.pillars.${index}`} data-edit-label="Pilar">
+                <span data-edit={`hero.pillars.${index}`} data-edit-label={ed('Pilar')}>
                   {pillar}
                 </span>
               </li>
@@ -149,8 +161,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
               preload="metadata"
               poster={safeMediaUrl(hero.image) || undefined}
               data-edit="promoVideo.url"
-              data-edit-kind="video"
-              data-edit-label="Vídeo do topo"
+              data-edit-kind={ed('video')}
+              data-edit-label={ed('Vídeo do topo')}
             />
           ) : (
             <img
@@ -161,8 +173,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
               fetchpriority="high"
               decoding="async"
               data-edit="hero.image"
-              data-edit-kind="image"
-              data-edit-label="Imagem do topo"
+              data-edit-kind={ed('image')}
+              data-edit-label={ed('Imagem do topo')}
             />
           )
         }
@@ -176,12 +188,12 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         class:list={['section section--tight', secClass('promoVideo')]}
         style={secStyle('promoVideo', sectionStyles.promoVideo)}
         data-section="promoVideo"
-        data-section-label="Vídeo promocional"
+        data-section-label={ed('Vídeo promocional')}
       >
         <div class="container">
           <div class="section-head section-head--center" data-reveal>
             {promoVideo.title && (
-              <h2 class="title-lg" data-edit="promoVideo.title" data-edit-label="Título">
+              <h2 class="title-lg" data-edit="promoVideo.title" data-edit-label={ed('Título')}>
                 {promoVideo.title}
               </h2>
             )}
@@ -189,8 +201,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
               <p
                 class="lead"
                 data-edit="promoVideo.text"
-                data-edit-kind="multiline"
-                data-edit-label="Texto"
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto')}
               >
                 {promoVideo.text}
               </p>
@@ -202,8 +214,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
               controls
               preload="metadata"
               data-edit="promoVideo.url"
-              data-edit-kind="video"
-              data-edit-label="Arquivo de vídeo"
+              data-edit-kind={ed('video')}
+              data-edit-label={ed('Arquivo de vídeo')}
             />
           </div>
         </div>
@@ -216,50 +228,54 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section', secClass('proposta')]}
     style={secStyle('proposta', sectionStyles.proposta)}
     data-section="proposta"
-    data-section-label="Proposta de valor"
+    data-section-label={ed('Proposta de valor')}
   >
     <div class="container split split--wide-text">
       <div data-reveal>
-        <p class="eyebrow" data-edit="valueProposition.eyebrow" data-edit-label="Etiqueta">
+        <p
+          class="eyebrow"
+          data-edit="valueProposition.eyebrow"
+          data-edit-label={ed('Etiqueta')}
+        >
           {valueProposition.eyebrow}
         </p>
-        <h2 class="title-lg" data-edit="valueProposition.title" data-edit-label="Título">
+        <h2 class="title-lg" data-edit="valueProposition.title" data-edit-label={ed('Título')}>
           {valueProposition.title}
         </h2>
         <p
           class="lead"
           style="margin-top: var(--sp-4)"
           data-edit="valueProposition.text"
-          data-edit-kind="multiline"
-          data-edit-label="Texto"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto')}
         >
           {valueProposition.text}
         </p>
-        <div class="value-points" data-edit-list="valueProposition.points">
+        <div class="value-points" data-edit-list={ed('valueProposition.points')}>
           {
             valueProposition.points.map((point, index) => (
-              <div class="value-point" data-edit-item={index}>
+              <div class="value-point" data-edit-item={ed(index)}>
                 <span class="icon-badge icon-badge--sm">
                   <Icon
                     name={point.icon}
                     size={20}
                     data-edit={`valueProposition.points.${index}.icon`}
-                    data-edit-kind="icon"
+                    data-edit-kind={ed('icon')}
                     data-edit-value={point.icon}
-                    data-edit-label="Ícone"
+                    data-edit-label={ed('Ícone')}
                   />
                 </span>
                 <div>
                   <h3
                     data-edit={`valueProposition.points.${index}.title`}
-                    data-edit-label="Título do item"
+                    data-edit-label={ed('Título do item')}
                   >
                     {point.title}
                   </h3>
                   <p
                     data-edit={`valueProposition.points.${index}.text`}
-                    data-edit-kind="multiline"
-                    data-edit-label="Texto do item"
+                    data-edit-kind={ed('multiline')}
+                    data-edit-label={ed('Texto do item')}
                   >
                     {point.text}
                   </p>
@@ -279,8 +295,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
             loading="lazy"
             decoding="async"
             data-edit="valueProposition.image"
-            data-edit-kind="image"
-            data-edit-label="Imagem da seção"
+            data-edit-kind={ed('image')}
+            data-edit-label={ed('Imagem da seção')}
           />
         </figure>
       </div>
@@ -292,13 +308,22 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section section--brand elo-section', secClass('elo')]}
     style={secStyle('elo', sectionStyles.elo)}
     data-section="elo"
-    data-section-label="O modelo Essencial"
+    data-section-label={ed('O modelo Essencial')}
   >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="elo.eyebrow" data-edit-label="Etiqueta">{elo.eyebrow}</p>
-        <h2 class="title-lg" data-edit="elo.title" data-edit-label="Título">{elo.title}</h2>
-        <p class="lead" data-edit="elo.text" data-edit-kind="multiline" data-edit-label="Texto">
+        <p class="eyebrow" data-edit="elo.eyebrow" data-edit-label={ed('Etiqueta')}>
+          {elo.eyebrow}
+        </p>
+        <h2 class="title-lg" data-edit="elo.title" data-edit-label={ed('Título')}>
+          {elo.title}
+        </h2>
+        <p
+          class="lead"
+          data-edit="elo.text"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto')}
+        >
           {elo.text}
         </p>
       </div>
@@ -426,46 +451,49 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section', secClass('beneficios')]}
     style={secStyle('beneficios', sectionStyles.beneficios)}
     data-section="beneficios"
-    data-section-label="Benefícios"
+    data-section-label={ed('Benefícios')}
   >
     <div class="container">
       <div class="section-head" data-reveal>
-        <p class="eyebrow" data-edit="benefits.eyebrow" data-edit-label="Etiqueta">
+        <p class="eyebrow" data-edit="benefits.eyebrow" data-edit-label={ed('Etiqueta')}>
           {benefits.eyebrow}
         </p>
-        <h2 class="title-lg" data-edit="benefits.title" data-edit-label="Título">
+        <h2 class="title-lg" data-edit="benefits.title" data-edit-label={ed('Título')}>
           {benefits.title}
         </h2>
         <p
           class="lead"
           data-edit="benefits.text"
-          data-edit-kind="multiline"
-          data-edit-label="Texto"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto')}
         >
           {benefits.text}
         </p>
       </div>
-      <div class="grid grid--3" data-edit-list="benefits.items">
+      <div class="grid grid--3" data-edit-list={ed('benefits.items')}>
         {
           benefits.items.map((item, index) => (
-            <article class="card benefit" data-reveal data-edit-item={index}>
+            <article class="card benefit" data-reveal data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--accent">
                 <Icon
                   name={item.icon}
                   size={22}
                   data-edit={`benefits.items.${index}.icon`}
-                  data-edit-kind="icon"
+                  data-edit-kind={ed('icon')}
                   data-edit-value={item.icon}
-                  data-edit-label="Ícone"
+                  data-edit-label={ed('Ícone')}
                 />
               </span>
-              <h3 data-edit={`benefits.items.${index}.title`} data-edit-label="Título do item">
+              <h3
+                data-edit={`benefits.items.${index}.title`}
+                data-edit-label={ed('Título do item')}
+              >
                 {item.title}
               </h3>
               <p
                 data-edit={`benefits.items.${index}.text`}
-                data-edit-kind="multiline"
-                data-edit-label="Texto do item"
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto do item')}
               >
                 {item.text}
               </p>
@@ -481,21 +509,21 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section section--subtle', secClass('comoAtuamos')]}
     style={secStyle('comoAtuamos', sectionStyles.comoAtuamos)}
     data-section="comoAtuamos"
-    data-section-label="Como atuamos"
+    data-section-label={ed('Como atuamos')}
   >
     <div class="container">
       <div class="section-head" data-reveal>
-        <p class="eyebrow" data-edit="howWeWork.eyebrow" data-edit-label="Etiqueta">
+        <p class="eyebrow" data-edit="howWeWork.eyebrow" data-edit-label={ed('Etiqueta')}>
           {howWeWork.eyebrow}
         </p>
-        <h2 class="title-lg" data-edit="howWeWork.title" data-edit-label="Título">
+        <h2 class="title-lg" data-edit="howWeWork.title" data-edit-label={ed('Título')}>
           {howWeWork.title}
         </h2>
         <p
           class="lead"
           data-edit="howWeWork.text"
-          data-edit-kind="multiline"
-          data-edit-label="Texto"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto')}
         >
           {howWeWork.text}
         </p>
@@ -545,14 +573,22 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section section--brand', secClass('mvv')]}
     style={secStyle('mvv', sectionStyles.mvv)}
     data-section="mvv"
-    data-section-label="Missão, visão e valores"
+    data-section-label={ed('Missão, visão e valores')}
   >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="missionVisionValues.eyebrow" data-edit-label="Etiqueta">
+        <p
+          class="eyebrow"
+          data-edit="missionVisionValues.eyebrow"
+          data-edit-label={ed('Etiqueta')}
+        >
           {missionVisionValues.eyebrow}
         </p>
-        <h2 class="title-lg" data-edit="missionVisionValues.title" data-edit-label="Título">
+        <h2
+          class="title-lg"
+          data-edit="missionVisionValues.title"
+          data-edit-label={ed('Título')}
+        >
           {missionVisionValues.title}
         </h2>
       </div>
@@ -571,18 +607,18 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
                   name={item.icon}
                   size={22}
                   data-edit={`missionVisionValues.${key}.icon`}
-                  data-edit-kind="icon"
+                  data-edit-kind={ed('icon')}
                   data-edit-value={item.icon}
-                  data-edit-label="Ícone"
+                  data-edit-label={ed('Ícone')}
                 />
               </span>
-              <h3 data-edit={`missionVisionValues.${key}.title`} data-edit-label="Título">
+              <h3 data-edit={`missionVisionValues.${key}.title`} data-edit-label={ed('Título')}>
                 {item.title}
               </h3>
               <p
                 data-edit={`missionVisionValues.${key}.text`}
-                data-edit-kind="multiline"
-                data-edit-label="Texto"
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto')}
               >
                 {item.text}
               </p>
@@ -591,30 +627,30 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         }
       </div>
 
-      <div class="values" data-reveal data-edit-list="missionVisionValues.values">
+      <div class="values" data-reveal data-edit-list={ed('missionVisionValues.values')}>
         {
           missionVisionValues.values.map((value, index) => (
-            <article class="value" data-edit-item={index}>
+            <article class="value" data-edit-item={ed(index)}>
               <span class="value__icon">
                 <Icon
                   name={value.icon}
                   size={20}
                   data-edit={`missionVisionValues.values.${index}.icon`}
-                  data-edit-kind="icon"
+                  data-edit-kind={ed('icon')}
                   data-edit-value={value.icon}
-                  data-edit-label="Ícone"
+                  data-edit-label={ed('Ícone')}
                 />
               </span>
               <h3
                 data-edit={`missionVisionValues.values.${index}.title`}
-                data-edit-label="Título do valor"
+                data-edit-label={ed('Título do valor')}
               >
                 {value.title}
               </h3>
               <p
                 data-edit={`missionVisionValues.values.${index}.text`}
-                data-edit-kind="multiline"
-                data-edit-label="Texto do valor"
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto do valor')}
               >
                 {value.text}
               </p>
@@ -630,32 +666,32 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     class:list={['section section--tight', secClass('segmentos')]}
     style={secStyle('segmentos', sectionStyles.segmentos)}
     data-section="segmentos"
-    data-section-label="Para quem atuamos"
+    data-section-label={ed('Para quem atuamos')}
   >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="clientSegments.eyebrow" data-edit-label="Etiqueta">
+        <p class="eyebrow" data-edit="clientSegments.eyebrow" data-edit-label={ed('Etiqueta')}>
           {clientSegments.eyebrow}
         </p>
-        <h2 class="title-md" data-edit="clientSegments.title" data-edit-label="Título">
+        <h2 class="title-md" data-edit="clientSegments.title" data-edit-label={ed('Título')}>
           {clientSegments.title}
         </h2>
       </div>
-      <ul class="audience" data-reveal data-edit-list="clientSegments.items">
+      <ul class="audience" data-reveal data-edit-list={ed('clientSegments.items')}>
         {
           clientSegments.items.map((item, index) => (
-            <li data-edit-item={index}>
+            <li data-edit-item={ed(index)}>
               <Icon
                 name={item.icon}
                 size={20}
                 data-edit={`clientSegments.items.${index}.icon`}
-                data-edit-kind="icon"
+                data-edit-kind={ed('icon')}
                 data-edit-value={item.icon}
-                data-edit-label="Ícone"
+                data-edit-label={ed('Ícone')}
               />
               <span
                 data-edit={`clientSegments.items.${index}.label`}
-                data-edit-label="Nome do segmento"
+                data-edit-label={ed('Nome do segmento')}
               >
                 {item.label}
               </span>

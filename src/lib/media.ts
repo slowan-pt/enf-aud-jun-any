@@ -10,22 +10,8 @@ export function getBucket(): R2Bucket {
   return env.MEDIA;
 }
 
-export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
-export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
-export const ALLOWED_MIME_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
-
-export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
-// Workers aceita até 100 MB por requisição (mesmo limite no plano grátis) —
-// fica um pouco abaixo para sobrar margem do overhead do multipart/form-data.
-export const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
-
-export function isVideo(mimeType: string): boolean {
-  return ALLOWED_VIDEO_TYPES.includes(mimeType);
-}
-
-export function maxBytesFor(mimeType: string): number {
-  return isVideo(mimeType) ? MAX_VIDEO_UPLOAD_BYTES : MAX_IMAGE_UPLOAD_BYTES;
-}
+// Formatos e limites de upload vivem em ./uploads.ts, decididos pelos bytes
+// do arquivo — ver checkUpload().
 
 export interface MediaItem {
   id: number;
@@ -132,8 +118,13 @@ export async function deleteMedia(db: D1Database, id: number): Promise<MediaItem
   return media;
 }
 
-export function safeFileKey(filename: string): string {
-  const ext = (filename.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const random = crypto.randomUUID();
-  return `uploads/${random}.${ext}`;
+/**
+ * Nome do objeto no R2. O nome enviado nunca é reaproveitado (evita travessia
+ * de caminho e colisão) e a extensão vem do formato comprovado pelos bytes —
+ * passar a do arquivo original deixaria a extensão mentir sobre o conteúdo.
+ */
+export function safeFileKey(filename: string, extension?: string): string {
+  const fallback = (filename.split('.').pop() ?? 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const ext = (extension ?? fallback).replace(/[^a-z0-9]/g, '') || 'bin';
+  return `uploads/${crypto.randomUUID()}.${ext}`;
 }

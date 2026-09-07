@@ -17,20 +17,30 @@ interface Props {
 }
 
 const { section, overlays } = Astro.props;
+// Atributos usados só pelo editor não vão para o HTML de quem visita o site.
+// É limpeza de marcação, não controle de acesso — quem autoriza e valida é o
+// servidor, em toda requisição.
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
 const mine = overlays.filter((item) => item.section === section);
 ---
 
 {
   mine.map((overlay) =>
     overlay.kind === 'text' ? (
-      <p class="overlay overlay--text" data-overlay={overlay.id} data-edit-kind="multiline">
+      <p
+        class="overlay overlay--text"
+        data-overlay={overlay.id}
+        data-edit-kind={ed('multiline')}
+      >
         {overlay.content}
       </p>
     ) : overlay.kind === 'image' ? (
       <img
         class="overlay overlay--image"
         data-overlay={overlay.id}
-        data-edit-kind="image"
+        data-edit-kind={ed('image')}
         src={safeMediaUrl(overlay.content)}
         alt={overlay.alt}
         loading="lazy"
@@ -39,7 +49,7 @@ const mine = overlays.filter((item) => item.section === section);
       <span
         class="overlay overlay--icon"
         data-overlay={overlay.id}
-        data-edit-kind="icon"
+        data-edit-kind={ed('icon')}
         data-edit-value={overlay.content}
       >
         <Icon name={overlay.content} size={40} label={overlay.alt || undefined} />

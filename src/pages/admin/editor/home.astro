@@ -177,7 +177,12 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               <label class="btn btn--secondary btn--sm ed-upload">
                 <Icon name="upload" size={16} />
                 Enviar ícone próprio
-                <input type="file" accept="image/svg+xml,image/png" data-icon-file hidden />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  data-icon-file
+                  hidden
+                />
               </label>
               <p class="panel-hint" data-icon-status></p>
             </div>

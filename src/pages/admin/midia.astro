@@ -71,13 +71,13 @@ function formatSize(bytes: number): string {
         <Icon name="upload" size={26} />
         <strong>Arraste arquivos aqui ou clique para selecionar</strong>
         <span class="hint" id="upload-hint">
-          JPG, PNG, WebP ou SVG (até 5 MB) · MP4 ou WebM (até 90 MB)
+          JPG, PNG ou WebP (até 5 MB) · MP4 ou WebM (até 90 MB)
         </span>
         <input
           type="file"
           name="file"
           id="upload-input"
-          accept="image/jpeg,image/png,image/webp,image/svg+xml,video/mp4,video/webm"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
           style="display:none"
         />
       </form>

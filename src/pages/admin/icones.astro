@@ -13,7 +13,7 @@ const builtIn = Object.keys(iconPaths).sort();
 
 <AdminLayout
   title="Ícones"
-  description="Biblioteca de ícones do site: use os embutidos ou envie os seus (SVG ou PNG). O nome/caminho copiado aqui pode ser colado em qualquer campo de ícone (Serviços, Home, etc.)."
+  description="Biblioteca de ícones do site: use os embutidos ou envie os seus (PNG). O nome/caminho copiado aqui pode ser colado em qualquer campo de ícone (Serviços, Home, etc.)."
   active="/admin/icones"
 >
   <section class="panel" style="margin-bottom: var(--sp-5)">
@@ -26,12 +26,12 @@ const builtIn = Object.keys(iconPaths).sort();
         <Icon name="upload" size={22} />
         <strong>Enviar novo ícone</strong>
         <span class="hint" id="icon-upload-hint"
-          >SVG (recomendado) ou PNG com fundo transparente</span
+          >PNG com fundo transparente (SVG está temporariamente bloqueado)</span
         >
         <input
           type="file"
           id="icon-upload-input"
-          accept="image/svg+xml,image/png"
+          accept="image/png,image/jpeg,image/webp"
           style="display:none"
         />
       </form>

@@ -36,7 +36,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const editSessionId = context.cookies.get(SESSION_COOKIE)?.value;
       if (editSessionId) {
         const editUser = await getSessionUser(db, editSessionId);
-        if (editUser) context.locals.user = editUser;
+        if (editUser) {
+          context.locals.user = editUser;
+          // Rótulos e tipos usados só pelo editor saem do HTML de quem visita o
+          // site. Isto é limpeza, não controle de acesso: quem autoriza e valida
+          // continua sendo o servidor, em cada requisição.
+          context.locals.editMode = true;
+        }
       }
     }
     return next();
