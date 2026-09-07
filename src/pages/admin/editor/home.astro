@@ -933,6 +933,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   interface ElementLayout {
+    /** 1 = sistema antigo (% do elemento); 2 = atual (cqw, % da seção). */
+    v: number;
     x: number;
     y: number;
     w: number;
@@ -1022,9 +1024,11 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   let overlays: OverlayItem[] = [...data.overlays];
   let selection: Selection | null = null;
   let device = 'desktop';
+  let migrationCount = 0;
 
   function emptyLayout(): ElementLayout {
     return {
+      v: 2,
       x: 0,
       y: 0,
       w: 0,
@@ -1166,14 +1170,26 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         path: string | null;
         device: string;
         layout: ElementLayout;
+        migration?: boolean;
       };
       const previous = layoutOf(moved.key, moved.device);
       layouts[moved.key] = layouts[moved.key] ?? { desktop: emptyLayout(), mobile: null };
       if (moved.device === 'mobile') layouts[moved.key].mobile = moved.layout;
       else layouts[moved.key].desktop = moved.layout;
 
-      if (selection) selection.layout = moved.layout;
-      fillLayoutPanel(moved.layout);
+      if (selection && selection.key === moved.key) {
+        selection.layout = moved.layout;
+        fillLayoutPanel(moved.layout);
+      }
+
+      // Conversão de posição antiga não é uma edição do usuário: grava, mas
+      // não entra no desfazer (desfazê-la só devolveria o formato defeituoso).
+      if (moved.migration) {
+        push(layoutOp(moved, moved.layout));
+        migrationCount += 1;
+        setStatus('dirty', `Convertendo ${migrationCount} posição(ões) antiga(s)…`);
+        return;
+      }
 
       push(layoutOp(moved, moved.layout), layoutOp(moved, previous));
       return;

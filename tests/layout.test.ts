@@ -108,7 +108,7 @@ describe('layoutStylesheet — elementos existentes', () => {
       []
     );
     expect(css).toContain('[data-edit="hero.title"]');
-    expect(css).toContain('transform:translate(12.5%,-4%)');
+    expect(css).toContain('transform:translate(12.5cqw,-4cqw)');
     expect(css).not.toContain('px');
   });
 
@@ -142,15 +142,15 @@ describe('layoutStylesheet — elementos livres', () => {
     const css = layoutStylesheet({}, [overlay({ desktop: layout({ x: 20, y: 30, w: 25 }) })]);
     expect(css).toContain('[data-overlay="ov-teste"]');
     expect(css).toContain('position:absolute');
-    expect(css).toContain('left:20%');
-    expect(css).toContain('top:30%');
+    expect(css).toContain('left:20cqw');
+    expect(css).toContain('top:30cqw');
     expect(css).toContain('width:25%');
   });
 
   it('elemento livre sem deslocamento ainda é posicionado', () => {
     const css = layoutStylesheet({}, [overlay()]);
-    expect(css).toContain('left:0%');
-    expect(css).toContain('top:0%');
+    expect(css).toContain('left:0cqw');
+    expect(css).toContain('top:0cqw');
   });
 });
 
@@ -162,9 +162,9 @@ describe('layoutStylesheet — desktop e celular', () => {
     );
     const [antes, depois] = css.split(`@media (max-width:${MOBILE_BREAKPOINT - 1}px)`);
 
-    expect(antes).toContain('translate(10%,0%)');
-    expect(antes).not.toContain('translate(40%,0%)');
-    expect(depois).toContain('translate(40%,0%)');
+    expect(antes).toContain('translate(10cqw,0cqw)');
+    expect(antes).not.toContain('translate(40cqw,0cqw)');
+    expect(depois).toContain('translate(40cqw,0cqw)');
   });
 
   it('sem configuração de celular, não sai media query — o desktop vale para todos', () => {
@@ -182,9 +182,9 @@ describe('layoutStylesheet — desktop e celular', () => {
         mobile: layout({ x: 37.28, y: 52.52 }),
       }),
     ]);
-    expect(css).toContain('left:49.86%');
-    expect(css).toContain('left:37.28%');
-    expect(css.indexOf('left:49.86%')).toBeLessThan(css.indexOf('@media'));
-    expect(css.indexOf('left:37.28%')).toBeGreaterThan(css.indexOf('@media'));
+    expect(css).toContain('left:49.86cqw');
+    expect(css).toContain('left:37.28cqw');
+    expect(css.indexOf('left:49.86cqw')).toBeLessThan(css.indexOf('@media'));
+    expect(css.indexOf('left:37.28cqw')).toBeGreaterThan(css.indexOf('@media'));
   });
 });

@@ -784,9 +784,13 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     flex-direction: column;
   }
 
-  /* Âncora para os elementos livres: eles se posicionam em % da seção. */
+  /* A seção é a referência do posicionamento livre: `position` ancora os
+     elementos sobrepostos e `container-type` faz `cqw` valer 1% da largura
+     DESTA seção — é o que mantém a posição estável quando o elemento muda de
+     tamanho, de texto ou de fonte. */
   body.page-home main > section {
     position: relative;
+    container-type: inline-size;
   }
 
   .is-section-off {

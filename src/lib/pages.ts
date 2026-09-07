@@ -63,20 +63,40 @@ export type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 export type SectionStyles = Record<HomeSectionKey, SectionStyle>;
 
 /**
+ * Sistema de coordenadas de `x`/`y`.
+ *
+ * 1 — LEGADO. Porcentagem do próprio elemento, que era como `translate(%)`
+ *     interpretava. Defeito: mudar texto, fonte ou largura mexia na posição,
+ *     porque o denominador era o tamanho do elemento.
+ * 2 — ATUAL. Centésimos da LARGURA DA SEÇÃO (unidade `cqw`). O denominador é a
+ *     seção, então o tamanho do elemento deixou de influenciar a posição.
+ *
+ * Layout sem `v` é legado e continua sendo desenhado pela regra antiga, para
+ * não pular de lugar. O editor converte ao abrir a página (ver `migrateLayout`).
+ */
+export type CoordSystem = 1 | 2;
+
+/**
  * Posição e estilo livres de um elemento dentro da sua seção.
  *
- * Tudo é proporcional (porcentagem da seção), nunca pixel fixo: é o que faz a
- * mesma configuração continuar valendo em qualquer largura de tela.
+ * Tudo é proporcional à seção, nunca pixel fixo: é o que faz a mesma
+ * configuração continuar valendo em qualquer largura de tela.
  *
  * `x`/`y` são deslocamento, aplicado com `transform: translate()`. O elemento
  * continua no fluxo do documento — sai do lugar visualmente sem derrubar o
  * layout dos vizinhos, que é o que permite mover livremente sem transformar a
  * página num canvas de posição absoluta.
+ *
+ * Os dois eixos usam a LARGURA da seção como referência. A altura ficaria
+ * instável (muda toda vez que um texto reflui) e `cqh` só resolveria com
+ * `container-type: size`, que exige altura fixa e quebraria as seções.
  */
 export interface ElementLayout {
-  /** Deslocamento horizontal, em % da largura do próprio elemento. */
+  /** Sistema de coordenadas de x/y. Ver CoordSystem. */
+  v: CoordSystem;
+  /** Deslocamento horizontal, em centésimos da largura da seção. */
   x: number;
-  /** Deslocamento vertical, em % da altura do próprio elemento. */
+  /** Deslocamento vertical, em centésimos da largura da seção. */
   y: number;
   /** Largura em % da seção. 0 = largura natural. */
   w: number;
@@ -115,6 +135,7 @@ export interface Overlay {
 }
 
 export const EMPTY_LAYOUT: ElementLayout = {
+  v: 2,
   x: 0,
   y: 0,
   w: 0,
@@ -224,8 +245,16 @@ function clamp(value: unknown, min: number, max: number): number {
 
 /** Descarta qualquer valor fora do esperado — o conteúdo vem do banco. */
 export function normalizeLayout(value: unknown): ElementLayout {
+  const isStored = typeof value === 'object' && value !== null;
   const raw = (value ?? {}) as Record<string, unknown>;
+
+  // Um layout gravado que não declara o sistema de coordenadas veio de antes
+  // da correção: é legado. Objeto ausente é elemento novo, já no sistema atual.
+  const hasPosition = isStored && ('x' in raw || 'y' in raw);
+  const v: CoordSystem = raw.v === 2 ? 2 : hasPosition ? 1 : 2;
+
   return {
+    v,
     x: clamp(raw.x, -500, 500),
     y: clamp(raw.y, -500, 500),
     w: clamp(raw.w, 0, 100),
@@ -285,14 +314,29 @@ function normalizeOverlays(value: unknown): Overlay[] {
   return out;
 }
 
+/**
+ * Comprimento de um eixo. No sistema atual (v2) sai em `cqw` — centésimos da
+ * largura da seção, resolvido pelo próprio CSS, sem depender de JavaScript nem
+ * do tamanho do elemento. No legado (v1) sai em `%`, que o navegador resolve
+ * contra o próprio elemento; é assim que o valor antigo continua aparecendo no
+ * mesmo lugar até o editor convertê-lo.
+ */
+function axis(value: number, v: CoordSystem): string {
+  return v === 2 ? `${value}cqw` : `${value}%`;
+}
+
 /** Declarações CSS de um layout. Vazio quando nada foi configurado. */
 function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] {
   const parts: string[] = [];
 
   if (absolute) {
-    parts.push('position:absolute', `left:${layout.x}%`, `top:${layout.y}%`);
+    parts.push(
+      'position:absolute',
+      `left:${axis(layout.x, layout.v)}`,
+      `top:${axis(layout.y, layout.v)}`
+    );
   } else if (layout.x !== 0 || layout.y !== 0) {
-    parts.push(`transform:translate(${layout.x}%,${layout.y}%)`);
+    parts.push(`transform:translate(${axis(layout.x, layout.v)},${axis(layout.y, layout.v)})`);
   }
 
   if (layout.w > 0) parts.push(`width:${layout.w}%`);
@@ -308,6 +352,59 @@ function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] 
   if (!absolute && parts.length > 0) parts.push('display:inline-block');
 
   return parts;
+}
+
+/** Medidas tiradas do navegador para converter uma posição legada. */
+export interface LayoutMeasures {
+  elementWidth: number;
+  elementHeight: number;
+  sectionWidth: number;
+  sectionHeight: number;
+}
+
+/**
+ * Converte uma posição do sistema legado para o atual, preservando o ponto onde
+ * o elemento está hoje na tela. Nada é descartado: o valor é recalculado a
+ * partir das medidas reais no momento da conversão.
+ *
+ * Legado, elemento no fluxo: x era % da largura do elemento, y era % da altura.
+ * Legado, elemento livre:    x era % da largura da seção, y era % da ALTURA.
+ * Atual (os dois casos):     x e y em centésimos da LARGURA da seção.
+ */
+export function migrateLayout(
+  layout: ElementLayout,
+  measures: LayoutMeasures,
+  absolute: boolean
+): ElementLayout {
+  if (layout.v === 2) return layout;
+  if (measures.sectionWidth <= 0) return layout;
+
+  const baseX = absolute ? measures.sectionWidth : measures.elementWidth;
+  const baseY = absolute ? measures.sectionHeight : measures.elementHeight;
+
+  const pxX = (layout.x / 100) * baseX;
+  const pxY = (layout.y / 100) * baseY;
+
+  return {
+    ...layout,
+    v: 2,
+    x: Math.round((pxX / measures.sectionWidth) * 10000) / 100,
+    y: Math.round((pxY / measures.sectionWidth) * 10000) / 100,
+  };
+}
+
+/** Há posição legada aguardando conversão? */
+export function hasLegacyLayouts(
+  layouts: Record<string, LayoutPair>,
+  overlays: Overlay[]
+): boolean {
+  const legacy = (layout: ElementLayout | null) =>
+    Boolean(layout && layout.v === 1 && (layout.x !== 0 || layout.y !== 0));
+
+  return (
+    Object.values(layouts).some((pair) => legacy(pair.desktop) || legacy(pair.mobile)) ||
+    overlays.some((item) => legacy(item.desktop) || legacy(item.mobile))
+  );
 }
 
 /**

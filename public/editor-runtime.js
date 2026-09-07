@@ -111,6 +111,7 @@
 
   function emptyLayout() {
     return {
+      v: 2,
       x: 0,
       y: 0,
       w: 0,
@@ -226,24 +227,26 @@
     var section = sectionOf(element);
     if (!section) return;
 
+    var box = section.getBoundingClientRect();
+    if (box.width <= 0) return;
+
+    // Os dois eixos são divididos pela LARGURA DA SEÇÃO. É isso que garante
+    // que mexer no tamanho, no texto ou na fonte do elemento não desloque nada:
+    // o denominador não é o elemento.
+    layout.v = 2;
+
     if (overlay) {
       var rect = element.getBoundingClientRect();
-      var box = section.getBoundingClientRect();
       layout.x = round(((rect.left - box.left) / box.width) * 100);
-      layout.y = round(((rect.top - box.top) / box.height) * 100);
+      layout.y = round(((rect.top - box.top) / box.width) * 100);
       element.style.transform = '';
-      element.style.left = layout.x + '%';
-      element.style.top = layout.y + '%';
       translate = [0, 0];
     } else {
-      // Deslocamento em % do próprio elemento: é assim que `translate()`
-      // interpreta porcentagem, então continua valendo em qualquer largura.
-      var width = element.offsetWidth || 1;
-      var height = element.offsetHeight || 1;
-      layout.x = round((translate[0] / width) * 100);
-      layout.y = round((translate[1] / height) * 100);
+      layout.x = round((translate[0] / box.width) * 100);
+      layout.y = round((translate[1] / box.width) * 100);
     }
 
+    applyLayoutStyle(element, layout);
     reportLayout(element, layout);
     if (moveable) moveable.updateRect();
   }
@@ -253,18 +256,74 @@
     var section = sectionOf(element);
     if (!section) return;
     var box = section.getBoundingClientRect();
+    if (box.width <= 0) return;
 
     layout.w = round((element.offsetWidth / box.width) * 100);
-    if (overlay) layout.h = round((element.offsetHeight / box.height) * 100);
+    if (overlay) layout.h = round((element.offsetHeight / box.width) * 100);
 
-    element.style.width = layout.w + '%';
-    if (overlay && layout.h) element.style.height = layout.h + '%';
-
+    applyLayoutStyle(element, layout);
     reportLayout(element, layout);
   }
 
   function round(value) {
     return Math.round(value * 100) / 100;
+  }
+
+  // -------------------------------------------------------- migração
+  function elementForKey(key) {
+    return key.indexOf('overlay:') === 0
+      ? document.querySelector('[data-overlay="' + CSS.escape(key.slice(8)) + '"]')
+      : document.querySelector('[data-edit="' + CSS.escape(key) + '"]');
+  }
+
+  /**
+   * Converte as posições gravadas no sistema antigo (porcentagem do próprio
+   * elemento) para o atual (centésimos da largura da seção), medindo onde o
+   * elemento está agora. Mesma conta de `migrateLayout`, em src/lib/pages.ts.
+   *
+   * Só converte o conjunto do dispositivo visível: o de celular precisa ser
+   * medido com a pré-visualização em largura de celular para dar no mesmo ponto.
+   */
+  function migrateLegacy() {
+    Object.keys(layouts).forEach(function (key) {
+      var pair = layouts[key];
+      var layout = pair[device];
+      if (!layout || layout.v === 2) return;
+      if (layout.x === 0 && layout.y === 0) {
+        layout.v = 2;
+        return;
+      }
+
+      var element = elementForKey(key);
+      if (!element) return;
+      var section = sectionOf(element);
+      if (!section) return;
+
+      var box = section.getBoundingClientRect();
+      if (box.width <= 0) return;
+
+      var overlay = isOverlay(element);
+      var baseX = overlay ? box.width : element.offsetWidth;
+      var baseY = overlay ? box.height : element.offsetHeight;
+
+      var converted = Object.assign({}, layout, {
+        v: 2,
+        x: round((((layout.x / 100) * baseX) / box.width) * 100),
+        y: round((((layout.y / 100) * baseY) / box.width) * 100),
+      });
+
+      pair[device] = converted;
+      applyLayoutStyle(element, converted);
+      post({
+        type: 'editor:layout',
+        key: key,
+        overlay: overlay ? element.getAttribute('data-overlay') : null,
+        path: overlay ? null : element.getAttribute('data-edit'),
+        device: device,
+        layout: converted,
+        migration: true,
+      });
+    });
   }
 
   // -------------------------------------------------------------- seleção
@@ -587,10 +646,14 @@
       // Layouts já gravados, enviados quando a pré-visualização abre.
       case 'editor:layouts':
         layouts = data.layouts || {};
+        migrateLegacy();
         break;
 
       case 'editor:device':
         device = data.device === 'mobile' ? 'mobile' : 'desktop';
+        // A conversão precisa medir na largura daquele dispositivo, então cada
+        // conjunto é convertido quando passa a ser o visível.
+        migrateLegacy();
         if (selected) {
           applyLayoutStyle(selected, layoutFor(selected));
           attachMoveable(selected);
@@ -629,20 +692,30 @@
     }
   });
 
-  /** Reescreve o style inline a partir do layout, sem tocar em outras regras. */
+  /**
+   * Reescreve o style inline a partir do layout, nas mesmas unidades que o
+   * servidor usa em `layoutStylesheet` — o que se vê no editor é o que o site
+   * vai renderizar.
+   */
+  function axis(value, layout) {
+    return layout.v === 2 ? value + 'cqw' : value + '%';
+  }
+
   function applyLayoutStyle(element, layout) {
     var overlay = isOverlay(element);
     var style = element.style;
 
     if (overlay) {
       style.position = 'absolute';
-      style.left = layout.x + '%';
-      style.top = layout.y + '%';
+      style.left = axis(layout.x, layout);
+      style.top = axis(layout.y, layout);
       style.transform = '';
-      style.height = layout.h > 0 ? layout.h + '%' : '';
+      style.height = layout.h > 0 ? layout.h + 'cqw' : '';
     } else {
       style.transform =
-        layout.x || layout.y ? 'translate(' + layout.x + '%,' + layout.y + '%)' : '';
+        layout.x || layout.y
+          ? 'translate(' + axis(layout.x, layout) + ',' + axis(layout.y, layout) + ')'
+          : '';
       style.display = layout.x || layout.y || layout.w ? 'inline-block' : '';
     }
 
