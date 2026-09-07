@@ -157,6 +157,8 @@ if (Astro.request.method === 'POST') {
     // edita, então repassa o que já está salvo em vez de zerar.
     sectionOrder: current.sectionOrder,
     hiddenSections: current.hiddenSections,
+    layouts: current.layouts,
+    overlays: current.overlays,
   };
 
   await updateHomeContent(db, updated, Astro.locals.user?.id);

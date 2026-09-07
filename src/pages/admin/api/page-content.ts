@@ -8,8 +8,14 @@
  */
 import type { APIRoute } from 'astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
-import { getHomeContent, updateHomeContent, HOME_SECTION_KEYS } from '../../../lib/pages';
-import type { HomeContent, HomeSectionKey } from '../../../lib/pages';
+import {
+  getHomeContent,
+  updateHomeContent,
+  normalizeLayout,
+  HOME_SECTION_KEYS,
+  EMPTY_LAYOUT,
+} from '../../../lib/pages';
+import type { HomeContent, HomeSectionKey, Overlay } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
 
 export const prerender = false;
@@ -35,7 +41,53 @@ interface SectionsOp {
   order?: unknown;
   hidden?: unknown;
 }
-type EditOp = SetOp | ReorderOp | ItemOp | SectionsOp;
+/** Posição/estilo livre de um elemento existente, por tamanho de tela. */
+interface LayoutOp {
+  op: 'layout';
+  path: string;
+  device: 'desktop' | 'mobile';
+  layout: unknown;
+  /** Remove a configuração em vez de gravar (voltar ao natural). */
+  clear?: boolean;
+}
+interface OverlayAddOp {
+  op: 'overlay-add';
+  overlay: unknown;
+}
+interface OverlayLayoutOp {
+  op: 'overlay-layout';
+  id: string;
+  device: 'desktop' | 'mobile';
+  layout: unknown;
+  clear?: boolean;
+}
+interface OverlayContentOp {
+  op: 'overlay-content';
+  id: string;
+  content?: string;
+  alt?: string;
+}
+interface OverlayRemoveOp {
+  op: 'overlay-remove';
+  id: string;
+}
+type EditOp =
+  | SetOp
+  | ReorderOp
+  | ItemOp
+  | SectionsOp
+  | LayoutOp
+  | OverlayAddOp
+  | OverlayLayoutOp
+  | OverlayContentOp
+  | OverlayRemoveOp;
+
+const EDIT_PATH = /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
+const OVERLAY_ID = /^[a-z0-9-]{1,40}$/;
+
+function isDevice(value: unknown): value is 'desktop' | 'mobile' {
+  return value === 'desktop' || value === 'mobile';
+}
 
 function isSectionKeyList(value: unknown): value is HomeSectionKey[] {
   return (
@@ -82,6 +134,85 @@ function applyOp(content: HomeContent, operation: EditOp): boolean {
         changed = true;
       }
       return changed;
+    }
+
+    case 'layout': {
+      if (!EDIT_PATH.test(operation.path) || !isDevice(operation.device)) return false;
+
+      if (operation.clear) {
+        if (operation.device === 'mobile') {
+          const pair = content.layouts[operation.path];
+          if (!pair) return false;
+          pair.mobile = null;
+        } else {
+          delete content.layouts[operation.path];
+        }
+        return true;
+      }
+
+      const current = content.layouts[operation.path] ?? {
+        desktop: { ...EMPTY_LAYOUT },
+        mobile: null,
+      };
+      current[operation.device] = normalizeLayout(operation.layout);
+      content.layouts[operation.path] = current;
+      return true;
+    }
+
+    case 'overlay-add': {
+      if (content.overlays.length >= 100) return false;
+      const raw = (operation.overlay ?? {}) as Record<string, unknown>;
+      const id = String(raw.id ?? '');
+      const section = String(raw.section ?? '');
+      const kind = String(raw.kind ?? '');
+
+      if (!OVERLAY_ID.test(id)) return false;
+      if (content.overlays.some((item) => item.id === id)) return false;
+      if (!(HOME_SECTION_KEYS as readonly string[]).includes(section)) return false;
+      if (kind !== 'text' && kind !== 'image' && kind !== 'icon') return false;
+
+      content.overlays.push({
+        id,
+        section: section as HomeSectionKey,
+        kind,
+        content: String(raw.content ?? '').slice(0, 2000),
+        alt: String(raw.alt ?? '').slice(0, 300),
+        desktop: normalizeLayout(raw.desktop),
+        mobile: raw.mobile ? normalizeLayout(raw.mobile) : null,
+      } satisfies Overlay);
+      return true;
+    }
+
+    case 'overlay-layout': {
+      if (!OVERLAY_ID.test(operation.id) || !isDevice(operation.device)) return false;
+      const overlay = content.overlays.find((item) => item.id === operation.id);
+      if (!overlay) return false;
+
+      if (operation.clear) {
+        if (operation.device !== 'mobile') return false;
+        overlay.mobile = null;
+        return true;
+      }
+      overlay[operation.device] = normalizeLayout(operation.layout);
+      return true;
+    }
+
+    case 'overlay-content': {
+      if (!OVERLAY_ID.test(operation.id)) return false;
+      const overlay = content.overlays.find((item) => item.id === operation.id);
+      if (!overlay) return false;
+      if (typeof operation.content === 'string') {
+        overlay.content = operation.content.slice(0, 2000);
+      }
+      if (typeof operation.alt === 'string') overlay.alt = operation.alt.slice(0, 300);
+      return true;
+    }
+
+    case 'overlay-remove': {
+      if (!OVERLAY_ID.test(operation.id)) return false;
+      const before = content.overlays.length;
+      content.overlays = content.overlays.filter((item) => item.id !== operation.id);
+      return content.overlays.length < before;
     }
 
     default:

@@ -1,0 +1,66 @@
+---
+/**
+ * Elementos criados no editor visual e sobrepostos a uma seção.
+ *
+ * Eles são posicionados de forma absoluta (em % da seção) porque são
+ * acréscimos: não participam do fluxo, então mover um deles não desloca nada
+ * do conteúdo original. Ainda assim saem como HTML de verdade — parágrafo,
+ * imagem ou ícone — e não como desenho em canvas.
+ */
+import Icon from './Icon.astro';
+import type { Overlay } from '../lib/pages';
+
+interface Props {
+  section: string;
+  overlays: Overlay[];
+}
+
+const { section, overlays } = Astro.props;
+const mine = overlays.filter((item) => item.section === section);
+---
+
+{
+  mine.map((overlay) =>
+    overlay.kind === 'text' ? (
+      <p class="overlay overlay--text" data-overlay={overlay.id} data-edit-kind="multiline">
+        {overlay.content}
+      </p>
+    ) : overlay.kind === 'image' ? (
+      <img
+        class="overlay overlay--image"
+        data-overlay={overlay.id}
+        data-edit-kind="image"
+        src={overlay.content}
+        alt={overlay.alt}
+        loading="lazy"
+      />
+    ) : (
+      <span
+        class="overlay overlay--icon"
+        data-overlay={overlay.id}
+        data-edit-kind="icon"
+        data-edit-value={overlay.content}
+      >
+        <Icon name={overlay.content} size={40} label={overlay.alt || undefined} />
+      </span>
+    )
+  )
+}
+
+<style>
+  .overlay {
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .overlay--image {
+    height: auto;
+    object-fit: contain;
+  }
+
+  .overlay--icon {
+    display: inline-grid;
+    place-items: center;
+    color: var(--c-brand-600);
+  }
+</style>

@@ -12,7 +12,13 @@ import { publishedOnly as publishedServicesOnly, findBySlug } from '../lib/servi
 import { publishedOnly as publishedPostsOnly } from '../lib/posts';
 import { waLink } from '../data/site';
 import { getDB } from '../lib/db';
-import { getHomeContent, sectionStyleAttr, HOME_EDITABLE_SLOTS } from '../lib/pages';
+import SectionOverlays from '../components/SectionOverlays.astro';
+import {
+  getHomeContent,
+  sectionStyleAttr,
+  layoutStylesheet,
+  HOME_EDITABLE_SLOTS,
+} from '../lib/pages';
 import type { SectionStyle } from '../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
@@ -31,7 +37,13 @@ const {
   sectionStyles,
   sectionOrder,
   hiddenSections,
+  layouts,
+  overlays,
 } = await getHomeContent(db);
+
+// Posições livres definidas no editor. Sai como folha de estilo para o HTML
+// continuar limpo e as regras de celular caberem num media query.
+const layoutCss = layoutStylesheet(layouts, overlays);
 
 // Modo de edição: a própria Home aberta dentro do iframe do editor visual, por
 // um usuário já autenticado (a sessão é resolvida no middleware).
@@ -123,6 +135,8 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
           }
         </ul>
       </div>
+
+      <SectionOverlays section="hero" overlays={overlays} />
 
       <div class="hero__media">
         {
@@ -750,7 +764,16 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     </div>
   </section>
 
-  {editMode && <script is:inline src="/editor-runtime.js" />}
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
 
 <style is:global>
@@ -759,6 +782,11 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   body.page-home main {
     display: flex;
     flex-direction: column;
+  }
+
+  /* Âncora para os elementos livres: eles se posicionam em % da seção. */
+  body.page-home main > section {
+    position: relative;
   }
 
   .is-section-off {

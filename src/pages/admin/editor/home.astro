@@ -34,6 +34,8 @@ const SECTION_LABELS: Record<string, string> = {
 const bootstrap = {
   sectionOrder: content.sectionOrder,
   hiddenSections: content.hiddenSections,
+  layouts: content.layouts,
+  overlays: content.overlays,
   sectionStyles: content.sectionStyles,
   labels: SECTION_LABELS,
   keys: HOME_SECTION_KEYS,
@@ -108,6 +110,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
           <Icon name="edit" size={20} />
           <span>Elemento</span>
         </button>
+        <button type="button" class="rail-btn" data-tool="add">
+          <Icon name="plus" size={20} />
+          <span>Adicionar</span>
+        </button>
         <button type="button" class="rail-btn" data-tool="colors">
           <Icon name="palette" size={20} />
           <span>Cores</span>
@@ -176,6 +182,64 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               <p class="panel-hint" data-icon-status></p>
             </div>
 
+            <!-- posição, tamanho e estilo -->
+            <div class="field" data-props-layout hidden>
+              <span class="label">Posição e estilo</span>
+              <p class="panel-hint" data-layout-scope></p>
+
+              <div class="prop-grid">
+                <label>
+                  Corpo
+                  <input type="number" step="0.125" min="0" max="12" data-prop="fontSize" />
+                </label>
+                <label>
+                  Peso
+                  <select data-prop="weight">
+                    <option value="0">herda</option>
+                    <option value="400">normal</option>
+                    <option value="600">semibold</option>
+                    <option value="700">bold</option>
+                    <option value="800">extra</option>
+                  </select>
+                </label>
+                <label>
+                  Largura %
+                  <input type="number" step="1" min="0" max="100" data-prop="w" />
+                </label>
+                <label>
+                  Camada
+                  <input type="number" step="1" min="0" max="99" data-prop="z" />
+                </label>
+              </div>
+
+              <div class="prop-row">
+                <span>Cor</span>
+                <input type="color" data-prop-color-swatch />
+                <input type="text" data-prop="color" placeholder="herda" />
+              </div>
+
+              <div class="prop-row" role="group" aria-label="Alinhamento">
+                <span>Alinhar</span>
+                <button type="button" class="ed-btn" data-align="left">E</button>
+                <button type="button" class="ed-btn" data-align="center">C</button>
+                <button type="button" class="ed-btn" data-align="right">D</button>
+                <button type="button" class="ed-btn" data-align="">—</button>
+              </div>
+
+              <div class="prop-row">
+                <button type="button" class="ed-btn" data-layer="front">Trazer à frente</button>
+                <button type="button" class="ed-btn" data-layer="back">Enviar p/ trás</button>
+              </div>
+
+              <div class="prop-row">
+                <label class="prop-check">
+                  <input type="checkbox" data-prop-lock />
+                  Bloquear
+                </label>
+                <button type="button" class="ed-btn" data-layout-reset>Reiniciar</button>
+              </div>
+            </div>
+
             <!-- item de lista -->
             <div class="field" data-props-item hidden>
               <span class="label">Item da lista</span>
@@ -202,6 +266,40 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               </p>
             </div>
           </div>
+        </div>
+
+        <!-- Adicionar elemento livre ------------------------------ -->
+        <div class="panel-pane" data-pane="add">
+          <h2 class="panel-title">Adicionar elemento</h2>
+          <p class="panel-hint">
+            O elemento entra sobreposto à seção escolhida e pode ser arrastado e redimensionado
+            livremente, sem deslocar o conteúdo existente.
+          </p>
+
+          <div class="field">
+            <label class="label" for="add-section">Seção</label>
+            <select class="select" id="add-section" data-add-section></select>
+          </div>
+
+          <div class="prop-row">
+            <button type="button" class="ed-btn" data-add="text">
+              <Icon name="edit" size={15} />
+              Texto
+            </button>
+            <button type="button" class="ed-btn" data-add="image">
+              <Icon name="image" size={15} />
+              Imagem
+            </button>
+            <button type="button" class="ed-btn" data-add="icon">
+              <Icon name="star" size={15} />
+              Ícone
+            </button>
+          </div>
+
+          <p class="panel-hint" data-add-status></p>
+
+          <h3 class="panel-title" style="margin-top:var(--sp-5)">Elementos livres</h3>
+          <ul class="overlay-list" data-overlay-list></ul>
         </div>
 
         <!-- Cores -------------------------------------------------- -->
@@ -730,6 +828,100 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     width: 34px !important;
     text-align: right;
   }
+
+  /* ------------------------------------------- propriedades do elemento */
+  .editor .prop-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .editor .prop-grid label {
+    display: grid;
+    gap: 0.15rem;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+  }
+
+  .editor .prop-grid input,
+  .editor .prop-grid select {
+    width: 100%;
+    padding: 0.3rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-xs);
+    background: var(--c-white);
+  }
+
+  .editor .prop-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .editor .prop-row > span {
+    flex: none;
+    width: 38px;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+  }
+
+  .editor .prop-row input[type='color'] {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .editor .prop-row input[type='text'] {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    padding: 0.3rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+  }
+
+  .editor .prop-check {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+
+  .editor .overlay-list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .editor .overlay-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+  }
+
+  .editor .overlay-list__empty {
+    justify-content: center;
+    color: var(--text-faint);
+    border-style: dashed !important;
+  }
 </style>
 
 <script>
@@ -740,9 +932,37 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     overlay: string;
   }
 
+  interface ElementLayout {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    z: number;
+    fontSize: number;
+    color: string;
+    align: string;
+    weight: number;
+    locked: boolean;
+  }
+
+  interface LayoutPair {
+    desktop: ElementLayout;
+    mobile: ElementLayout | null;
+  }
+
+  interface OverlayItem {
+    id: string;
+    section: string;
+    kind: string;
+    content: string;
+    alt: string;
+  }
+
   interface Bootstrap {
     sectionOrder: string[];
     hiddenSections: string[];
+    layouts: Record<string, LayoutPair>;
+    overlays: OverlayItem[];
     sectionStyles: Record<string, SectionStyle>;
     labels: Record<string, string>;
     keys: string[];
@@ -754,14 +974,35 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     | { op: 'set'; path: string; value: string }
     | { op: 'reorder'; path: string; from: number; to: number }
     | { op: 'duplicate' | 'remove'; path: string; index: number }
-    | { op: 'sections'; order?: string[]; hidden?: string[] };
+    | { op: 'sections'; order?: string[]; hidden?: string[] }
+    | {
+        op: 'layout';
+        path: string;
+        device: string;
+        layout: ElementLayout | null;
+        clear?: boolean;
+      }
+    | { op: 'overlay-add'; overlay: Record<string, unknown> }
+    | {
+        op: 'overlay-layout';
+        id: string;
+        device: string;
+        layout: ElementLayout | null;
+        clear?: boolean;
+      }
+    | { op: 'overlay-content'; id: string; content?: string; alt?: string }
+    | { op: 'overlay-remove'; id: string };
 
   interface Selection {
-    path: string;
+    path: string | null;
+    overlay: string | null;
+    key: string;
     kind: string;
     value: string;
     label: string;
     section: string;
+    layout: ElementLayout;
+    hasMobile: boolean;
   }
 
   const dataEl = document.getElementById('editor-bootstrap');
@@ -777,7 +1018,41 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   let order = [...data.sectionOrder];
   let hidden = [...data.hiddenSections];
   const styles = data.sectionStyles;
+  const layouts: Record<string, LayoutPair> = { ...data.layouts };
+  let overlays: OverlayItem[] = [...data.overlays];
   let selection: Selection | null = null;
+  let device = 'desktop';
+
+  function emptyLayout(): ElementLayout {
+    return {
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      z: 0,
+      fontSize: 0,
+      color: '',
+      align: '',
+      weight: 0,
+      locked: false,
+    };
+  }
+
+  function layoutOf(key: string, forDevice: string): ElementLayout {
+    const pair = layouts[key];
+    if (!pair) return emptyLayout();
+    return (forDevice === 'mobile' ? pair.mobile : pair.desktop) ?? emptyLayout();
+  }
+
+  /** Elemento existente e elemento livre gravam por operações diferentes. */
+  function layoutOp(
+    target: { overlay: string | null; path: string | null; device: string },
+    layout: ElementLayout
+  ): Op {
+    return target.overlay
+      ? { op: 'overlay-layout', id: target.overlay, device: target.device, layout }
+      : { op: 'layout', path: target.path!, device: target.device, layout };
+  }
 
   // ------------------------------------------------------------ estado
   const queue: Op[] = [];
@@ -851,10 +1126,24 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     toFrame({ type: 'editor:section-order', orderMap });
   }
 
-  function applyValue(path: string, value: string, previous: string, kind: string) {
+  /** Conteúdo de elemento existente e de elemento livre gravam diferente. */
+  function contentOp(value: string): Op {
+    return selection?.overlay
+      ? { op: 'overlay-content', id: selection.overlay, content: value }
+      : { op: 'set', path: selection!.path!, value };
+  }
+
+  function applyValue(value: string, previous: string, kind: string) {
+    if (!selection) return;
     const extra = kind === 'icon' ? { svgInner: data.icons[value] ?? '' } : undefined;
-    toFrame({ type: 'editor:set', path, value, extra });
-    push({ op: 'set', path, value }, { op: 'set', path, value: previous });
+    toFrame({
+      type: 'editor:set',
+      path: selection.path,
+      overlay: selection.overlay,
+      value,
+      extra,
+    });
+    push(contentOp(value), contentOp(previous));
   }
 
   window.addEventListener('message', (event) => {
@@ -864,6 +1153,29 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
     if (payload.type === 'editor:ready') {
       toFrame({ type: 'editor:hidden-sections', hidden });
+      toFrame({ type: 'editor:layouts', layouts });
+      toFrame({ type: 'editor:device', device });
+      return;
+    }
+
+    // Elemento movido ou redimensionado dentro da pré-visualização.
+    if (payload.type === 'editor:layout') {
+      const moved = event.data as {
+        key: string;
+        overlay: string | null;
+        path: string | null;
+        device: string;
+        layout: ElementLayout;
+      };
+      const previous = layoutOf(moved.key, moved.device);
+      layouts[moved.key] = layouts[moved.key] ?? { desktop: emptyLayout(), mobile: null };
+      if (moved.device === 'mobile') layouts[moved.key].mobile = moved.layout;
+      else layouts[moved.key].desktop = moved.layout;
+
+      if (selection) selection.layout = moved.layout;
+      fillLayoutPanel(moved.layout);
+
+      push(layoutOp(moved, moved.layout), layoutOp(moved, previous));
       return;
     }
 
@@ -894,16 +1206,17 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     }
 
     if (payload.type === 'editor:change') {
-      const change = event.data as { path: string; value: string };
-      if (!selection || selection.path !== change.path) return;
+      const change = event.data as {
+        path: string | null;
+        overlay: string | null;
+        value: string;
+      };
+      if (!selection) return;
       const previous = selection.value;
       selection.value = change.value;
       const textArea = document.querySelector<HTMLTextAreaElement>('#prop-text');
       if (textArea && document.activeElement !== textArea) textArea.value = change.value;
-      push(
-        { op: 'set', path: change.path, value: change.value },
-        { op: 'set', path: change.path, value: previous }
-      );
+      push(contentOp(change.value), contentOp(previous));
     }
   });
 
@@ -931,6 +1244,65 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const mediaField = document.querySelector<HTMLElement>('[data-props-media]')!;
   const iconField = document.querySelector<HTMLElement>('[data-props-icon]')!;
   const itemField = document.querySelector<HTMLElement>('[data-props-item]')!;
+  const layoutField = document.querySelector<HTMLElement>('[data-props-layout]')!;
+  const layoutScope = document.querySelector<HTMLElement>('[data-layout-scope]')!;
+  const colorSwatch = document.querySelector<HTMLInputElement>('[data-prop-color-swatch]')!;
+  const lockBox = document.querySelector<HTMLInputElement>('[data-prop-lock]')!;
+
+  /** Escreve os valores do layout selecionado nos campos, sem disparar eventos. */
+  function fillLayoutPanel(layout: ElementLayout) {
+    document.querySelectorAll<HTMLInputElement>('[data-prop]').forEach((input) => {
+      const property = input.dataset.prop as keyof ElementLayout;
+      input.value = String(layout[property] ?? '');
+    });
+    colorSwatch.value = layout.color || '#000000';
+    lockBox.checked = layout.locked;
+    document.querySelectorAll<HTMLElement>('[data-align]').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.align === layout.align);
+    });
+  }
+
+  /** Manda a mudança para a pré-visualização; ela devolve o layout já aplicado. */
+  function setLayoutProp(property: keyof ElementLayout, value: string | number | boolean) {
+    if (!selection) return;
+    toFrame({ type: 'editor:layout-prop', property, value });
+  }
+
+  document.querySelectorAll<HTMLInputElement>('[data-prop]').forEach((input) => {
+    input.addEventListener('change', () => {
+      const property = input.dataset.prop as keyof ElementLayout;
+      const numeric = ['fontSize', 'w', 'h', 'z', 'weight'].includes(property);
+      setLayoutProp(property, numeric ? Number(input.value) : input.value);
+      if (property === 'color') colorSwatch.value = input.value || '#000000';
+    });
+  });
+
+  colorSwatch.addEventListener('input', () => {
+    const hexField = document.querySelector<HTMLInputElement>('[data-prop="color"]')!;
+    hexField.value = colorSwatch.value;
+    setLayoutProp('color', colorSwatch.value);
+  });
+
+  document.querySelectorAll<HTMLElement>('[data-align]').forEach((button) => {
+    button.addEventListener('click', () => setLayoutProp('align', button.dataset.align!));
+  });
+
+  document.querySelectorAll<HTMLElement>('[data-layer]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!selection) return;
+      const current = selection.layout.z;
+      const next =
+        button.dataset.layer === 'front' ? Math.min(99, current + 1) : Math.max(0, current - 1);
+      setLayoutProp('z', next);
+    });
+  });
+
+  lockBox.addEventListener('change', () => setLayoutProp('locked', lockBox.checked));
+
+  document.querySelector('[data-layout-reset]')!.addEventListener('click', () => {
+    if (!selection) return;
+    toFrame({ type: 'editor:layout-reset' });
+  });
 
   function showProps(current: Selection | null) {
     propsEmpty.hidden = Boolean(current);
@@ -951,8 +1323,15 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (isMedia) showMedia(current);
     if (current.kind === 'icon') showIcons(current.value);
 
-    const listInfo = listOf(current.path);
+    const listInfo = current.path ? listOf(current.path) : null;
     itemField.hidden = !listInfo;
+
+    layoutField.hidden = false;
+    layoutScope.textContent =
+      device === 'mobile'
+        ? 'Editando a versão de celular. O desktop não muda.'
+        : 'Editando a versão de computador.';
+    fillLayoutPanel(current.layout);
   }
 
   /** `benefits.items.2.title` → lista `benefits.items`, índice 2. */
@@ -971,11 +1350,13 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     const previous = selection.value;
     const value = textArea.value;
     selection.value = value;
-    toFrame({ type: 'editor:set', path: selection.path, value });
-    push(
-      { op: 'set', path: selection.path, value },
-      { op: 'set', path: selection.path, value: previous }
-    );
+    toFrame({
+      type: 'editor:set',
+      path: selection.path,
+      overlay: selection.overlay,
+      value,
+    });
+    push(contentOp(value), contentOp(previous));
   });
 
   // ------------------------------------------------------ mídia
@@ -1007,7 +1388,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (!selection) return;
     const previous = selection.value;
     selection.value = mediaUrl.value;
-    applyValue(selection.path, mediaUrl.value, previous, selection.kind);
+    applyValue(mediaUrl.value, previous, selection.kind);
     showMedia(selection);
   });
 
@@ -1024,7 +1405,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       const previous = selection.value;
       selection.value = result.url;
       // A URL vem do servidor, então o caminho digitado nunca fica fora de sincronia.
-      applyValue(selection.path, result.url, previous, selection.kind);
+      applyValue(result.url, previous, selection.kind);
       showMedia(selection);
       mediaStatus.textContent = 'Enviado.';
     } catch (error) {
@@ -1068,7 +1449,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         if (!selection) return;
         const previous = selection.value;
         selection.value = name;
-        applyValue(selection.path, name, previous, 'icon');
+        applyValue(name, previous, 'icon');
         showIcons(name, iconSearch.value);
       });
 
@@ -1092,7 +1473,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       if (!response.ok || !result.url) throw new Error(result.error || 'falha no envio');
       const previous = selection.value;
       selection.value = result.url;
-      applyValue(selection.path, result.url, previous, 'icon');
+      applyValue(result.url, previous, 'icon');
       iconStatus.textContent = 'Ícone aplicado.';
     } catch (error) {
       iconStatus.textContent = `Erro: ${(error as Error).message}`;
@@ -1104,7 +1485,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   // ------------------------------------------------- itens de lista
   function moveItem(delta: number) {
     if (!selection) return;
-    const info = listOf(selection.path);
+    const info = selection.path ? listOf(selection.path) : null;
     if (!info) return;
     const to = info.index + delta;
     if (to < 0) return;
@@ -1121,7 +1502,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
   document.querySelector('[data-item-duplicate]')!.addEventListener('click', () => {
     if (!selection) return;
-    const info = listOf(selection.path);
+    const info = selection.path ? listOf(selection.path) : null;
     if (!info) return;
     push({ op: 'duplicate', path: info.path, index: info.index });
     reloadPreview();
@@ -1129,7 +1510,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
   document.querySelector('[data-item-remove]')!.addEventListener('click', () => {
     if (!selection) return;
-    const info = listOf(selection.path);
+    const info = selection.path ? listOf(selection.path) : null;
     if (!info) return;
     if (!window.confirm('Excluir este item da lista?')) return;
     push({ op: 'remove', path: info.path, index: info.index });
@@ -1493,6 +1874,125 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         .querySelectorAll<HTMLElement>('[data-device]')
         .forEach((other) => other.classList.toggle('is-active', other === button));
       frame.dataset.device = button.dataset.device!;
+
+      // Celular tem configuração própria de posição/estilo; ao trocar de
+      // largura o editor passa a gravar naquele conjunto.
+      device = button.dataset.device === 'mobile' ? 'mobile' : 'desktop';
+      toFrame({ type: 'editor:device', device });
+      if (selection) {
+        selection.layout = layoutOf(selection.key, device);
+        showProps(selection);
+      }
     });
   });
+
+  // ------------------------------------------------- elementos livres
+  const addSection = document.querySelector<HTMLSelectElement>('[data-add-section]')!;
+  const addStatus = document.querySelector<HTMLElement>('[data-add-status]')!;
+  const overlayList = document.querySelector<HTMLElement>('[data-overlay-list]')!;
+
+  data.keys.forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = data.labels[key] ?? key;
+    addSection.appendChild(option);
+  });
+
+  const DEFAULT_CONTENT: Record<string, string> = {
+    text: 'Texto novo',
+    image: '/images/hero-essencial.svg',
+    icon: 'heart',
+  };
+
+  function newOverlayId(): string {
+    return 'ov-' + Math.random().toString(36).slice(2, 10);
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-add]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const kind = button.dataset.add!;
+      const overlay = {
+        id: newOverlayId(),
+        section: addSection.value,
+        kind,
+        content: DEFAULT_CONTENT[kind] ?? '',
+        alt: '',
+        // Entra num ponto visível, não colado no canto.
+        desktop: { ...emptyLayout(), x: 10, y: 10, w: kind === 'text' ? 30 : 15 },
+        mobile: null,
+      };
+
+      overlays = [...overlays, overlay as OverlayItem];
+      push({ op: 'overlay-add', overlay }, { op: 'overlay-remove', id: overlay.id });
+      addStatus.textContent = 'Elemento adicionado.';
+      renderOverlays();
+      // O elemento precisa vir renderizado pelo servidor para virar HTML real.
+      await reloadPreview();
+    });
+  });
+
+  function renderOverlays() {
+    overlayList.replaceChildren();
+
+    if (overlays.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'overlay-list__empty';
+      empty.textContent = 'Nenhum elemento livre ainda.';
+      overlayList.appendChild(empty);
+      return;
+    }
+
+    overlays.forEach((overlay) => {
+      const li = document.createElement('li');
+
+      const name = document.createElement('button');
+      name.type = 'button';
+      name.className = 'section-list__name';
+      const label =
+        overlay.kind === 'text' ? overlay.content : overlay.content.split('/').pop();
+      name.textContent = `${overlay.kind} · ${label}`;
+      name.addEventListener('click', () =>
+        toFrame({ type: 'editor:select-overlay', id: overlay.id })
+      );
+      li.appendChild(name);
+
+      const duplicate = document.createElement('button');
+      duplicate.type = 'button';
+      duplicate.className = 'section-list__toggle';
+      duplicate.title = 'Duplicar';
+      duplicate.textContent = '⧉';
+      duplicate.addEventListener('click', async () => {
+        const copy = {
+          ...overlay,
+          id: newOverlayId(),
+          desktop: { ...layoutOf('overlay:' + overlay.id, 'desktop') },
+        };
+        copy.desktop.x += 4;
+        copy.desktop.y += 4;
+        overlays = [...overlays, copy];
+        push({ op: 'overlay-add', overlay: copy }, { op: 'overlay-remove', id: copy.id });
+        renderOverlays();
+        await reloadPreview();
+      });
+      li.appendChild(duplicate);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'section-list__toggle';
+      remove.title = 'Excluir';
+      remove.textContent = '✕';
+      remove.addEventListener('click', async () => {
+        if (!window.confirm('Excluir este elemento?')) return;
+        overlays = overlays.filter((item) => item.id !== overlay.id);
+        push({ op: 'overlay-remove', id: overlay.id });
+        renderOverlays();
+        await reloadPreview();
+      });
+      li.appendChild(remove);
+
+      overlayList.appendChild(li);
+    });
+  }
+
+  renderOverlays();
 </script>

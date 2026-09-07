@@ -10,3 +10,6 @@ dist/
 
 # App Android (Capacitor) — contém node_modules e a keystore de assinatura
 mobile-app/
+
+# Copiado de node_modules por scripts/vendor-assets.mjs
+public/vendor/

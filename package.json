@@ -17,7 +17,11 @@
     "db:migrate:remote": "wrangler d1 execute essencial-saude-db --remote --file=migrations/0001_init.sql && wrangler d1 execute essencial-saude-db --remote --file=migrations/0002_posts_cover_url.sql",
     "db:studio:local": "wrangler d1 execute essencial-saude-db --local --command=\"SELECT id,name,email,role,status FROM users\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vendor": "node scripts/vendor-assets.mjs",
+    "predev": "npm run vendor",
+    "prebuild": "npm run vendor",
+    "pretest": "npm run vendor"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.2.3",
@@ -32,6 +36,7 @@
     "eslint": "^10.8.1",
     "eslint-plugin-astro": "^1.7.0",
     "globals": "^17.11.0",
+    "moveable": "^0.53.0",
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^6.0.3",

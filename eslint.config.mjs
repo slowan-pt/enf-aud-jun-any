@@ -12,6 +12,8 @@ export default [
       'scripts/**',
       // App Capacitor: código de terceiros e bundles gerados, fora deste projeto.
       'mobile-app/**',
+      // Bibliotecas copiadas de node_modules por scripts/vendor-assets.mjs.
+      'public/vendor/**',
     ],
   },
   js.configs.recommended,

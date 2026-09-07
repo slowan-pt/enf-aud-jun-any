@@ -15,6 +15,7 @@
 
   var selected = null;
   var hovered = null;
+  var SELECTABLE = '[data-edit],[data-overlay]';
 
   // ---------------------------------------------------------------- estilos
   var style = document.createElement('style');
@@ -29,6 +30,10 @@
     '[data-edit-item]{cursor:grab}',
     '[data-edit-item].is-edit-dragging{opacity:.35}',
     '[data-edit-item].is-edit-drop{outline:2px solid #12a794;outline-offset:4px}',
+    '[data-overlay]{cursor:pointer}',
+    '[data-overlay].is-edit-hover{outline:2px dashed rgba(37,99,235,.65);outline-offset:3px}',
+    '[data-overlay].is-edit-selected{outline:2px solid #2563eb;outline-offset:3px}',
+    '.is-edit-locked{cursor:not-allowed!important}',
   ].join('');
   document.head.appendChild(style);
 
@@ -54,13 +59,18 @@
   }
 
   function describe(element) {
+    var overlayId = element.getAttribute('data-overlay');
     return {
       path: element.getAttribute('data-edit'),
+      overlay: overlayId,
+      key: overlayId ? 'overlay:' + overlayId : element.getAttribute('data-edit'),
       kind: kindOf(element),
       value: valueOf(element),
-      label: element.getAttribute('data-edit-label') || '',
+      label: element.getAttribute('data-edit-label') || (overlayId ? 'Elemento livre' : ''),
       section: closestSection(element),
       rect: rectOf(element),
+      layout: layoutFor(element),
+      hasMobile: Boolean((layouts[keyOf(element)] || {}).mobile),
     };
   }
 
@@ -69,14 +79,202 @@
     return node ? node.getAttribute('data-section') : '';
   }
 
+  // ------------------------------------------------- manipulação livre
+  // Moveable opera sobre o elemento HTML real: ele continua sendo um <h1>, um
+  // <img>, um <p>. Nada aqui vira desenho em canvas.
+  var moveable = null;
+  var device = 'desktop';
+  var layouts = {}; // caminho/overlay -> { desktop, mobile }
+  var translate = [0, 0]; // deslocamento em px durante o arrasto
+  var editingText = false;
+
+  function isOverlay(element) {
+    return element.hasAttribute('data-overlay');
+  }
+
+  function keyOf(element) {
+    return isOverlay(element)
+      ? 'overlay:' + element.getAttribute('data-overlay')
+      : element.getAttribute('data-edit');
+  }
+
+  function sectionOf(element) {
+    return element.closest('[data-section]');
+  }
+
+  function layoutFor(element) {
+    var key = keyOf(element);
+    var pair = layouts[key] || { desktop: emptyLayout(), mobile: null };
+    layouts[key] = pair;
+    return pair[device] || pair.desktop;
+  }
+
+  function emptyLayout() {
+    return {
+      x: 0,
+      y: 0,
+      w: 0,
+      h: 0,
+      z: 0,
+      fontSize: 0,
+      color: '',
+      align: '',
+      weight: 0,
+      locked: false,
+    };
+  }
+
+  function reportLayout(element, layout) {
+    layouts[keyOf(element)][device] = layout;
+    post({
+      type: 'editor:layout',
+      key: keyOf(element),
+      overlay: isOverlay(element) ? element.getAttribute('data-overlay') : null,
+      path: isOverlay(element) ? null : element.getAttribute('data-edit'),
+      device: device,
+      layout: layout,
+    });
+  }
+
+  /** Irmãos da mesma seção viram guias de alinhamento. */
+  function guidelinesFor(element) {
+    var section = sectionOf(element);
+    if (!section) return [];
+    var nodes = section.querySelectorAll('[data-edit],[data-overlay]');
+    return [].slice.call(nodes).filter(function (node) {
+      return node !== element && node.offsetWidth > 0;
+    });
+  }
+
+  function detachMoveable() {
+    if (moveable) {
+      moveable.destroy();
+      moveable = null;
+    }
+  }
+
+  function attachMoveable(element) {
+    detachMoveable();
+    if (typeof window.Moveable !== 'function') return;
+
+    var layout = layoutFor(element);
+    if (layout.locked) return;
+
+    var overlay = isOverlay(element);
+    translate = [0, 0];
+
+    moveable = new window.Moveable(document.body, {
+      target: element,
+      draggable: true,
+      resizable: true,
+      snappable: true,
+      origin: false,
+      edge: false,
+      keepRatio: false,
+      throttleDrag: 0,
+      throttleResize: 0,
+      elementGuidelines: guidelinesFor(element),
+      snapThreshold: 6,
+      snapDirections: {
+        top: true,
+        left: true,
+        bottom: true,
+        right: true,
+        center: true,
+        middle: true,
+      },
+      elementSnapDirections: {
+        top: true,
+        left: true,
+        bottom: true,
+        right: true,
+        center: true,
+        middle: true,
+      },
+    });
+
+    moveable
+      .on('dragStart', function (event) {
+        event.set(translate);
+      })
+      .on('drag', function (event) {
+        translate = event.beforeTranslate;
+        element.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
+      })
+      .on('dragEnd', function () {
+        commitPosition(element, overlay);
+      })
+      .on('resizeStart', function (event) {
+        event.setOrigin(['%', '%']);
+        if (event.dragStart) event.dragStart.set(translate);
+      })
+      .on('resize', function (event) {
+        element.style.width = event.width + 'px';
+        if (overlay) element.style.height = event.height + 'px';
+        translate = event.drag.beforeTranslate;
+        element.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
+      })
+      .on('resizeEnd', function () {
+        commitSize(element, overlay);
+        commitPosition(element, overlay);
+      });
+  }
+
+  /** Converte o arrasto em px para a proporção que vai ser gravada. */
+  function commitPosition(element, overlay) {
+    var layout = Object.assign({}, layoutFor(element));
+    var section = sectionOf(element);
+    if (!section) return;
+
+    if (overlay) {
+      var rect = element.getBoundingClientRect();
+      var box = section.getBoundingClientRect();
+      layout.x = round(((rect.left - box.left) / box.width) * 100);
+      layout.y = round(((rect.top - box.top) / box.height) * 100);
+      element.style.transform = '';
+      element.style.left = layout.x + '%';
+      element.style.top = layout.y + '%';
+      translate = [0, 0];
+    } else {
+      // Deslocamento em % do próprio elemento: é assim que `translate()`
+      // interpreta porcentagem, então continua valendo em qualquer largura.
+      var width = element.offsetWidth || 1;
+      var height = element.offsetHeight || 1;
+      layout.x = round((translate[0] / width) * 100);
+      layout.y = round((translate[1] / height) * 100);
+    }
+
+    reportLayout(element, layout);
+    if (moveable) moveable.updateRect();
+  }
+
+  function commitSize(element, overlay) {
+    var layout = Object.assign({}, layoutFor(element));
+    var section = sectionOf(element);
+    if (!section) return;
+    var box = section.getBoundingClientRect();
+
+    layout.w = round((element.offsetWidth / box.width) * 100);
+    if (overlay) layout.h = round((element.offsetHeight / box.height) * 100);
+
+    element.style.width = layout.w + '%';
+    if (overlay && layout.h) element.style.height = layout.h + '%';
+
+    reportLayout(element, layout);
+  }
+
+  function round(value) {
+    return Math.round(value * 100) / 100;
+  }
+
   // -------------------------------------------------------------- seleção
   function clearSelection() {
+    detachMoveable();
     if (!selected) return;
-    if (selected.isContentEditable) {
-      selected.removeAttribute('contenteditable');
-    }
+    if (selected.isContentEditable) selected.removeAttribute('contenteditable');
     selected.classList.remove('is-edit-selected');
     selected = null;
+    editingText = false;
   }
 
   function select(element, options) {
@@ -84,22 +282,36 @@
     clearSelection();
     selected = element;
     element.classList.add('is-edit-selected');
-
-    var kind = kindOf(element);
-    if (kind === 'text' || kind === 'multiline') {
-      element.setAttribute('contenteditable', 'true');
-      element.spellcheck = false;
-      if (!options || options.focus !== false) element.focus();
-    }
-
+    attachMoveable(element);
     post({ type: 'editor:select', element: describe(element) });
+    if (options && options.scroll) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  /** Duplo clique entra na edição do texto; enquanto isso o arrasto sai de cena. */
+  function startTextEdit(element) {
+    var kind = kindOf(element);
+    if (kind !== 'text' && kind !== 'multiline') return;
+    detachMoveable();
+    editingText = true;
+    element.setAttribute('contenteditable', 'true');
+    element.spellcheck = false;
+    element.focus();
+  }
+
+  function stopTextEdit() {
+    if (!editingText || !selected) return;
+    selected.removeAttribute('contenteditable');
+    editingText = false;
+    attachMoveable(selected);
   }
 
   // -------------------------------------------------------------- eventos
   document.addEventListener(
     'mouseover',
     function (event) {
-      var target = event.target.closest('[data-edit]');
+      var target = event.target.closest(SELECTABLE);
       if (hovered && hovered !== target) hovered.classList.remove('is-edit-hover');
       if (target && target !== selected) {
         target.classList.add('is-edit-hover');
@@ -123,7 +335,7 @@
   document.addEventListener(
     'click',
     function (event) {
-      var target = event.target.closest('[data-edit]');
+      var target = event.target.closest(SELECTABLE);
 
       // Em modo de edição nenhum link navega: clicar num botão seleciona o botão.
       var link = event.target.closest('a, button');
@@ -149,29 +361,71 @@
     true
   );
 
+  document.addEventListener(
+    'dblclick',
+    function (event) {
+      var target = event.target.closest(SELECTABLE);
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (target !== selected) select(target);
+      startTextEdit(target);
+    },
+    true
+  );
+
   // Digitação em elemento de texto: avisa o editor a cada alteração.
   document.addEventListener('input', function (event) {
-    var target = event.target.closest('[data-edit]');
+    var target = event.target.closest(SELECTABLE);
     if (!target || !target.isContentEditable) return;
     post({
       type: 'editor:change',
       path: target.getAttribute('data-edit'),
+      overlay: target.getAttribute('data-overlay'),
       value: target.textContent.trim(),
     });
   });
 
-  // Enter finaliza a edição de um título de uma linha em vez de criar parágrafo.
   document.addEventListener('keydown', function (event) {
-    if (!selected || !selected.isContentEditable) return;
-    if (event.key === 'Enter' && kindOf(selected) !== 'multiline') {
-      event.preventDefault();
-      selected.blur();
+    if (!selected) return;
+
+    if (selected.isContentEditable) {
+      // Enter fecha a edição de um título de uma linha em vez de criar parágrafo.
+      if (event.key === 'Enter' && kindOf(selected) !== 'multiline') {
+        event.preventDefault();
+        selected.blur();
+        stopTextEdit();
+        return;
+      }
+      if (event.key === 'Escape') {
+        selected.blur();
+        stopTextEdit();
+        return;
+      }
+      return;
     }
+
     if (event.key === 'Escape') {
-      selected.blur();
       clearSelection();
       post({ type: 'editor:deselect' });
+      return;
     }
+
+    // Setas movem o elemento selecionado, como em qualquer editor visual.
+    var step = event.shiftKey ? 10 : 1;
+    var delta = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    }[event.key];
+    if (!delta || layoutFor(selected).locked) return;
+
+    event.preventDefault();
+    var overlay = isOverlay(selected);
+    translate = [translate[0] + delta[0], translate[1] + delta[1]];
+    selected.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
+    commitPosition(selected, overlay);
   });
 
   window.addEventListener(
@@ -186,7 +440,12 @@
   // O mesmo campo pode aparecer em mais de um lugar da página (o vídeo do topo
   // e o da seção promocional são o mesmo dado), então todas as ocorrências
   // precisam refletir a edição.
-  function applySet(path, value, extra) {
+  function applySet(path, value, extra, overlayId) {
+    if (overlayId) {
+      var node = document.querySelector('[data-overlay="' + CSS.escape(overlayId) + '"]');
+      if (node) applySetTo(node, path || '', value, extra);
+      return;
+    }
     document.querySelectorAll('[data-edit="' + CSS.escape(path) + '"]').forEach(function (el) {
       applySetTo(el, path, value, extra);
     });
@@ -289,8 +548,14 @@
 
     switch (data.type) {
       case 'editor:set':
-        applySet(data.path, data.value, data.extra);
+        applySet(data.path, data.value, data.extra, data.overlay);
         break;
+
+      case 'editor:select-overlay': {
+        var node = document.querySelector('[data-overlay="' + CSS.escape(data.id) + '"]');
+        if (node) select(node, { scroll: true });
+        break;
+      }
       case 'editor:section-style':
         applySectionStyle(data.section, data.css);
         break;
@@ -318,8 +583,77 @@
       case 'editor:deselect':
         clearSelection();
         break;
+
+      // Layouts já gravados, enviados quando a pré-visualização abre.
+      case 'editor:layouts':
+        layouts = data.layouts || {};
+        break;
+
+      case 'editor:device':
+        device = data.device === 'mobile' ? 'mobile' : 'desktop';
+        if (selected) {
+          applyLayoutStyle(selected, layoutFor(selected));
+          attachMoveable(selected);
+          post({ type: 'editor:select', element: describe(selected) });
+        }
+        break;
+
+      // Propriedade alterada na barra do editor (fonte, cor, camada, trava…).
+      case 'editor:layout-prop': {
+        if (!selected) break;
+        var current = Object.assign({}, layoutFor(selected));
+        current[data.property] = data.value;
+        layouts[keyOf(selected)][device] = current;
+        applyLayoutStyle(selected, current);
+        if (data.property === 'locked') {
+          if (current.locked) detachMoveable();
+          else attachMoveable(selected);
+        } else if (moveable) {
+          moveable.updateRect();
+        }
+        reportLayout(selected, current);
+        break;
+      }
+
+      case 'editor:layout-reset': {
+        if (!selected) break;
+        var cleared = emptyLayout();
+        layouts[keyOf(selected)][device] = cleared;
+        applyLayoutStyle(selected, cleared);
+        translate = [0, 0];
+        reportLayout(selected, cleared);
+        if (moveable) moveable.updateRect();
+        post({ type: 'editor:select', element: describe(selected) });
+        break;
+      }
     }
   });
+
+  /** Reescreve o style inline a partir do layout, sem tocar em outras regras. */
+  function applyLayoutStyle(element, layout) {
+    var overlay = isOverlay(element);
+    var style = element.style;
+
+    if (overlay) {
+      style.position = 'absolute';
+      style.left = layout.x + '%';
+      style.top = layout.y + '%';
+      style.transform = '';
+      style.height = layout.h > 0 ? layout.h + '%' : '';
+    } else {
+      style.transform =
+        layout.x || layout.y ? 'translate(' + layout.x + '%,' + layout.y + '%)' : '';
+      style.display = layout.x || layout.y || layout.w ? 'inline-block' : '';
+    }
+
+    style.width = layout.w > 0 ? layout.w + '%' : '';
+    style.zIndex = layout.z > 0 ? String(layout.z) : '';
+    style.fontSize = layout.fontSize > 0 ? layout.fontSize + 'rem' : '';
+    style.color = layout.color || '';
+    style.textAlign = layout.align || '';
+    style.fontWeight = layout.weight > 0 ? String(layout.weight) : '';
+    element.classList.toggle('is-edit-locked', layout.locked === true);
+  }
 
   // ------------------------------------------- arrastar itens de uma lista
   // Depois de mover um item, os caminhos (`benefits.items.2.title`) ficam
