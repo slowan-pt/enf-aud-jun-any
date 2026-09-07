@@ -110,6 +110,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
           <Icon name="edit" size={20} />
           <span>Elemento</span>
         </button>
+        <button type="button" class="rail-btn" data-tool="layers">
+          <Icon name="list" size={20} />
+          <span>Camadas</span>
+        </button>
         <button type="button" class="rail-btn" data-tool="add">
           <Icon name="plus" size={20} />
           <span>Adicionar</span>
@@ -237,12 +241,34 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               </div>
 
               <div class="prop-row">
+                <span>Girar</span>
+                <input type="range" min="-180" max="180" step="1" data-prop-rotate />
+                <span class="bg-field__readout" data-rotate-readout>0°</span>
+              </div>
+
+              <div class="prop-row">
                 <label class="prop-check">
                   <input type="checkbox" data-prop-lock />
                   Bloquear
                 </label>
+                <label class="prop-check">
+                  <input type="checkbox" data-prop-hide />
+                  Ocultar
+                </label>
                 <button type="button" class="ed-btn" data-layout-reset>Reiniciar</button>
               </div>
+
+              <div class="prop-row">
+                <button type="button" class="ed-btn" data-el-duplicate>
+                  <Icon name="copy" size={15} />
+                  Duplicar
+                </button>
+                <button type="button" class="ed-btn ed-btn--danger" data-el-delete>
+                  <Icon name="trash" size={15} />
+                  Excluir
+                </button>
+              </div>
+              <p class="panel-hint" data-el-actions-hint></p>
             </div>
 
             <!-- item de lista -->
@@ -273,6 +299,20 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
           </div>
         </div>
 
+        <!-- Camadas ----------------------------------------------- -->
+        <div class="panel-pane" data-pane="layers">
+          <h2 class="panel-title">Camadas</h2>
+          <div class="field">
+            <label class="label" for="layer-section">Seção</label>
+            <select class="select" id="layer-section" data-layer-section></select>
+          </div>
+          <p class="panel-hint">
+            Arraste para mudar a ordem visual. O olho oculta no site, o cadeado trava a
+            manipulação e o lápis renomeia a camada.
+          </p>
+          <ul class="layer-list" data-layer-list></ul>
+        </div>
+
         <!-- Adicionar elemento livre ------------------------------ -->
         <div class="panel-pane" data-pane="add">
           <h2 class="panel-title">Adicionar elemento</h2>
@@ -286,22 +326,46 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
             <select class="select" id="add-section" data-add-section></select>
           </div>
 
-          <div class="prop-row">
-            <button type="button" class="ed-btn" data-add="text">
-              <Icon name="edit" size={15} />
+          <div class="add-grid">
+            <button type="button" class="add-card" draggable="true" data-add="text">
+              <Icon name="edit" size={18} />
               Texto
             </button>
-            <button type="button" class="ed-btn" data-add="image">
-              <Icon name="image" size={15} />
+            <button type="button" class="add-card" draggable="true" data-add="image">
+              <Icon name="image" size={18} />
               Imagem
             </button>
-            <button type="button" class="ed-btn" data-add="icon">
-              <Icon name="star" size={15} />
+            <button type="button" class="add-card" draggable="true" data-add="video">
+              <Icon name="play" size={18} />
+              Vídeo
+            </button>
+            <button type="button" class="add-card" draggable="true" data-add="icon">
+              <Icon name="star" size={18} />
               Ícone
             </button>
+            <button type="button" class="add-card" draggable="true" data-add="shape">
+              <Icon name="square" size={18} />
+              Forma
+            </button>
+            <a class="add-card" href="/admin/midia" target="_blank" rel="noopener">
+              <Icon name="upload" size={18} />
+              Uploads
+            </a>
           </div>
 
+          <p class="panel-hint">
+            Clique para inserir no meio da seção escolhida, ou arraste o cartão até o ponto
+            exato da pré-visualização.
+          </p>
           <p class="panel-hint" data-add-status></p>
+
+          <div class="field">
+            <span class="label">Fundo da seção</span>
+            <p class="panel-hint">
+              Cor, imagem e escurecimento ficam na aba
+              <button type="button" class="link-like" data-goto-colors>Cores</button>.
+            </p>
+          </div>
 
           <h3 class="panel-title" style="margin-top:var(--sp-5)">Elementos livres</h3>
           <ul class="overlay-list" data-overlay-list></ul>
@@ -927,6 +991,73 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     color: var(--text-faint);
     border-style: dashed !important;
   }
+
+  /* ------------------------------------------------ camadas e inserção */
+  .editor .layer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .editor .layer-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    font-size: var(--fs-xs);
+    cursor: grab;
+  }
+
+  .editor .layer-list li.is-dragging {
+    opacity: 0.4;
+  }
+
+  .editor .layer-list li.is-off .section-list__name {
+    text-decoration: line-through;
+    color: var(--text-faint);
+  }
+
+  .editor .add-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+    margin-bottom: var(--sp-3);
+  }
+
+  .editor .add-card {
+    display: grid;
+    justify-items: center;
+    gap: 0.3rem;
+    padding: 0.7rem 0.3rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+    text-decoration: none;
+    cursor: grab;
+  }
+
+  .editor .add-card:hover {
+    border-color: var(--c-brand-400);
+    color: var(--c-brand-700);
+    background: var(--c-brand-50);
+  }
+
+  .editor .link-like {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--c-brand-600);
+    text-decoration: underline;
+    cursor: pointer;
+  }
 </style>
 
 <script>
@@ -949,7 +1080,13 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     color: string;
     align: string;
     weight: number;
+    /** Rotação em graus. */
+    r: number;
     locked: boolean;
+    /** Oculto no site; o conteúdo continua salvo. */
+    hidden: boolean;
+    /** Nome dado no painel de camadas. */
+    label: string;
   }
 
   interface LayoutPair {
@@ -1043,7 +1180,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       color: '',
       align: '',
       weight: 0,
+      r: 0,
       locked: false,
+      hidden: false,
+      label: '',
     };
   }
 
@@ -1207,6 +1347,23 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       return;
     }
 
+    if (payload.type === 'editor:drop-resolved') {
+      const drop = event.data as { kind: string; section: string; x: number; y: number };
+      void inserirElemento(drop.kind, drop.section, drop.x, drop.y);
+      return;
+    }
+
+    if (payload.type === 'editor:drop-missed') {
+      addStatus.textContent = 'Solte sobre uma seção editável da página.';
+      return;
+    }
+
+    if (payload.type === 'editor:inventory') {
+      inventory = (event.data as { items: LayerItem[] }).items;
+      renderLayers();
+      return;
+    }
+
     if (payload.type === 'editor:deselect') {
       selection = null;
       showProps(null);
@@ -1278,6 +1435,12 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     });
     colorSwatch.value = layout.color || '#000000';
     lockBox.checked = layout.locked;
+    hideBox.checked = layout.hidden;
+    rotateRange.value = String(layout.r ?? 0);
+    rotateReadout.textContent = `${layout.r ?? 0}°`;
+    actionsHint.textContent = selection?.overlay
+      ? 'Elemento livre: excluir remove de vez.'
+      : 'Elemento da estrutura: duplicar cria uma cópia livre e excluir apenas oculta no site.';
     document.querySelectorAll<HTMLElement>('[data-align]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.align === layout.align);
     });
@@ -1319,6 +1482,77 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   });
 
   lockBox.addEventListener('change', () => setLayoutProp('locked', lockBox.checked));
+
+  const hideBox = document.querySelector<HTMLInputElement>('[data-prop-hide]')!;
+  hideBox.addEventListener('change', () => setLayoutProp('hidden', hideBox.checked));
+
+  const rotateRange = document.querySelector<HTMLInputElement>('[data-prop-rotate]')!;
+  const rotateReadout = document.querySelector<HTMLElement>('[data-rotate-readout]')!;
+  rotateRange.addEventListener('input', () => {
+    rotateReadout.textContent = `${rotateRange.value}°`;
+  });
+  rotateRange.addEventListener('change', () => setLayoutProp('r', Number(rotateRange.value)));
+
+  // ------------------------------------------- duplicar / excluir elemento
+  const actionsHint = document.querySelector<HTMLElement>('[data-el-actions-hint]')!;
+
+  /**
+   * Duplicar um elemento existente não pode copiar a estrutura da página — ele
+   * ocupa um lugar fixo no conteúdo. A cópia vira um elemento livre, com id
+   * próprio e conteúdo independente, posicionado ao lado do original.
+   */
+  document.querySelector('[data-el-duplicate]')!.addEventListener('click', async () => {
+    if (!selection) return;
+    const origem = layoutOf(selection.key, device);
+    const base = selection.overlay
+      ? overlays.find((item) => item.id === selection!.overlay)
+      : null;
+
+    const copy = {
+      id: newOverlayId(),
+      section: selection.section,
+      kind: base?.kind ?? kindToOverlay(selection.kind),
+      content: base?.content ?? selection.value,
+      alt: base?.alt ?? '',
+      desktop: { ...origem, x: origem.x + 4, y: origem.y + 4, hidden: false, locked: false },
+      mobile: null,
+    };
+
+    overlays = [...overlays, copy as OverlayItem];
+    push({ op: 'overlay-add', overlay: copy }, { op: 'overlay-remove', id: copy.id });
+    renderOverlays();
+    await reloadPreview();
+  });
+
+  /** O tipo do elemento existente vira o tipo equivalente de elemento livre. */
+  function kindToOverlay(kind: string): string {
+    if (kind === 'image' || kind === 'video' || kind === 'icon') return kind;
+    return 'text';
+  }
+
+  document.querySelector('[data-el-delete]')!.addEventListener('click', async () => {
+    if (!selection) return;
+
+    // Elemento livre é removido de verdade; elemento existente é ocultado — ele
+    // faz parte da estrutura da página e some do site, mas o conteúdo continua
+    // gravado e pode voltar.
+    if (selection.overlay) {
+      if (
+        !window.confirm('Excluir este elemento livre? A ação pode ser desfeita ao recarregar.')
+      )
+        return;
+      const id = selection.overlay;
+      overlays = overlays.filter((item) => item.id !== id);
+      push({ op: 'overlay-remove', id });
+      renderOverlays();
+      await reloadPreview();
+      return;
+    }
+
+    if (!window.confirm('Ocultar este elemento no site? O conteúdo continua salvo.')) return;
+    hideBox.checked = true;
+    setLayoutProp('hidden', true);
+  });
 
   document.querySelector('[data-layout-reset]')!.addEventListener('click', () => {
     if (!selection) return;
@@ -1922,34 +2156,48 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const DEFAULT_CONTENT: Record<string, string> = {
     text: 'Texto novo',
     image: '/images/hero-essencial.svg',
+    video: '',
     icon: 'heart',
+    shape: '',
+  };
+
+  const DEFAULT_WIDTH: Record<string, number> = {
+    text: 30,
+    image: 20,
+    video: 30,
+    icon: 8,
+    shape: 15,
   };
 
   function newOverlayId(): string {
     return 'ov-' + Math.random().toString(36).slice(2, 10);
   }
 
-  document.querySelectorAll<HTMLElement>('[data-add]').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const kind = button.dataset.add!;
-      const overlay = {
-        id: newOverlayId(),
-        section: addSection.value,
-        kind,
-        content: DEFAULT_CONTENT[kind] ?? '',
-        alt: '',
-        // Entra num ponto visível, não colado no canto.
-        desktop: { ...emptyLayout(), x: 10, y: 10, w: kind === 'text' ? 30 : 15 },
-        mobile: null,
-      };
+  /** Cria um elemento livre na seção e posição indicadas. */
+  async function inserirElemento(kind: string, section: string, x: number, y: number) {
+    const overlay = {
+      id: newOverlayId(),
+      section,
+      kind,
+      content: DEFAULT_CONTENT[kind] ?? '',
+      alt: '',
+      desktop: { ...emptyLayout(), x, y, w: DEFAULT_WIDTH[kind] ?? 20 },
+      mobile: null,
+    };
 
-      overlays = [...overlays, overlay as OverlayItem];
-      push({ op: 'overlay-add', overlay }, { op: 'overlay-remove', id: overlay.id });
-      addStatus.textContent = 'Elemento adicionado.';
-      renderOverlays();
-      // O elemento precisa vir renderizado pelo servidor para virar HTML real.
-      await reloadPreview();
-    });
+    overlays = [...overlays, overlay as OverlayItem];
+    push({ op: 'overlay-add', overlay }, { op: 'overlay-remove', id: overlay.id });
+    addStatus.textContent = 'Elemento inserido.';
+    renderOverlays();
+    // Precisa vir renderizado pelo servidor para virar HTML de verdade.
+    await reloadPreview();
+  }
+
+  // Clique insere no meio da seção escolhida; arrastar insere no ponto solto.
+  document.querySelectorAll<HTMLElement>('[data-add]').forEach((button) => {
+    button.addEventListener('click', () =>
+      inserirElemento(button.dataset.add!, addSection.value, 35, 12)
+    );
   });
 
   function renderOverlays() {
@@ -2016,4 +2264,166 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   renderOverlays();
+
+  // --------------------------------------------------- painel de camadas
+  interface LayerItem {
+    key: string;
+    section: string;
+    kind: string;
+    overlay: string | null;
+    path: string | null;
+    label: string;
+    text: string;
+    locked: boolean;
+    hidden: boolean;
+    z: number;
+  }
+
+  let inventory: LayerItem[] = [];
+  const layerSection = document.querySelector<HTMLSelectElement>('[data-layer-section]')!;
+  const layerList = document.querySelector<HTMLElement>('[data-layer-list]')!;
+  let layerDrag: string | null = null;
+
+  data.keys.forEach((key) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = data.labels[key] ?? key;
+    layerSection.appendChild(option);
+  });
+  layerSection.addEventListener('change', renderLayers);
+
+  function setLayerProp(item: LayerItem, property: keyof ElementLayout, value: unknown) {
+    const previous = layoutOf(item.key, device);
+    const next = { ...previous, [property]: value } as ElementLayout;
+    layouts[item.key] = layouts[item.key] ?? { desktop: emptyLayout(), mobile: null };
+    if (device === 'mobile') layouts[item.key].mobile = next;
+    else layouts[item.key].desktop = next;
+
+    const target = { overlay: item.overlay, path: item.path, device };
+    push(layoutOp(target, next), layoutOp(target, previous));
+    toFrame({ type: 'editor:layouts', layouts });
+    toFrame({ type: 'editor:inventory-request' });
+  }
+
+  function renderLayers() {
+    const section = layerSection.value;
+    const mine = inventory.filter((item) => item.section === section).sort((a, b) => b.z - a.z);
+
+    layerList.replaceChildren();
+
+    if (mine.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'overlay-list__empty';
+      empty.textContent = 'Nada nesta seção.';
+      layerList.appendChild(empty);
+      return;
+    }
+
+    mine.forEach((item) => {
+      const li = document.createElement('li');
+      li.draggable = true;
+      li.dataset.key = item.key;
+      if (item.hidden) li.classList.add('is-off');
+
+      const grip = document.createElement('span');
+      grip.textContent = '\u283F';
+      grip.style.color = 'var(--text-faint)';
+      li.appendChild(grip);
+
+      const name = document.createElement('button');
+      name.type = 'button';
+      name.className = 'section-list__name';
+      name.title = item.text || item.key;
+      name.textContent = item.label;
+      name.addEventListener('click', () =>
+        toFrame({ type: 'editor:select-key', key: item.key })
+      );
+      li.appendChild(name);
+
+      const rename = document.createElement('button');
+      rename.type = 'button';
+      rename.className = 'section-list__toggle';
+      rename.title = 'Renomear camada';
+      rename.textContent = '\u270E';
+      rename.addEventListener('click', () => {
+        const novo = window.prompt('Nome da camada:', item.label);
+        if (novo === null) return;
+        setLayerProp(item, 'label', novo.slice(0, 60));
+      });
+      li.appendChild(rename);
+
+      const lock = document.createElement('button');
+      lock.type = 'button';
+      lock.className = 'section-list__toggle';
+      lock.title = item.locked ? 'Destravar' : 'Travar';
+      lock.textContent = item.locked ? '\u{1F512}' : '\u{1F513}';
+      lock.addEventListener('click', () => setLayerProp(item, 'locked', !item.locked));
+      li.appendChild(lock);
+
+      const eye = document.createElement('button');
+      eye.type = 'button';
+      eye.className = 'section-list__toggle';
+      eye.title = item.hidden ? 'Mostrar no site' : 'Ocultar no site';
+      eye.textContent = item.hidden ? '\u{1F6AB}' : '\u{1F441}';
+      eye.addEventListener('click', () => setLayerProp(item, 'hidden', !item.hidden));
+      li.appendChild(eye);
+
+      li.addEventListener('dragstart', () => {
+        layerDrag = item.key;
+        li.classList.add('is-dragging');
+      });
+      li.addEventListener('dragend', () => {
+        layerDrag = null;
+        li.classList.remove('is-dragging');
+      });
+      li.addEventListener('dragover', (event) => event.preventDefault());
+      li.addEventListener('drop', (event) => {
+        event.preventDefault();
+        if (!layerDrag || layerDrag === item.key) return;
+        // A lista vai da camada mais alta para a mais baixa; soltar sobre um
+        // item significa passar a ficar acima dele.
+        const arrastado = inventory.find((n) => n.key === layerDrag);
+        if (!arrastado) return;
+        setLayerProp(arrastado, 'z', Math.max(0, Math.min(99, item.z + 1)));
+      });
+
+      layerList.appendChild(li);
+    });
+  }
+
+  // --------------------------------------- inserir arrastando na página
+  let dragKind: string | null = null;
+
+  document.querySelectorAll<HTMLElement>('[data-add]').forEach((card) => {
+    card.addEventListener('dragstart', (event) => {
+      dragKind = card.dataset.add!;
+      (event as DragEvent).dataTransfer?.setData('text/plain', dragKind);
+    });
+    card.addEventListener('dragend', () => {
+      dragKind = null;
+    });
+  });
+
+  // O iframe não recebe o drop vindo de fora, então a soltura é capturada na
+  // moldura e o runtime converte o ponto em coordenada da seção.
+  const canvas = document.querySelector<HTMLElement>('.editor__canvas')!;
+  canvas.addEventListener('dragover', (event) => {
+    if (dragKind) event.preventDefault();
+  });
+  canvas.addEventListener('drop', (event) => {
+    if (!dragKind) return;
+    event.preventDefault();
+    const box = preview.getBoundingClientRect();
+    toFrame({
+      type: 'editor:drop-point',
+      kind: dragKind,
+      clientX: event.clientX - box.left,
+      clientY: event.clientY - box.top,
+    });
+    dragKind = null;
+  });
+
+  document
+    .querySelector('[data-goto-colors]')
+    ?.addEventListener('click', () => openTool('colors'));
 </script>

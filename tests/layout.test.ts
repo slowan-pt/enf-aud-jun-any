@@ -117,9 +117,12 @@ describe('layoutStylesheet — elementos existentes', () => {
     expect(css).toContain('display:inline-block');
   });
 
-  it('largura sai em % da seção', () => {
+  it('largura sai em cqw — a referência é a seção, não o elemento-pai', () => {
     const css = layoutStylesheet({ 'a.b': { desktop: layout({ w: 42 }), mobile: null } }, []);
-    expect(css).toContain('width:42%');
+    expect(css).toContain('width:42cqw');
+    // Com '%' a medida seria relativa ao container aninhado que envolve o
+    // elemento, e mudaria conforme a estrutura interna da seção.
+    expect(css).not.toContain('width:42%');
   });
 
   it('camada acompanha position:relative para o z-index funcionar', () => {
@@ -144,7 +147,7 @@ describe('layoutStylesheet — elementos livres', () => {
     expect(css).toContain('position:absolute');
     expect(css).toContain('left:20cqw');
     expect(css).toContain('top:30cqw');
-    expect(css).toContain('width:25%');
+    expect(css).toContain('width:25cqw');
   });
 
   it('elemento livre sem deslocamento ainda é posicionado', () => {

@@ -34,6 +34,7 @@
     '[data-overlay].is-edit-hover{outline:2px dashed rgba(37,99,235,.65);outline-offset:3px}',
     '[data-overlay].is-edit-selected{outline:2px solid #2563eb;outline-offset:3px}',
     '.is-edit-locked{cursor:not-allowed!important}',
+    '.is-edit-hidden{opacity:.3;outline:1px dashed #94a3b8}',
   ].join('');
   document.head.appendChild(style);
 
@@ -86,6 +87,7 @@
   var device = 'desktop';
   var layouts = {}; // caminho/overlay -> { desktop, mobile }
   var translate = [0, 0]; // deslocamento em px durante o arrasto
+  var angle = 0; // giro em graus durante a manipulacao
   var editingText = false;
 
   function isOverlay(element) {
@@ -121,7 +123,10 @@
       color: '',
       align: '',
       weight: 0,
+      r: 0,
       locked: false,
+      hidden: false,
+      label: '',
     };
   }
 
@@ -163,11 +168,13 @@
 
     var overlay = isOverlay(element);
     translate = [0, 0];
+    angle = layout.r || 0;
 
     moveable = new window.Moveable(document.body, {
       target: element,
       draggable: true,
       resizable: true,
+      rotatable: true,
       snappable: true,
       origin: false,
       edge: false,
@@ -200,7 +207,7 @@
       })
       .on('drag', function (event) {
         translate = event.beforeTranslate;
-        element.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
+        element.style.transform = liveTransform();
       })
       .on('dragEnd', function () {
         commitPosition(element, overlay);
@@ -213,11 +220,21 @@
         element.style.width = event.width + 'px';
         if (overlay) element.style.height = event.height + 'px';
         translate = event.drag.beforeTranslate;
-        element.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
+        element.style.transform = liveTransform();
       })
       .on('resizeEnd', function () {
         commitSize(element, overlay);
         commitPosition(element, overlay);
+      })
+      .on('rotateStart', function (event) {
+        event.set(layoutFor(element).r);
+      })
+      .on('rotate', function (event) {
+        angle = event.beforeRotation;
+        element.style.transform = liveTransform();
+      })
+      .on('rotateEnd', function () {
+        commitRotation(element);
       });
   }
 
@@ -267,6 +284,27 @@
 
   function round(value) {
     return Math.round(value * 100) / 100;
+  }
+
+  /**
+   * Transform durante a manipulação: deslocamento em px (preciso para o mouse)
+   * mais o giro. Ao soltar, `commitPosition` grava a proporção e reescreve em
+   * `cqw` — o px só existe enquanto o arrasto acontece.
+   */
+  function liveTransform() {
+    var parts = [];
+    if (translate[0] || translate[1]) {
+      parts.push('translate(' + translate[0] + 'px,' + translate[1] + 'px)');
+    }
+    if (angle) parts.push('rotate(' + angle + 'deg)');
+    return parts.join(' ');
+  }
+
+  function commitRotation(element) {
+    var layout = Object.assign({}, layoutFor(element), { r: round(angle) });
+    applyLayoutStyle(element, layout);
+    reportLayout(element, layout);
+    if (moveable) moveable.updateRect();
   }
 
   // -------------------------------------------------------- migração
@@ -700,13 +738,45 @@
       case 'editor:layouts':
         layouts = data.layouts || {};
         migrateLegacy();
+        sendInventory();
         break;
+
+      case 'editor:inventory-request':
+        sendInventory();
+        break;
+
+      // Elemento arrastado da barra lateral: o ponto onde foi solto vira a
+      // seção correspondente e a coordenada proporcional dentro dela.
+      case 'editor:drop-point': {
+        var point = document.elementFromPoint(data.clientX, data.clientY);
+        var dropSection = point && point.closest('[data-section]');
+        if (!dropSection) {
+          post({ type: 'editor:drop-missed' });
+          break;
+        }
+        var dropBox = dropSection.getBoundingClientRect();
+        post({
+          type: 'editor:drop-resolved',
+          kind: data.kind,
+          section: dropSection.getAttribute('data-section'),
+          x: round(((data.clientX - dropBox.left) / dropBox.width) * 100),
+          y: round(((data.clientY - dropBox.top) / dropBox.width) * 100),
+        });
+        break;
+      }
+
+      case 'editor:select-key': {
+        var byKey = elementForKey(data.key);
+        if (byKey) select(byKey, { scroll: true });
+        break;
+      }
 
       case 'editor:device':
         device = data.device === 'mobile' ? 'mobile' : 'desktop';
         // A conversão precisa medir na largura daquele dispositivo, então cada
         // conjunto é convertido quando passa a ser o visível.
         migrateLegacy();
+        sendInventory();
         if (selected) {
           applyLayoutStyle(selected, layoutFor(selected));
           attachMoveable(selected);
@@ -728,6 +798,7 @@
           moveable.updateRect();
         }
         reportLayout(selected, current);
+        sendInventory();
         break;
       }
 
@@ -758,21 +829,33 @@
     var overlay = isOverlay(element);
     var style = element.style;
 
+    // Mesma composição de `layoutDeclarations` em src/lib/pages.ts: o elemento
+    // livre é posicionado por left/top; o existente é deslocado da posição
+    // natural por translate. O giro entra no transform nos dois casos.
+    var transforms = [];
+
     if (overlay) {
       style.position = 'absolute';
       style.left = axis(layout.x, layout);
       style.top = axis(layout.y, layout);
-      style.transform = '';
       style.height = layout.h > 0 ? layout.h + 'cqw' : '';
     } else {
-      style.transform =
-        layout.x || layout.y
-          ? 'translate(' + axis(layout.x, layout) + ',' + axis(layout.y, layout) + ')'
-          : '';
+      if (layout.x || layout.y) {
+        transforms.push(
+          'translate(' + axis(layout.x, layout) + ',' + axis(layout.y, layout) + ')'
+        );
+      }
       style.display = layout.x || layout.y || layout.w ? 'inline-block' : '';
     }
 
-    style.width = layout.w > 0 ? layout.w + '%' : '';
+    if (layout.r) transforms.push('rotate(' + layout.r + 'deg)');
+    style.transform = transforms.join(' ');
+
+    // No editor, elemento oculto continua visível e esmaecido para poder ser
+    // reativado; no site ele sai com display:none pela folha de estilo.
+    element.classList.toggle('is-edit-hidden', layout.hidden === true);
+
+    style.width = layout.w > 0 ? layout.w + 'cqw' : '';
     style.zIndex = layout.z > 0 ? String(layout.z) : '';
     style.fontSize = layout.fontSize > 0 ? layout.fontSize + 'rem' : '';
     style.color = layout.color || '';
@@ -862,6 +945,47 @@
       post({ type: 'editor:reorder', listPath: listPath, from: from, to: to });
     });
   });
+
+  // -------------------------------------------------------- inventário
+  /**
+   * Lista o que existe em cada seção, na ordem em que aparece no documento.
+   * É o que alimenta o painel de camadas — que precisa mostrar também o que
+   * ainda não foi tocado, e portanto não tem layout gravado.
+   */
+  function inventory() {
+    var items = [];
+    document.querySelectorAll('[data-section]').forEach(function (section) {
+      var key = section.getAttribute('data-section');
+      section.querySelectorAll(SELECTABLE).forEach(function (element) {
+        // Um campo pode aparecer duas vezes na página (o vídeo do topo e o da
+        // seção). A camada é uma só.
+        var id = keyOf(element);
+        if (!id || items.some((item) => item.key === id)) return;
+
+        var layout = layoutFor(element);
+        items.push({
+          key: id,
+          section: key,
+          kind: kindOf(element),
+          overlay: element.getAttribute('data-overlay'),
+          path: element.getAttribute('data-edit'),
+          label:
+            layout.label ||
+            element.getAttribute('data-edit-label') ||
+            (element.getAttribute('data-overlay') ? 'Elemento livre' : id),
+          text: (element.textContent || '').trim().slice(0, 40),
+          locked: layout.locked === true,
+          hidden: layout.hidden === true,
+          z: layout.z || 0,
+        });
+      });
+    });
+    return items;
+  }
+
+  function sendInventory() {
+    post({ type: 'editor:inventory', items: inventory(), device: device });
+  }
 
   // ------------------------------------------------------------ inicialização
   function announce() {

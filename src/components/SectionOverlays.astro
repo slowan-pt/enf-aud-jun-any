@@ -36,6 +36,22 @@ const mine = overlays.filter((item) => item.section === section);
       >
         {overlay.content}
       </p>
+    ) : overlay.kind === 'shape' ? (
+      <span
+        class="overlay overlay--shape"
+        data-overlay={overlay.id}
+        data-edit-kind={ed('shape')}
+        aria-hidden="true"
+      />
+    ) : overlay.kind === 'video' ? (
+      <video
+        class="overlay overlay--video"
+        data-overlay={overlay.id}
+        data-edit-kind={ed('video')}
+        src={safeMediaUrl(overlay.content)}
+        controls
+        preload="metadata"
+      />
     ) : overlay.kind === 'image' ? (
       <img
         class="overlay overlay--image"
@@ -73,5 +89,20 @@ const mine = overlays.filter((item) => item.section === section);
     display: inline-grid;
     place-items: center;
     color: var(--c-brand-600);
+  }
+
+  .overlay--video {
+    height: auto;
+    border-radius: var(--r-sm);
+  }
+
+  /* Forma: um bloco de cor. A cor vem de `color` no layout, então o mesmo
+     seletor do editor já a controla. */
+  .overlay--shape {
+    display: block;
+    min-height: 2rem;
+    border-radius: var(--r-sm);
+    background: currentColor;
+    color: var(--c-brand-500);
   }
 </style>

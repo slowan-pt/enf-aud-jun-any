@@ -191,6 +191,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         data-section-label={ed('Vídeo promocional')}
       >
         <div class="container">
+          <SectionOverlays section="promoVideo" overlays={overlays} />
           <div class="section-head section-head--center" data-reveal>
             {promoVideo.title && (
               <h2 class="title-lg" data-edit="promoVideo.title" data-edit-label={ed('Título')}>
@@ -231,6 +232,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('Proposta de valor')}
   >
     <div class="container split split--wide-text">
+      <SectionOverlays section="proposta" overlays={overlays} />
       <div data-reveal>
         <p
           class="eyebrow"
@@ -311,6 +313,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('O modelo Essencial')}
   >
     <div class="container">
+      <SectionOverlays section="elo" overlays={overlays} />
       <div class="section-head section-head--center" data-reveal>
         <p class="eyebrow" data-edit="elo.eyebrow" data-edit-label={ed('Etiqueta')}>
           {elo.eyebrow}
@@ -454,6 +457,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('Benefícios')}
   >
     <div class="container">
+      <SectionOverlays section="beneficios" overlays={overlays} />
       <div class="section-head" data-reveal>
         <p class="eyebrow" data-edit="benefits.eyebrow" data-edit-label={ed('Etiqueta')}>
           {benefits.eyebrow}
@@ -512,6 +516,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('Como atuamos')}
   >
     <div class="container">
+      <SectionOverlays section="comoAtuamos" overlays={overlays} />
       <div class="section-head" data-reveal>
         <p class="eyebrow" data-edit="howWeWork.eyebrow" data-edit-label={ed('Etiqueta')}>
           {howWeWork.eyebrow}
@@ -576,6 +581,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('Missão, visão e valores')}
   >
     <div class="container">
+      <SectionOverlays section="mvv" overlays={overlays} />
       <div class="section-head section-head--center" data-reveal>
         <p
           class="eyebrow"
@@ -669,6 +675,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section-label={ed('Para quem atuamos')}
   >
     <div class="container">
+      <SectionOverlays section="segmentos" overlays={overlays} />
       <div class="section-head section-head--center" data-reveal>
         <p class="eyebrow" data-edit="clientSegments.eyebrow" data-edit-label={ed('Etiqueta')}>
           {clientSegments.eyebrow}
@@ -734,7 +741,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     sectionLabel="Chamada final"
     sectionStyle={orderStyle('cta')}
     sectionClass={secClass('cta')}
-  />
+  >
+    <SectionOverlays section="cta" overlays={overlays} />
+  </CtaBand>
 
   <!-- ================================================= FORMULÁRIO -->
   <section class="section section--tight" id="contato" style="order:14">

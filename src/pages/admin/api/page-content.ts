@@ -13,9 +13,10 @@ import {
   updateHomeContent,
   normalizeLayout,
   HOME_SECTION_KEYS,
+  OVERLAY_KINDS,
   EMPTY_LAYOUT,
 } from '../../../lib/pages';
-import type { HomeContent, HomeSectionKey, Overlay } from '../../../lib/pages';
+import type { HomeContent, HomeSectionKey, Overlay, OverlayKind } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
 
 export const prerender = false;
@@ -169,12 +170,12 @@ function applyOp(content: HomeContent, operation: EditOp): boolean {
       if (!OVERLAY_ID.test(id)) return false;
       if (content.overlays.some((item) => item.id === id)) return false;
       if (!(HOME_SECTION_KEYS as readonly string[]).includes(section)) return false;
-      if (kind !== 'text' && kind !== 'image' && kind !== 'icon') return false;
+      if (!(OVERLAY_KINDS as readonly string[]).includes(kind)) return false;
 
       content.overlays.push({
         id,
         section: section as HomeSectionKey,
-        kind,
+        kind: kind as OverlayKind,
         content: String(raw.content ?? '').slice(0, 2000),
         alt: String(raw.alt ?? '').slice(0, 300),
         desktop: normalizeLayout(raw.desktop),

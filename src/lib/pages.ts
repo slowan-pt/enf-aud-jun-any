@@ -76,6 +76,10 @@ export type SectionStyles = Record<HomeSectionKey, SectionStyle>;
  */
 export type CoordSystem = 1 | 2;
 
+/** Tipos de elemento livre aceitos. Vale para leitura e para gravação. */
+export const OVERLAY_KINDS = ['text', 'image', 'video', 'icon', 'shape'] as const;
+export type OverlayKind = (typeof OVERLAY_KINDS)[number];
+
 /**
  * Posição e estilo livres de um elemento dentro da sua seção.
  *
@@ -112,8 +116,14 @@ export interface ElementLayout {
   align: string;
   /** Peso da fonte (400–800). 0 = herda. */
   weight: number;
+  /** Rotação em graus, -180 a 180. */
+  r: number;
   /** Bloqueado: não pode ser arrastado nem redimensionado no editor. */
   locked: boolean;
+  /** Oculto no site. O elemento continua no conteúdo, só não é exibido. */
+  hidden: boolean;
+  /** Nome dado no painel de camadas. Vazio = usa o rótulo padrão. */
+  label: string;
 }
 
 /** Configuração por tamanho de tela. `mobile` nulo herda o desktop. */
@@ -126,7 +136,7 @@ export interface LayoutPair {
 export interface Overlay {
   id: string;
   section: HomeSectionKey;
-  kind: 'text' | 'image' | 'icon';
+  kind: OverlayKind;
   /** Texto, caminho da mídia ou nome do ícone, conforme `kind`. */
   content: string;
   alt: string;
@@ -145,7 +155,10 @@ export const EMPTY_LAYOUT: ElementLayout = {
   color: '',
   align: '',
   weight: 0,
+  r: 0,
   locked: false,
+  hidden: false,
+  label: '',
 };
 
 /** Largura a partir da qual vale a configuração de desktop. */
@@ -264,7 +277,10 @@ export function normalizeLayout(value: unknown): ElementLayout {
     color: typeof raw.color === 'string' && HEX.test(raw.color) ? raw.color : '',
     align: typeof raw.align === 'string' && ALIGN.has(raw.align) ? raw.align : '',
     weight: clamp(raw.weight, 0, 900),
+    r: clamp(raw.r, -180, 180),
     locked: raw.locked === true,
+    hidden: raw.hidden === true,
+    label: typeof raw.label === 'string' ? raw.label.slice(0, 60) : '',
   };
 }
 
@@ -298,13 +314,13 @@ function normalizeOverlays(value: unknown): Overlay[] {
 
     if (!OVERLAY_ID.test(id) || seen.has(id)) continue;
     if (!(HOME_SECTION_KEYS as readonly string[]).includes(section)) continue;
-    if (kind !== 'text' && kind !== 'image' && kind !== 'icon') continue;
+    if (!(OVERLAY_KINDS as readonly string[]).includes(kind)) continue;
 
     seen.add(id);
     out.push({
       id,
       section: section as HomeSectionKey,
-      kind,
+      kind: kind as OverlayKind,
       content: String(raw.content ?? '').slice(0, 2000),
       alt: String(raw.alt ?? '').slice(0, 300),
       desktop: normalizeLayout(raw.desktop),
@@ -329,6 +345,12 @@ function axis(value: number, v: CoordSystem): string {
 function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] {
   const parts: string[] = [];
 
+  if (layout.hidden) return ['display:none'];
+
+  // Elemento livre é posicionado por `left`/`top`; o existente é deslocado da
+  // sua posição natural por `translate`, para não sair do fluxo. A rotação
+  // entra no mesmo `transform` nos dois casos.
+  const transforms: string[] = [];
   if (absolute) {
     parts.push(
       'position:absolute',
@@ -336,11 +358,17 @@ function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] 
       `top:${axis(layout.y, layout.v)}`
     );
   } else if (layout.x !== 0 || layout.y !== 0) {
-    parts.push(`transform:translate(${axis(layout.x, layout.v)},${axis(layout.y, layout.v)})`);
+    transforms.push(`translate(${axis(layout.x, layout.v)},${axis(layout.y, layout.v)})`);
   }
 
-  if (layout.w > 0) parts.push(`width:${layout.w}%`);
-  if (layout.h > 0) parts.push(`height:${layout.h}%`);
+  if (layout.r !== 0) transforms.push(`rotate(${layout.r}deg)`);
+  if (transforms.length) parts.push(`transform:${transforms.join(' ')}`);
+
+  // Tamanho também em `cqw`: com `%` a referência seria o elemento-pai, que
+  // pode ser um container aninhado dentro da seção. `cqw` sempre resolve na
+  // seção, que é o que torna a medida previsível.
+  if (layout.w > 0) parts.push(`width:${layout.w}cqw`);
+  if (layout.h > 0) parts.push(`height:${layout.h}cqw`);
   if (layout.z > 0) parts.push(`z-index:${layout.z}`, 'position:relative');
   if (layout.fontSize > 0) parts.push(`font-size:${layout.fontSize}rem`);
   if (layout.color) parts.push(`color:${layout.color}`);
