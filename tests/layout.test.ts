@@ -29,6 +29,12 @@ const overlay = (over: Partial<Overlay> = {}): Overlay => ({
   alt: '',
   desktop: layout(),
   mobile: null,
+  text: '',
+  fill: '',
+  stroke: '',
+  strokeWidth: 0,
+  href: '',
+  linkTarget: '_self',
   ...over,
 });
 

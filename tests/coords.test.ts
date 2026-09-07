@@ -262,6 +262,12 @@ describe('migração do formato antigo', () => {
       alt: '',
       desktop: layout({ v: 1, y: 90 }),
       mobile: null,
+      text: '',
+      fill: '',
+      stroke: '',
+      strokeWidth: 0,
+      href: '',
+      linkTarget: '_self',
     };
     expect(hasLegacyLayouts({}, [overlay])).toBe(true);
   });

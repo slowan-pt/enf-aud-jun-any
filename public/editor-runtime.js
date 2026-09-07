@@ -35,6 +35,9 @@
     '[data-overlay].is-edit-selected{outline:2px solid #2563eb;outline-offset:3px}',
     '.is-edit-locked{cursor:not-allowed!important}',
     '.is-edit-hidden{opacity:.3;outline:1px dashed #94a3b8}',
+    '[data-section].is-edit-drop-target{outline:3px dashed #12a794;outline-offset:-3px;background-color:rgba(18,167,148,.06)}',
+    '[data-section].is-edit-section-selected{outline:2px solid #7c3aed;outline-offset:-2px}',
+    '.is-edit-cross-drag{opacity:.85;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}',
   ].join('');
   document.head.appendChild(style);
 
@@ -142,15 +145,41 @@
     });
   }
 
-  /** Irmãos da mesma seção viram guias de alinhamento. */
+  /**
+   * Irmãos da mesma seção viram guias de alinhamento — mas só os de nível
+   * "superior" (itens de lista, cabeças de bloco, elementos livres), não cada
+   * <span> e ícone dentro de cada card. Uma grade de 6 cards tem ~18
+   * elementos editáveis; usar todos como candidato de encaixe é o que sentia
+   * como "barreira invisível" a poucos pixels de qualquer lugar.
+   */
   function guidelinesFor(element) {
     var section = sectionOf(element);
     if (!section) return [];
     var nodes = section.querySelectorAll('[data-edit],[data-overlay]');
-    return [].slice.call(nodes).filter(function (node) {
-      return node !== element && node.offsetWidth > 0;
+    var list = [];
+    [].forEach.call(nodes, function (node) {
+      if (node === element || node.offsetWidth <= 0) return;
+      // Ignora nó cujo pai mais próximo editável já está na lista — evita
+      // empilhar o card inteiro (ícone + título + texto) como 3 guias iguais.
+      var parent = node.parentElement && node.parentElement.closest(SELECTABLE);
+      if (parent && parent !== element && list.indexOf(parent) !== -1) return;
+      list.push(node);
     });
+    return list;
   }
+
+  /** Alt/Option desativa o encaixe enquanto pressionado — sem isso, o
+   * usuário não tem como soltar um elemento perto de outro sem ser puxado. */
+  var snapDisabled = false;
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Alt') snapDisabled = true;
+  });
+  document.addEventListener('keyup', function (event) {
+    if (event.key === 'Alt') snapDisabled = false;
+  });
+  window.addEventListener('blur', function () {
+    snapDisabled = false;
+  });
 
   function detachMoveable() {
     if (moveable) {
@@ -170,19 +199,29 @@
     translate = [0, 0];
     angle = layout.r || 0;
 
+    // Linhas fixas do centro da própria seção — sem isso, uma seção com
+    // poucos elementos (ex.: hero) não tem nenhuma guia de centro disponível,
+    // já que guias de elemento só existem entre irmãos.
+    var section = sectionOf(element);
+    var sectionCenter = section ? section.getBoundingClientRect() : null;
+
     moveable = new window.Moveable(document.body, {
       target: element,
       draggable: true,
       resizable: true,
       rotatable: true,
-      snappable: true,
+      snappable: !snapDisabled,
       origin: false,
       edge: false,
       keepRatio: false,
       throttleDrag: 0,
       throttleResize: 0,
       elementGuidelines: guidelinesFor(element),
-      snapThreshold: 6,
+      horizontalGuidelines: sectionCenter ? [sectionCenter.top + sectionCenter.height / 2] : [],
+      verticalGuidelines: sectionCenter ? [sectionCenter.left + sectionCenter.width / 2] : [],
+      snapThreshold: 5,
+      snapGap: true,
+      isDisplaySnapDigit: false,
       snapDirections: {
         top: true,
         left: true,
@@ -204,19 +243,31 @@
     moveable
       .on('dragStart', function (event) {
         event.set(translate);
+        if (overlay) startCrossSectionDrag(element);
       })
       .on('drag', function (event) {
+        if (moveable) moveable.snappable = !snapDisabled;
         translate = event.beforeTranslate;
         element.style.transform = liveTransform();
+        if (overlay) trackCrossSectionDrag(element, event);
       })
       .on('dragEnd', function () {
+        if (overlay && finishCrossSectionDrag(element)) return;
         commitPosition(element, overlay);
       })
       .on('resizeStart', function (event) {
+        // Causa raiz do encolhimento: nosso style.width fica em `cqw` entre
+        // gestos. O Moveable lê esse texto e trata o número como se já
+        // estivesse em pixels, corrompendo o cálculo do gesto inteiro (ex.:
+        // "99.16cqw" → interpretado como 99.16px). Fixamos aqui a largura e
+        // altura REAIS medidas (offsetWidth/Height, sempre em px de verdade,
+        // independente da unidade do CSS) como ponto de partida do gesto.
         event.setOrigin(['%', '%']);
+        event.set([element.offsetWidth, element.offsetHeight]);
         if (event.dragStart) event.dragStart.set(translate);
       })
       .on('resize', function (event) {
+        if (moveable) moveable.snappable = !snapDisabled;
         element.style.width = event.width + 'px';
         if (overlay) element.style.height = event.height + 'px';
         translate = event.drag.beforeTranslate;
@@ -282,8 +333,13 @@
     reportLayout(element, layout);
   }
 
+  // Mesma defesa que o servidor já aplica em normalizeLayout(): uma conta com
+  // um retângulo degenerado (largura/altura zero) produz NaN/Infinity, que
+  // vira uma string de CSS inválida e o navegador simplesmente ignora — o
+  // elemento fica sem posição nenhuma. Zerar aqui evita esse buraco.
   function round(value) {
-    return Math.round(value * 100) / 100;
+    var n = Math.round(value * 100) / 100;
+    return Number.isFinite(n) ? n : 0;
   }
 
   /**
@@ -305,6 +361,166 @@
     applyLayoutStyle(element, layout);
     reportLayout(element, layout);
     if (moveable) moveable.updateRect();
+  }
+
+  // ------------------------------------------------- transferência entre seções
+  // Elemento livre é `position:absolute` dentro da sua seção. O problema
+  // relatado ("fica atrás do fundo da seção seguinte") não se resolve com
+  // z-index: seções mais tarde no documento pintam DEPOIS, então qualquer
+  // coisa pertencente a uma seção anterior que vise visualmente uma seção
+  // posterior fica sob o fundo dela, seja qual for o z-index. A única
+  // correção real é o elemento pertencer, de fato, à seção sob o cursor.
+  //
+  // Durante o arraste, viramos `position:fixed` (âncora no viewport, fora da
+  // pilha de qualquer seção) com z-index altíssimo — assim ele sempre pinta
+  // por cima, em qualquer seção que estiver sendo cruzada. Isso não afeta o
+  // fluxo de mais nada: um elemento livre já estava fora do fluxo antes.
+  var crossDrag = null; // { originSection, originParentEl }
+  var crossTargetSection = null;
+
+  function startCrossSectionDrag(element) {
+    var originSection = sectionOf(element);
+    if (!originSection) return;
+    var rect = element.getBoundingClientRect();
+
+    crossDrag = { originSection: originSection };
+    crossTargetSection = originSection;
+
+    element.style.position = 'fixed';
+    element.style.left = rect.left + 'px';
+    element.style.top = rect.top + 'px';
+    element.style.margin = '0';
+    element.style.zIndex = '999999';
+    element.classList.add('is-edit-cross-drag');
+  }
+
+  function trackCrossSectionDrag(element, event) {
+    if (!crossDrag) return;
+    var over = document.elementFromPoint(event.clientX, event.clientY);
+    var section = over && over.closest('[data-section]');
+    if (section === crossTargetSection) return;
+
+    if (crossTargetSection) crossTargetSection.classList.remove('is-edit-drop-target');
+    crossTargetSection = section || crossDrag.originSection;
+    crossTargetSection.classList.add('is-edit-drop-target');
+  }
+
+  /** Retorna true se tratou o fim do gesto (transferiu de seção); false = fluxo normal. */
+  function finishCrossSectionDrag(element) {
+    if (!crossDrag) return false;
+    var origin = crossDrag.originSection;
+    var target = crossTargetSection || origin;
+    if (target) target.classList.remove('is-edit-drop-target');
+    crossDrag = null;
+    crossTargetSection = null;
+    element.classList.remove('is-edit-cross-drag');
+
+    if (target === origin) {
+      // Voltou para a mesma seção: desfaz o "fixed" temporário e segue o
+      // fluxo normal de commit (mesma seção, sem mudança de pertencimento).
+      element.style.position = '';
+      element.style.left = '';
+      element.style.top = '';
+      element.style.margin = '';
+      element.style.zIndex = '';
+      element.style.transform = liveTransform();
+      return false;
+    }
+
+    // Seção diferente: a posição final (viewport) já é a verdade — ela é
+    // recalculada em proporção à LARGURA da seção de destino, exatamente como
+    // qualquer outra gravação de posição.
+    var rect = element.getBoundingClientRect();
+    var box = target.getBoundingClientRect();
+    if (box.width <= 0) return true;
+
+    target.appendChild(element);
+    element.style.position = 'absolute';
+    element.style.margin = '';
+    element.style.zIndex = '';
+    element.style.left = '';
+    element.style.top = '';
+    element.style.transform = '';
+
+    var layout = Object.assign({}, layoutFor(element));
+    layout.v = 2;
+    layout.x = round(((rect.left - box.left) / box.width) * 100);
+    layout.y = round(((rect.top - box.top) / box.width) * 100);
+    applyLayoutStyle(element, layout);
+
+    var overlayId = element.getAttribute('data-overlay');
+    var fromSection = origin.getAttribute('data-section');
+    var toSection = target.getAttribute('data-section');
+    layouts[keyOf(element)][device] = layout;
+
+    post({
+      type: 'editor:overlay-move-section',
+      id: overlayId,
+      from: fromSection,
+      to: toSection,
+      device: device,
+      layout: layout,
+    });
+
+    translate = [0, 0];
+    if (moveable) moveable.updateRect();
+    return true;
+  }
+
+  /**
+   * Constrói o nó de um elemento livre no cliente, espelhando exatamente o
+   * que `SectionOverlays.astro` geraria no servidor — usado só para não
+   * precisar recarregar a página ao inserir (o que perderia a rolagem e a
+   * seleção). Nunca via innerHTML: cada peça é criada por elemento.
+   */
+  function createOverlayElement(spec) {
+    var el;
+    if (spec.kind === 'text') {
+      el = document.createElement('p');
+      el.className = 'overlay overlay--text';
+      el.setAttribute('data-edit-kind', 'multiline');
+      el.textContent = spec.content || '';
+    } else if (spec.kind === 'shape') {
+      el = document.createElement('span');
+      el.className = 'overlay overlay--shape';
+      el.setAttribute('data-edit-kind', 'shape');
+      el.setAttribute('data-shape', spec.content || 'rect');
+      el.textContent = spec.text || '';
+    } else if (spec.kind === 'video') {
+      el = document.createElement('video');
+      el.className = 'overlay overlay--video';
+      el.setAttribute('data-edit-kind', 'video');
+      el.controls = true;
+      el.preload = 'metadata';
+      if (spec.content) el.src = spec.content;
+    } else if (spec.kind === 'image') {
+      el = document.createElement('img');
+      el.className = 'overlay overlay--image';
+      el.setAttribute('data-edit-kind', 'image');
+      el.loading = 'lazy';
+      el.alt = spec.alt || '';
+      if (spec.content) el.src = spec.content;
+    } else {
+      el = document.createElement('span');
+      el.className = 'overlay overlay--icon';
+      el.setAttribute('data-edit-kind', 'icon');
+      el.setAttribute('data-edit-value', spec.content || '');
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '40');
+      svg.setAttribute('height', '40');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '1.75');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      if (spec.alt) svg.setAttribute('aria-label', spec.alt);
+      else svg.setAttribute('aria-hidden', 'true');
+      el.appendChild(svg);
+      if (spec.svgInner) drawIcon(svg, spec.svgInner);
+    }
+    el.setAttribute('data-overlay', spec.id);
+    return el;
   }
 
   // -------------------------------------------------------- migração
@@ -367,6 +583,7 @@
   // -------------------------------------------------------------- seleção
   function clearSelection() {
     detachMoveable();
+    clearSectionSelection();
     if (!selected) return;
     if (selected.isContentEditable) selected.removeAttribute('contenteditable');
     selected.classList.remove('is-edit-selected');
@@ -386,10 +603,27 @@
     }
   }
 
+  // ------------------------------------------------ seleção de seção (fundo)
+  var sectionSelected = null;
+
+  function clearSectionSelection() {
+    if (!sectionSelected) return;
+    sectionSelected.classList.remove('is-edit-section-selected');
+    sectionSelected = null;
+  }
+
+  function selectSection(section) {
+    if (sectionSelected === section) return;
+    clearSectionSelection();
+    sectionSelected = section;
+    section.classList.add('is-edit-section-selected');
+    post({ type: 'editor:select-section', section: section.getAttribute('data-section') });
+  }
+
   /** Duplo clique entra na edição do texto; enquanto isso o arrasto sai de cena. */
   function startTextEdit(element) {
     var kind = kindOf(element);
-    if (kind !== 'text' && kind !== 'multiline') return;
+    if (kind !== 'text' && kind !== 'multiline' && kind !== 'shape') return;
     detachMoveable();
     editingText = true;
     element.setAttribute('contenteditable', 'true');
@@ -442,13 +676,23 @@
       }
 
       if (!target) {
-        if (selected && !selected.contains(event.target)) {
+        if (selected) {
           clearSelection();
           post({ type: 'editor:deselect' });
+        }
+        // Clicou fora de qualquer elemento editável e fora de um link/botão:
+        // se o ponto ainda está dentro de uma seção, é uma área vazia do
+        // fundo dela — seleciona a SEÇÃO. Clique num link/botão apenas
+        // desmarca (ele já teve a navegação bloqueada acima).
+        if (!link) {
+          var section = event.target.closest('[data-section]');
+          if (section) selectSection(section);
+          else clearSectionSelection();
         }
         return;
       }
 
+      clearSectionSelection();
       if (target !== selected) {
         event.preventDefault();
         event.stopPropagation();
@@ -485,6 +729,12 @@
 
   document.addEventListener('keydown', function (event) {
     if (!selected) return;
+
+    // Nunca intercepta setas dentro de um campo de formulário real (o
+    // editor não tem inputs próprios no site, mas um formulário de contato
+    // vive na mesma página, e pode estar sob o elemento selecionado).
+    var activeTag = document.activeElement && document.activeElement.tagName;
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 
     if (selected.isContentEditable) {
       // Enter fecha a edição de um título de uma linha em vez de criar parágrafo.
@@ -575,6 +825,40 @@
       copyShapes(node, clone);
       target.appendChild(clone);
     });
+  }
+
+  // Mesmo recorte de SHAPE_CLIP em src/components/SectionOverlays.astro.
+  var SHAPE_CLIP = {
+    triangle: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+    diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+    arrow: 'polygon(0% 35%, 55% 35%, 55% 10%, 100% 50%, 55% 90%, 55% 65%, 0% 65%)',
+  };
+  var HEX6 = /^#[0-9a-fA-F]{6}$/;
+
+  /**
+   * Mesma conta de `shapeStyle()` no servidor. `full` sempre traz o estado
+   * COMPLETO da forma (não um patch parcial) — o remetente (painel do editor)
+   * é quem mantém o registro inteiro e manda tudo de novo a cada mudança,
+   * senão redesenhar com só o campo alterado apagaria os outros.
+   */
+  function applyShapeStyle(node, full) {
+    if (typeof full.text === 'string' && node.textContent.trim() !== full.text) {
+      node.textContent = full.text;
+    }
+
+    var shapeType = node.getAttribute('data-shape') || 'rect';
+    var fill = HEX6.test(full.fill) ? full.fill : '#12a794';
+    var strokeWidth = Math.min(20, Math.max(0, Math.round(Number(full.strokeWidth) || 0)));
+    var clip = SHAPE_CLIP[shapeType];
+
+    node.style.background = fill;
+    node.style.borderRadius =
+      shapeType === 'rounded' ? '12px' : shapeType === 'ellipse' ? '50%' : '';
+    node.style.clipPath = clip || '';
+    node.style.border =
+      strokeWidth > 0 && HEX6.test(full.stroke) && !clip
+        ? strokeWidth + 'px solid ' + full.stroke
+        : '';
   }
 
   function drawIcon(svg, markup) {
@@ -765,9 +1049,73 @@
         break;
       }
 
+      // Inserção por clique: usa o meio da parte da seção que já está visível
+      // na tela, em vez de sempre um ponto fixo perto do topo da seção — que
+      // podia cair fora da área que o usuário está olhando, numa seção alta.
+      case 'editor:visible-insert-request': {
+        var target = document.querySelector(
+          '[data-section="' + CSS.escape(data.section) + '"]'
+        );
+        if (!target) break;
+
+        var tbox = target.getBoundingClientRect();
+        var visibleTop = Math.max(tbox.top, 0);
+        var visibleBottom = Math.min(tbox.bottom, window.innerHeight);
+
+        if (visibleBottom - visibleTop < 40) {
+          // Praticamente nada da seção está à vista: traz para o centro da
+          // tela antes de calcular o ponto (sem isso o elemento nasceria
+          // fora da área visível de qualquer forma).
+          target.scrollIntoView({ block: 'center' });
+          tbox = target.getBoundingClientRect();
+          visibleTop = Math.max(tbox.top, 0);
+          visibleBottom = Math.min(tbox.bottom, window.innerHeight);
+        }
+
+        var py = (visibleTop + visibleBottom) / 2;
+        post({
+          type: 'editor:drop-resolved',
+          kind: data.kind,
+          section: data.section,
+          x: round(((tbox.width * 0.35) / tbox.width) * 100),
+          y: round(((py - tbox.top) / tbox.width) * 100),
+        });
+        break;
+      }
+
       case 'editor:select-key': {
         var byKey = elementForKey(data.key);
         if (byKey) select(byKey, { scroll: true });
+        break;
+      }
+
+      // Cria o elemento livre AO VIVO no DOM (sem recarregar a página), para
+      // preservar a rolagem e poder selecioná-lo e movê-lo imediatamente.
+      // Preenchimento/borda/texto/link de uma forma mudaram — reaplica ao
+      // vivo, na mesma conta que `shapeStyle()` faz em SectionOverlays.astro.
+      case 'editor:shape-style': {
+        var shapeNode = document.querySelector('[data-overlay="' + CSS.escape(data.id) + '"]');
+        if (!shapeNode) break;
+        applyShapeStyle(shapeNode, data.style);
+        break;
+      }
+
+      case 'editor:overlay-create': {
+        var created = createOverlayElement(data.overlay);
+        if (!created) break;
+        var host = document.querySelector(
+          '[data-section="' + CSS.escape(data.overlay.section) + '"]'
+        );
+        if (!host) break;
+        layouts['overlay:' + data.overlay.id] = {
+          desktop: data.overlay.desktop || emptyLayout(),
+          mobile: data.overlay.mobile || null,
+        };
+        host.appendChild(created);
+        applyLayoutStyle(created, layoutFor(created));
+        if (data.overlay.kind === 'shape') applyShapeStyle(created, data.overlay);
+        select(created, { scroll: false });
+        sendInventory();
         break;
       }
 

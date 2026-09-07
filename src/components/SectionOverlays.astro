@@ -8,7 +8,7 @@
  * imagem ou ícone — e não como desenho em canvas.
  */
 import Icon from './Icon.astro';
-import { safeMediaUrl } from '../lib/urls';
+import { safeMediaUrl, safeHref } from '../lib/urls';
 import type { Overlay } from '../lib/pages';
 
 interface Props {
@@ -24,6 +24,37 @@ const edit = Boolean(Astro.locals.editMode);
 const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
 const mine = overlays.filter((item) => item.section === section);
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Recorte de cada silhueta. Retângulo e círculo usam border-radius, não clip-path. */
+const SHAPE_CLIP: Record<string, string> = {
+  triangle: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+  diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+  arrow: 'polygon(0% 35%, 55% 35%, 55% 10%, 100% 50%, 55% 90%, 55% 65%, 0% 65%)',
+};
+
+function shapeStyle(overlay: Overlay): string {
+  const parts: string[] = [];
+  const fill = HEX.test(overlay.fill) ? overlay.fill : '#12a794';
+  parts.push(`background:${fill}`);
+
+  if (overlay.content === 'rounded') parts.push('border-radius:12px');
+  else if (overlay.content === 'ellipse') parts.push('border-radius:50%');
+
+  const clip = SHAPE_CLIP[overlay.content];
+  if (clip) parts.push(`clip-path:${clip}`);
+
+  const strokeWidth = Math.min(20, Math.max(0, Math.round(Number(overlay.strokeWidth) || 0)));
+  if (strokeWidth > 0 && HEX.test(overlay.stroke) && !clip) {
+    // Contorno visível só faz sentido sem clip-path (que já recorta a borda
+    // fora da silhueta); nas formas recortadas o contorno viraria uma linha
+    // reta por cima, sem seguir o desenho.
+    parts.push(`border:${strokeWidth}px solid ${overlay.stroke}`);
+  }
+
+  return parts.join(';');
+}
 ---
 
 {
@@ -37,12 +68,30 @@ const mine = overlays.filter((item) => item.section === section);
         {overlay.content}
       </p>
     ) : overlay.kind === 'shape' ? (
-      <span
-        class="overlay overlay--shape"
-        data-overlay={overlay.id}
-        data-edit-kind={ed('shape')}
-        aria-hidden="true"
-      />
+      overlay.href && safeHref(overlay.href) ? (
+        <a
+          class="overlay overlay--shape"
+          data-shape={overlay.content}
+          data-overlay={overlay.id}
+          data-edit-kind={ed('shape')}
+          style={shapeStyle(overlay)}
+          href={safeHref(overlay.href)}
+          target={overlay.linkTarget === '_blank' ? '_blank' : undefined}
+          rel={overlay.linkTarget === '_blank' ? 'noopener' : undefined}
+        >
+          {overlay.text}
+        </a>
+      ) : (
+        <span
+          class="overlay overlay--shape"
+          data-shape={overlay.content}
+          data-overlay={overlay.id}
+          data-edit-kind={ed('shape')}
+          style={shapeStyle(overlay)}
+        >
+          {overlay.text}
+        </span>
+      )
     ) : overlay.kind === 'video' ? (
       <video
         class="overlay overlay--video"
@@ -96,13 +145,19 @@ const mine = overlays.filter((item) => item.section === section);
     border-radius: var(--r-sm);
   }
 
-  /* Forma: um bloco de cor. A cor vem de `color` no layout, então o mesmo
-     seletor do editor já a controla. */
+  /* Forma: preenchimento/borda vêm do `style` inline (shapeStyle no servidor,
+     a mesma conta no editor). O texto interno é centralizado; se virar link,
+     perde o sublinhado e a cor azul padrão do navegador. */
   .overlay--shape {
-    display: block;
+    display: grid;
+    place-items: center;
     min-height: 2rem;
-    border-radius: var(--r-sm);
-    background: currentColor;
-    color: var(--c-brand-500);
+    min-width: 2rem;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    font-size: var(--fs-sm);
+    box-sizing: border-box;
   }
 </style>

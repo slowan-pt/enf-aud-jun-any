@@ -18,6 +18,7 @@ import {
   finalCta as defaultFinalCta,
 } from '../data/institutional';
 import type { D1Database } from './cf-types';
+import { safeHref } from './urls';
 
 export interface PromoVideo {
   title: string;
@@ -33,6 +34,15 @@ export interface SectionStyle {
   image: string;
   /** Escurecimento sobre a imagem, 0 a 100, para o texto continuar legível. */
   overlay: string;
+  /**
+   * Altura MÍNIMA da seção, em px. Vazio = automática (altura do conteúdo).
+   * Deliberadamente não existe uma altura FIXA com corte: o conteúdo nunca é
+   * cortado silenciosamente — se ele for mais alto que este valor, a seção
+   * cresce para caber, exatamente como sem essa configuração.
+   */
+  minHeight: string;
+  /** Espaçamento interno vertical (topo/base), em px. Vazio = padrão do site. */
+  paddingY: string;
 }
 
 /**
@@ -133,15 +143,34 @@ export interface LayoutPair {
 }
 
 /** Elemento novo criado no editor, sobreposto dentro de uma seção. */
+/** Silhuetas de forma aceitas. O nome vira `content` quando kind === 'shape'. */
+export const SHAPE_KINDS = [
+  'rect',
+  'rounded',
+  'ellipse',
+  'triangle',
+  'diamond',
+  'arrow',
+] as const;
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
 export interface Overlay {
   id: string;
   section: HomeSectionKey;
   kind: OverlayKind;
-  /** Texto, caminho da mídia ou nome do ícone, conforme `kind`. */
+  /** Texto, caminho da mídia, nome do ícone ou silhueta da forma, conforme `kind`. */
   content: string;
   alt: string;
   desktop: ElementLayout;
   mobile: ElementLayout | null;
+  /** Só usados por `kind === 'shape'` — texto e link dentro da forma. */
+  text: string;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  /** Destino do link: caminho interno (/servicos) ou URL https. Vazio = sem link. */
+  href: string;
+  linkTarget: '_self' | '_blank';
 }
 
 export const EMPTY_LAYOUT: ElementLayout = {
@@ -193,7 +222,14 @@ const DEFAULT_PROMO_VIDEO: PromoVideo = {
   url: '',
 };
 
-const EMPTY_STYLE: SectionStyle = { bg: '', text: '', image: '', overlay: '' };
+const EMPTY_STYLE: SectionStyle = {
+  bg: '',
+  text: '',
+  image: '',
+  overlay: '',
+  minHeight: '',
+  paddingY: '',
+};
 
 const DEFAULT_SECTION_STYLES: SectionStyles = {
   hero: { ...EMPTY_STYLE },
@@ -301,7 +337,7 @@ function normalizeLayouts(value: unknown): Record<string, LayoutPair> {
   return out;
 }
 
-function normalizeOverlays(value: unknown): Overlay[] {
+export function normalizeOverlays(value: unknown): Overlay[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const out: Overlay[] = [];
@@ -317,14 +353,26 @@ function normalizeOverlays(value: unknown): Overlay[] {
     if (!(OVERLAY_KINDS as readonly string[]).includes(kind)) continue;
 
     seen.add(id);
+    const content = String(raw.content ?? '').slice(0, 2000);
     out.push({
       id,
       section: section as HomeSectionKey,
       kind: kind as OverlayKind,
-      content: String(raw.content ?? '').slice(0, 2000),
+      // Para forma, `content` é a silhueta — fora da lista permitida, cai em
+      // "rect" em vez de guardar um valor que não corresponde a nada.
+      content:
+        kind === 'shape' && !(SHAPE_KINDS as readonly string[]).includes(content)
+          ? 'rect'
+          : content,
       alt: String(raw.alt ?? '').slice(0, 300),
       desktop: normalizeLayout(raw.desktop),
       mobile: raw.mobile ? normalizeLayout(raw.mobile) : null,
+      text: String(raw.text ?? '').slice(0, 300),
+      fill: typeof raw.fill === 'string' && HEX.test(raw.fill) ? raw.fill : '',
+      stroke: typeof raw.stroke === 'string' && HEX.test(raw.stroke) ? raw.stroke : '',
+      strokeWidth: clamp(raw.strokeWidth, 0, 20),
+      href: safeHref(String(raw.href ?? '')),
+      linkTarget: raw.linkTarget === '_blank' ? '_blank' : '_self',
     });
   }
   return out;
@@ -507,7 +555,25 @@ export function sectionStyleAttr(style: SectionStyle | undefined): string | unde
   }
 
   if (HEX.test(style.text)) parts.push(`color:${style.text}`);
+
+  // `min-height`, nunca `height`: se o conteúdo for mais alto que o pedido,
+  // a seção cresce para caber — nada é cortado silenciosamente.
+  const minHeight = clampPx(style.minHeight, 0, 2000);
+  if (minHeight > 0) parts.push(`min-height:${minHeight}px`);
+
+  const paddingY = clampPx(style.paddingY, 0, 300);
+  if (style.paddingY && Number.isFinite(Number(style.paddingY))) {
+    parts.push(`padding-block:${paddingY}px`);
+  }
+
   return parts.length ? parts.join(';') : undefined;
+}
+
+/** Converte um texto de px para número, dentro de uma faixa coerente. 0 = sem valor. */
+function clampPx(value: string, min: number, max: number): number {
+  const n = Number(value);
+  if (!value || !Number.isFinite(n)) return 0;
+  return Math.min(max, Math.max(min, Math.round(n)));
 }
 
 interface PageRow {

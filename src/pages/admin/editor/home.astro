@@ -195,6 +195,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
             <div class="field" data-props-layout hidden>
               <span class="label">Posição e estilo</span>
               <p class="panel-hint" data-layout-scope></p>
+              <p class="panel-hint">
+                Setas movem 1px, Shift+setas move 10px. Segure
+                <kbd>Alt</kbd> arrastando para desativar o encaixe.
+              </p>
 
               <div class="prop-grid">
                 <label>
@@ -271,6 +275,54 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               <p class="panel-hint" data-el-actions-hint></p>
             </div>
 
+            <!-- propriedades específicas de forma -->
+            <div class="field" data-props-shape hidden>
+              <span class="label">Forma</span>
+
+              <div class="prop-row">
+                <span>Preenche</span>
+                <input type="color" data-shape-fill />
+              </div>
+              <div class="prop-row">
+                <span>Borda</span>
+                <input type="color" data-shape-stroke />
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="1"
+                  data-shape-stroke-width
+                  style="width:52px"
+                  title="Espessura da borda (px)"
+                />
+              </div>
+
+              <span class="label">Link (opcional)</span>
+              <div class="field">
+                <select class="select" data-shape-link-page>
+                  <option value="">— nenhum —</option>
+                  <option value="/">Início</option>
+                  <option value="/quem-somos">Quem Somos</option>
+                  <option value="/servicos">Serviços</option>
+                  <option value="/conteudos">Conteúdos</option>
+                  <option value="/contato">Contato</option>
+                  <option value="__external">URL externa…</option>
+                </select>
+                <input
+                  type="text"
+                  class="input"
+                  data-shape-link-external
+                  placeholder="https://…"
+                  hidden
+                  style="margin-top:0.4rem"
+                />
+              </div>
+              <label class="prop-check">
+                <input type="checkbox" data-shape-link-blank />
+                Abrir em nova aba
+              </label>
+            </div>
+
             <!-- item de lista -->
             <div class="field" data-props-item hidden>
               <span class="label">Item da lista</span>
@@ -343,7 +395,12 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               <Icon name="star" size={18} />
               Ícone
             </button>
-            <button type="button" class="add-card" draggable="true" data-add="shape">
+            <button
+              type="button"
+              class="add-card"
+              data-add="shape"
+              title="Clique para escolher a silhueta antes de inserir"
+            >
               <Icon name="square" size={18} />
               Forma
             </button>
@@ -358,6 +415,42 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
             exato da pré-visualização.
           </p>
           <p class="panel-hint" data-add-status></p>
+
+          <!-- Seletor de forma: aparece ao clicar "Forma", antes de inserir -->
+          <div class="shape-picker" data-shape-picker hidden>
+            <p class="label">Escolha a forma</p>
+            <div class="shape-grid">
+              <button type="button" class="shape-card" data-shape="rect" title="Retângulo">
+                <span class="shape-swatch shape-swatch--rect"></span>
+              </button>
+              <button
+                type="button"
+                class="shape-card"
+                data-shape="rounded"
+                title="Retângulo arredondado"
+              >
+                <span class="shape-swatch shape-swatch--rounded"></span>
+              </button>
+              <button
+                type="button"
+                class="shape-card"
+                data-shape="ellipse"
+                title="Círculo/elipse"
+              >
+                <span class="shape-swatch shape-swatch--ellipse"></span>
+              </button>
+              <button type="button" class="shape-card" data-shape="triangle" title="Triângulo">
+                <span class="shape-swatch shape-swatch--triangle"></span>
+              </button>
+              <button type="button" class="shape-card" data-shape="diamond" title="Losango">
+                <span class="shape-swatch shape-swatch--diamond"></span>
+              </button>
+              <button type="button" class="shape-card" data-shape="arrow" title="Seta">
+                <span class="shape-swatch shape-swatch--arrow"></span>
+              </button>
+            </div>
+            <button type="button" class="ed-btn" data-shape-cancel>Cancelar</button>
+          </div>
 
           <div class="field">
             <span class="label">Fundo da seção</span>
@@ -787,6 +880,11 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     border: 1px solid var(--line);
     border-radius: var(--r-sm);
     padding: 0.6rem;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .editor .color-row.is-section-row-focused {
+    box-shadow: 0 0 0 2px var(--c-brand-500);
   }
 
   .editor .color-row__title {
@@ -1049,6 +1147,62 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     background: var(--c-brand-50);
   }
 
+  .editor .shape-picker {
+    margin-top: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--c-ink-50);
+  }
+
+  .editor .shape-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .editor .shape-card {
+    display: grid;
+    place-items: center;
+    padding: 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    cursor: pointer;
+  }
+
+  .editor .shape-card:hover {
+    border-color: var(--c-brand-400);
+  }
+
+  .editor .shape-swatch {
+    display: block;
+    width: 28px;
+    height: 28px;
+    background: var(--c-brand-500);
+  }
+
+  .editor .shape-swatch--rounded {
+    border-radius: 8px;
+  }
+
+  .editor .shape-swatch--ellipse {
+    border-radius: 50%;
+  }
+
+  .editor .shape-swatch--triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  .editor .shape-swatch--diamond {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+
+  .editor .shape-swatch--arrow {
+    clip-path: polygon(0% 35%, 55% 35%, 55% 10%, 100% 50%, 55% 90%, 55% 65%, 0% 65%);
+  }
+
   .editor .link-like {
     border: 0;
     background: none;
@@ -1066,6 +1220,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     text: string;
     image: string;
     overlay: string;
+    minHeight: string;
+    paddingY: string;
   }
 
   interface ElementLayout {
@@ -1100,6 +1256,12 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     kind: string;
     content: string;
     alt: string;
+    text: string;
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    href: string;
+    linkTarget: string;
   }
 
   interface Bootstrap {
@@ -1135,7 +1297,24 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         clear?: boolean;
       }
     | { op: 'overlay-content'; id: string; content?: string; alt?: string }
-    | { op: 'overlay-remove'; id: string };
+    | { op: 'overlay-remove'; id: string }
+    | {
+        op: 'overlay-shape-style';
+        id: string;
+        text?: string;
+        fill?: string;
+        stroke?: string;
+        strokeWidth?: number;
+        href?: string;
+        linkTarget?: string;
+      }
+    | {
+        op: 'overlay-move-section';
+        id: string;
+        to: string;
+        device: string;
+        layout: ElementLayout | null;
+      };
 
   interface Selection {
     path: string | null;
@@ -1277,6 +1456,22 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
   /** Conteúdo de elemento existente e de elemento livre gravam diferente. */
   function contentOp(value: string): Op {
+    if (selection?.overlay && selection.kind === 'shape') {
+      // Em forma, `content` é a silhueta — o texto interno é outro campo. O
+      // registro vai inteiro (fundo/borda não mudam aqui, mas precisam ir
+      // junto para não serem apagados se este passo for desfeito/refeito).
+      const item = currentOverlayItem();
+      return {
+        op: 'overlay-shape-style',
+        id: selection.overlay,
+        text: value,
+        fill: item?.fill ?? '',
+        stroke: item?.stroke ?? '',
+        strokeWidth: item?.strokeWidth ?? 0,
+        href: item?.href ?? '',
+        linkTarget: item?.linkTarget ?? '_self',
+      };
+    }
     return selection?.overlay
       ? { op: 'overlay-content', id: selection.overlay, content: value }
       : { op: 'set', path: selection!.path!, value };
@@ -1340,6 +1535,68 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       return;
     }
 
+    // Elemento livre foi solto numa seção diferente da que estava.
+    if (payload.type === 'editor:overlay-move-section') {
+      const moved = event.data as {
+        id: string;
+        from: string;
+        to: string;
+        device: string;
+        layout: ElementLayout;
+      };
+      const item = overlays.find((entry) => entry.id === moved.id);
+      if (!item) return;
+
+      const previousSection = item.section;
+      const previousLayout = layoutOf('overlay:' + moved.id, moved.device);
+      item.section = moved.to;
+      layouts['overlay:' + moved.id] = layouts['overlay:' + moved.id] ?? {
+        desktop: emptyLayout(),
+        mobile: null,
+      };
+      if (moved.device === 'mobile') layouts['overlay:' + moved.id].mobile = moved.layout;
+      else layouts['overlay:' + moved.id].desktop = moved.layout;
+
+      if (selection && selection.overlay === moved.id) {
+        selection.section = moved.to;
+        selection.layout = moved.layout;
+        fillLayoutPanel(moved.layout);
+      }
+
+      // Desfazer devolve à seção de origem com a posição que tinha lá — não
+      // basta reverter só a posição, senão o elemento voltaria mas na seção
+      // errada.
+      push(
+        {
+          op: 'overlay-move-section',
+          id: moved.id,
+          to: moved.to,
+          device: moved.device,
+          layout: moved.layout,
+        },
+        {
+          op: 'overlay-move-section',
+          id: moved.id,
+          to: previousSection,
+          device: moved.device,
+          layout: previousLayout,
+        }
+      );
+      renderOverlays();
+      return;
+    }
+
+    // Clique numa área vazia do fundo de uma seção (não sobre um elemento):
+    // seleciona a SEÇÃO, não um elemento — abre as propriedades de fundo,
+    // altura e espaçamento daquela seção especificamente.
+    if (payload.type === 'editor:select-section') {
+      const info = event.data as { section: string };
+      selection = null;
+      showProps(null);
+      focusSectionStyleRow(info.section);
+      return;
+    }
+
     if (payload.type === 'editor:select' && payload.element) {
       selection = payload.element;
       showProps(selection);
@@ -1349,7 +1606,13 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
     if (payload.type === 'editor:drop-resolved') {
       const drop = event.data as { kind: string; section: string; x: number; y: number };
-      void inserirElemento(drop.kind, drop.section, drop.x, drop.y);
+      inserirElemento(
+        drop.kind,
+        drop.section,
+        drop.x,
+        drop.y,
+        drop.kind === 'shape' ? pendingShapeType : undefined
+      );
       return;
     }
 
@@ -1392,6 +1655,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       if (!selection) return;
       const previous = selection.value;
       selection.value = change.value;
+      if (selection.kind === 'shape') {
+        const item = currentOverlayItem();
+        if (item) item.text = change.value;
+      }
       const textArea = document.querySelector<HTMLTextAreaElement>('#prop-text');
       if (textArea && document.activeElement !== textArea) textArea.value = change.value;
       push(contentOp(change.value), contentOp(previous));
@@ -1422,6 +1689,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const mediaField = document.querySelector<HTMLElement>('[data-props-media]')!;
   const iconField = document.querySelector<HTMLElement>('[data-props-icon]')!;
   const itemField = document.querySelector<HTMLElement>('[data-props-item]')!;
+  const shapeField = document.querySelector<HTMLElement>('[data-props-shape]')!;
   const layoutField = document.querySelector<HTMLElement>('[data-props-layout]')!;
   const layoutScope = document.querySelector<HTMLElement>('[data-layout-scope]')!;
   const colorSwatch = document.querySelector<HTMLInputElement>('[data-prop-color-swatch]')!;
@@ -1445,6 +1713,103 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       button.classList.toggle('is-active', button.dataset.align === layout.align);
     });
   }
+
+  // ------------------------------------------------------- forma: propriedades
+  const shapeFill = document.querySelector<HTMLInputElement>('[data-shape-fill]')!;
+  const shapeStroke = document.querySelector<HTMLInputElement>('[data-shape-stroke]')!;
+  const shapeStrokeWidth = document.querySelector<HTMLInputElement>(
+    '[data-shape-stroke-width]'
+  )!;
+  const shapeLinkPage = document.querySelector<HTMLSelectElement>('[data-shape-link-page]')!;
+  const shapeLinkExternal = document.querySelector<HTMLInputElement>(
+    '[data-shape-link-external]'
+  )!;
+  const shapeLinkBlank = document.querySelector<HTMLInputElement>('[data-shape-link-blank]')!;
+
+  function currentOverlayItem(): OverlayItem | null {
+    if (!selection?.overlay) return null;
+    return overlays.find((item) => item.id === selection!.overlay) ?? null;
+  }
+
+  function showShapeProps() {
+    const item = currentOverlayItem();
+    if (!item) return;
+
+    shapeFill.value = /^#[0-9a-fA-F]{6}$/.test(item.fill) ? item.fill : '#12a794';
+    shapeStroke.value = /^#[0-9a-fA-F]{6}$/.test(item.stroke) ? item.stroke : '#000000';
+    shapeStrokeWidth.value = String(item.strokeWidth || 0);
+
+    const known = ['/', '/quem-somos', '/servicos', '/conteudos', '/contato'];
+    if (!item.href) {
+      shapeLinkPage.value = '';
+      shapeLinkExternal.hidden = true;
+    } else if (known.includes(item.href)) {
+      shapeLinkPage.value = item.href;
+      shapeLinkExternal.hidden = true;
+    } else {
+      shapeLinkPage.value = '__external';
+      shapeLinkExternal.hidden = false;
+      shapeLinkExternal.value = item.href;
+    }
+    shapeLinkBlank.checked = item.linkTarget === '_blank';
+  }
+
+  /**
+   * Manda o registro INTEIRO da forma para o iframe e para o histórico —
+   * nunca um campo isolado. Um patch parcial, ao ser reaplicado num
+   * desfazer/refazer, apagaria os campos que não vieram junto (fundo, borda,
+   * texto), porque `applyShapeStyle` sempre redesenha a partir do que recebe.
+   */
+  function pushShapeStyle(patch: Partial<OverlayItem>) {
+    const item = currentOverlayItem();
+    if (!item) return;
+    const previous = { ...item };
+    Object.assign(item, patch);
+
+    const full = {
+      text: item.text,
+      fill: item.fill,
+      stroke: item.stroke,
+      strokeWidth: item.strokeWidth,
+      href: item.href,
+      linkTarget: item.linkTarget,
+    };
+    const beforeFull = {
+      text: previous.text,
+      fill: previous.fill,
+      stroke: previous.stroke,
+      strokeWidth: previous.strokeWidth,
+      href: previous.href,
+      linkTarget: previous.linkTarget,
+    };
+
+    toFrame({ type: 'editor:shape-style', id: item.id, style: item });
+    push(
+      { op: 'overlay-shape-style', id: item.id, ...full },
+      { op: 'overlay-shape-style', id: item.id, ...beforeFull }
+    );
+  }
+
+  shapeFill.addEventListener('input', () => pushShapeStyle({ fill: shapeFill.value }));
+  shapeStroke.addEventListener('input', () => pushShapeStyle({ stroke: shapeStroke.value }));
+  shapeStrokeWidth.addEventListener('change', () =>
+    pushShapeStyle({ strokeWidth: Number(shapeStrokeWidth.value) || 0 })
+  );
+  shapeLinkPage.addEventListener('change', () => {
+    if (shapeLinkPage.value === '__external') {
+      shapeLinkExternal.hidden = false;
+      shapeLinkExternal.focus();
+      return;
+    }
+    shapeLinkExternal.hidden = true;
+    pushShapeStyle({ href: shapeLinkPage.value });
+  });
+  shapeLinkExternal.addEventListener('change', () =>
+    pushShapeStyle({ href: shapeLinkExternal.value.trim() })
+  );
+  shapeLinkBlank.addEventListener('change', () =>
+    pushShapeStyle({ linkTarget: shapeLinkBlank.checked ? '_blank' : '_self' })
+  );
 
   /** Manda a mudança para a pré-visualização; ela devolve o layout já aplicado. */
   function setLayoutProp(property: keyof ElementLayout, value: string | number | boolean) {
@@ -1514,6 +1879,12 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       kind: base?.kind ?? kindToOverlay(selection.kind),
       content: base?.content ?? selection.value,
       alt: base?.alt ?? '',
+      text: base?.text ?? '',
+      fill: base?.fill ?? '',
+      stroke: base?.stroke ?? '',
+      strokeWidth: base?.strokeWidth ?? 0,
+      href: base?.href ?? '',
+      linkTarget: base?.linkTarget ?? '_self',
       desktop: { ...origem, x: origem.x + 4, y: origem.y + 4, hidden: false, locked: false },
       mobile: null,
     };
@@ -1567,16 +1938,19 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     propsLabel.textContent = current.label || 'Elemento';
     propsPath.textContent = current.path;
 
-    const isText = current.kind === 'text' || current.kind === 'multiline';
+    const isText =
+      current.kind === 'text' || current.kind === 'multiline' || current.kind === 'shape';
     const isMedia = current.kind === 'image' || current.kind === 'video';
 
     textField.hidden = !isText;
     mediaField.hidden = !isMedia;
     iconField.hidden = current.kind !== 'icon';
+    shapeField.hidden = current.kind !== 'shape';
 
     if (isText) textArea.value = current.value;
     if (isMedia) showMedia(current);
     if (current.kind === 'icon') showIcons(current.value);
+    if (current.kind === 'shape') showShapeProps();
 
     const listInfo = current.path ? listOf(current.path) : null;
     itemField.hidden = !listInfo;
@@ -1887,11 +2261,27 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     }
 
     if (HEX.test(style.text)) parts.push(`color:${style.text}`);
+
+    const minHeight = clampPx(style.minHeight, 0, 2000);
+    if (minHeight > 0) parts.push(`min-height:${minHeight}px`);
+
+    if (style.paddingY && Number.isFinite(Number(style.paddingY))) {
+      parts.push(`padding-block:${clampPx(style.paddingY, 0, 300)}px`);
+    }
+
     return parts.join(';');
   }
 
+  function clampPx(value: string, min: number, max: number): number {
+    const n = Number(value);
+    if (!value || !Number.isFinite(n)) return 0;
+    return Math.min(max, Math.max(min, Math.round(n)));
+  }
+
   function styleOf(key: string): SectionStyle {
-    return styles[key] ?? { bg: '', text: '', image: '', overlay: '' };
+    return (
+      styles[key] ?? { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' }
+    );
   }
 
   function commitStyle(key: string, property: keyof SectionStyle, value: string) {
@@ -2044,12 +2434,114 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     return wrap;
   }
 
+  /**
+   * Altura mínima, espaçamento interno e o botão de voltar ao automático.
+   * Nunca usa `height` fixa com corte — só `min-height`: se o conteúdo for
+   * mais alto, a seção cresce, e nada desaparece.
+   */
+  function dimensionsField(key: string): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'bg-field';
+
+    const caption = document.createElement('span');
+    caption.className = 'bg-field__caption';
+    caption.textContent = 'Altura da seção';
+    wrap.appendChild(caption);
+
+    const row = document.createElement('div');
+    row.className = 'color-pair';
+    const label = document.createElement('span');
+    label.textContent = 'Mínima';
+    row.appendChild(label);
+
+    const dec = document.createElement('button');
+    dec.type = 'button';
+    dec.className = 'ed-btn';
+    dec.textContent = '−';
+    dec.title = 'Diminuir 40px';
+    row.appendChild(dec);
+
+    const height = document.createElement('input');
+    height.type = 'number';
+    height.min = '0';
+    height.max = '2000';
+    height.step = '10';
+    height.placeholder = 'auto';
+    height.value = styleOf(key).minHeight;
+    row.appendChild(height);
+
+    const inc = document.createElement('button');
+    inc.type = 'button';
+    inc.className = 'ed-btn';
+    inc.textContent = '+';
+    inc.title = 'Aumentar 40px';
+    row.appendChild(inc);
+
+    const auto = document.createElement('button');
+    auto.type = 'button';
+    auto.className = 'ed-btn';
+    auto.textContent = 'Auto';
+    auto.title = 'Voltar à altura automática (a do conteúdo)';
+    row.appendChild(auto);
+    wrap.appendChild(row);
+
+    const commitHeight = (value: string) => {
+      height.value = value;
+      commitStyle(key, 'minHeight', value);
+    };
+    height.addEventListener('change', () => {
+      const n = Number(height.value);
+      if (height.value && (!Number.isFinite(n) || n < 0)) {
+        height.value = styleOf(key).minHeight;
+        return;
+      }
+      commitHeight(height.value ? String(Math.min(2000, Math.round(n))) : '');
+    });
+    dec.addEventListener('click', () => {
+      const current = Number(styleOf(key).minHeight) || 0;
+      commitHeight(String(Math.max(0, current - 40)));
+    });
+    inc.addEventListener('click', () => {
+      const current = Number(styleOf(key).minHeight) || 0;
+      commitHeight(String(Math.min(2000, current + 40)));
+    });
+    auto.addEventListener('click', () => commitHeight(''));
+
+    const padRow = document.createElement('div');
+    padRow.className = 'color-pair';
+    const padLabel = document.createElement('span');
+    padLabel.textContent = 'Espaço';
+    padRow.appendChild(padLabel);
+
+    const padding = document.createElement('input');
+    padding.type = 'number';
+    padding.min = '0';
+    padding.max = '300';
+    padding.step = '8';
+    padding.placeholder = 'padrão';
+    padding.value = styleOf(key).paddingY;
+    padding.title = 'Espaçamento interno vertical (topo e base)';
+    padRow.appendChild(padding);
+    padding.addEventListener('change', () => {
+      const n = Number(padding.value);
+      if (padding.value && (!Number.isFinite(n) || n < 0)) {
+        padding.value = styleOf(key).paddingY;
+        return;
+      }
+      commitStyle(key, 'paddingY', padding.value ? String(Math.min(300, Math.round(n))) : '');
+    });
+    wrap.appendChild(padRow);
+
+    return wrap;
+  }
+
   function renderColors() {
     colorList.replaceChildren();
 
     data.keys.forEach((key) => {
       const row = document.createElement('div');
       row.className = 'color-row';
+      row.dataset.sectionRow = key;
 
       const title = document.createElement('p');
       title.className = 'color-row__title';
@@ -2061,6 +2553,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       fields.appendChild(colorPair(key, 'bg', 'Fundo'));
       fields.appendChild(colorPair(key, 'text', 'Texto'));
       fields.appendChild(backgroundImageField(key));
+      fields.appendChild(dimensionsField(key));
       row.appendChild(fields);
 
       colorList.appendChild(row);
@@ -2069,14 +2562,27 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 
   renderColors();
 
+  /** Abre a aba Cores e destaca a linha da seção clicada no fundo vazio. */
+  function focusSectionStyleRow(key: string) {
+    openTool('colors');
+    const row = colorList.querySelector<HTMLElement>(`[data-section-row="${key}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row.classList.add('is-section-row-focused');
+    window.setTimeout(() => row.classList.remove('is-section-row-focused'), 1600);
+  }
+
   // ------------------------------------------------- desfazer/refazer
   function runHistory(from: Op[][], to: Op[][]) {
     const batch = from.pop();
     if (!batch) return;
 
-    // Reordenar muda os índices dos caminhos: a pré-visualização é recarregada
-    // para voltar a refletir o conteúdo gravado.
-    const needsReload = batch.some((operation) => operation.op === 'reorder');
+    // Reordenar muda os índices dos caminhos, e mover entre seções muda a
+    // seção em que o nó DOM vive — os dois casos são recarregados para voltar
+    // a refletir exatamente o que foi gravado.
+    const needsReload = batch.some(
+      (operation) => operation.op === 'reorder' || operation.op === 'overlay-move-section'
+    );
 
     batch.forEach((operation) => {
       queue.push(operation);
@@ -2085,6 +2591,16 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         const extra =
           kind === 'icon' ? { svgInner: data.icons[operation.value] ?? '' } : undefined;
         toFrame({ type: 'editor:set', path: operation.path, value: operation.value, extra });
+      }
+      if (operation.op === 'overlay-content' && typeof operation.content === 'string') {
+        toFrame({
+          type: 'editor:set',
+          overlay: operation.id,
+          value: operation.content,
+        });
+      }
+      if (operation.op === 'overlay-shape-style') {
+        toFrame({ type: 'editor:shape-style', id: operation.id, style: operation });
       }
       if (operation.op === 'sections') {
         if (operation.order) {
@@ -2096,6 +2612,19 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
           hidden = operation.hidden;
           toFrame({ type: 'editor:hidden-sections', hidden });
           renderSections();
+        }
+      }
+      if (operation.op === 'overlay-move-section') {
+        const item = overlays.find((entry) => entry.id === operation.id);
+        if (item) item.section = operation.to;
+        layouts['overlay:' + operation.id] = layouts['overlay:' + operation.id] ?? {
+          desktop: emptyLayout(),
+          mobile: null,
+        };
+        if (operation.device === 'mobile') {
+          layouts['overlay:' + operation.id].mobile = operation.layout as ElementLayout;
+        } else {
+          layouts['overlay:' + operation.id].desktop = operation.layout as ElementLayout;
         }
       }
     });
@@ -2174,13 +2703,26 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   /** Cria um elemento livre na seção e posição indicadas. */
-  async function inserirElemento(kind: string, section: string, x: number, y: number) {
+  function inserirElemento(
+    kind: string,
+    section: string,
+    x: number,
+    y: number,
+    shapeType?: string
+  ) {
+    const content = kind === 'shape' ? (shapeType ?? 'rect') : (DEFAULT_CONTENT[kind] ?? '');
     const overlay = {
       id: newOverlayId(),
       section,
       kind,
-      content: DEFAULT_CONTENT[kind] ?? '',
+      content,
       alt: '',
+      text: kind === 'shape' ? 'Texto' : '',
+      fill: '',
+      stroke: '',
+      strokeWidth: 0,
+      href: '',
+      linkTarget: '_self',
       desktop: { ...emptyLayout(), x, y, w: DEFAULT_WIDTH[kind] ?? 20 },
       mobile: null,
     };
@@ -2189,16 +2731,54 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     push({ op: 'overlay-add', overlay }, { op: 'overlay-remove', id: overlay.id });
     addStatus.textContent = 'Elemento inserido.';
     renderOverlays();
-    // Precisa vir renderizado pelo servidor para virar HTML de verdade.
-    await reloadPreview();
+
+    // Cria o nó ao vivo no iframe (sem recarregar): preserva a rolagem e a
+    // seleção do que já estava sendo editado antes, e o novo elemento já
+    // fica selecionado, com as propriedades abertas, pronto para mover.
+    toFrame({
+      type: 'editor:overlay-create',
+      overlay: {
+        ...overlay,
+        svgInner: kind === 'icon' ? (data.icons[content] ?? '') : undefined,
+      },
+    });
   }
 
-  // Clique insere no meio da seção escolhida; arrastar insere no ponto solto.
+  // Clique insere no meio da parte visível da seção escolhida; arrastar
+  // insere exatamente no ponto onde o cartão foi solto. Forma é diferente:
+  // primeiro pergunta qual silhueta, só insere depois de escolhida.
+  const shapePicker = document.querySelector<HTMLElement>('[data-shape-picker]')!;
+
   document.querySelectorAll<HTMLElement>('[data-add]').forEach((button) => {
-    button.addEventListener('click', () =>
-      inserirElemento(button.dataset.add!, addSection.value, 35, 12)
-    );
+    button.addEventListener('click', () => {
+      if (button.dataset.add === 'shape') {
+        shapePicker.hidden = false;
+        return;
+      }
+      toFrame({
+        type: 'editor:visible-insert-request',
+        kind: button.dataset.add!,
+        section: addSection.value,
+      });
+    });
   });
+
+  document.querySelector('[data-shape-cancel]')!.addEventListener('click', () => {
+    shapePicker.hidden = true;
+  });
+
+  document.querySelectorAll<HTMLElement>('[data-shape]').forEach((button) => {
+    button.addEventListener('click', () => {
+      shapePicker.hidden = true;
+      pendingShapeType = button.dataset.shape!;
+      toFrame({
+        type: 'editor:visible-insert-request',
+        kind: 'shape',
+        section: addSection.value,
+      });
+    });
+  });
+  let pendingShapeType = 'rect';
 
   function renderOverlays() {
     overlayList.replaceChildren();

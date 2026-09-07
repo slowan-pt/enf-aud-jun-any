@@ -12,12 +12,20 @@ import {
   getHomeContent,
   updateHomeContent,
   normalizeLayout,
+  normalizeOverlays,
   HOME_SECTION_KEYS,
-  OVERLAY_KINDS,
   EMPTY_LAYOUT,
 } from '../../../lib/pages';
-import type { HomeContent, HomeSectionKey, Overlay, OverlayKind } from '../../../lib/pages';
+import type { HomeContent, HomeSectionKey } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
+import { safeHref } from '../../../lib/urls';
+
+const SHAPE_HEX = /^#[0-9a-fA-F]{6}$/;
+function clampInt(value: unknown, min: number, max: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
 
 export const prerender = false;
 
@@ -72,6 +80,25 @@ interface OverlayRemoveOp {
   op: 'overlay-remove';
   id: string;
 }
+/** Propriedades específicas de uma forma: texto interno, preenchimento, borda e link. */
+interface OverlayShapeStyleOp {
+  op: 'overlay-shape-style';
+  id: string;
+  text?: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  href?: string;
+  linkTarget?: string;
+}
+/** Elemento livre passa a pertencer a outra seção, com a posição já recalculada. */
+interface OverlayMoveSectionOp {
+  op: 'overlay-move-section';
+  id: string;
+  to: string;
+  device: 'desktop' | 'mobile';
+  layout: unknown;
+}
 type EditOp =
   | SetOp
   | ReorderOp
@@ -81,7 +108,9 @@ type EditOp =
   | OverlayAddOp
   | OverlayLayoutOp
   | OverlayContentOp
-  | OverlayRemoveOp;
+  | OverlayRemoveOp
+  | OverlayShapeStyleOp
+  | OverlayMoveSectionOp;
 
 const EDIT_PATH = /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
 const OVERLAY_ID = /^[a-z0-9-]{1,40}$/;
@@ -164,23 +193,15 @@ function applyOp(content: HomeContent, operation: EditOp): boolean {
       if (content.overlays.length >= 100) return false;
       const raw = (operation.overlay ?? {}) as Record<string, unknown>;
       const id = String(raw.id ?? '');
-      const section = String(raw.section ?? '');
-      const kind = String(raw.kind ?? '');
-
       if (!OVERLAY_ID.test(id)) return false;
       if (content.overlays.some((item) => item.id === id)) return false;
-      if (!(HOME_SECTION_KEYS as readonly string[]).includes(section)) return false;
-      if (!(OVERLAY_KINDS as readonly string[]).includes(kind)) return false;
 
-      content.overlays.push({
-        id,
-        section: section as HomeSectionKey,
-        kind: kind as OverlayKind,
-        content: String(raw.content ?? '').slice(0, 2000),
-        alt: String(raw.alt ?? '').slice(0, 300),
-        desktop: normalizeLayout(raw.desktop),
-        mobile: raw.mobile ? normalizeLayout(raw.mobile) : null,
-      } satisfies Overlay);
+      // Mesma validação de campo usada na leitura (normalizeOverlays) — um só
+      // lugar decide o que é um overlay válido, na escrita e na leitura.
+      const [normalized] = normalizeOverlays([raw]);
+      if (!normalized || normalized.id !== id) return false;
+
+      content.overlays.push(normalized);
       return true;
     }
 
@@ -214,6 +235,39 @@ function applyOp(content: HomeContent, operation: EditOp): boolean {
       const before = content.overlays.length;
       content.overlays = content.overlays.filter((item) => item.id !== operation.id);
       return content.overlays.length < before;
+    }
+
+    case 'overlay-shape-style': {
+      if (!OVERLAY_ID.test(operation.id)) return false;
+      const overlay = content.overlays.find((item) => item.id === operation.id);
+      if (!overlay || overlay.kind !== 'shape') return false;
+
+      if (typeof operation.text === 'string') overlay.text = operation.text.slice(0, 300);
+      if (typeof operation.fill === 'string') {
+        overlay.fill = SHAPE_HEX.test(operation.fill) ? operation.fill : '';
+      }
+      if (typeof operation.stroke === 'string') {
+        overlay.stroke = SHAPE_HEX.test(operation.stroke) ? operation.stroke : '';
+      }
+      if (operation.strokeWidth !== undefined) {
+        overlay.strokeWidth = clampInt(operation.strokeWidth, 0, 20);
+      }
+      if (typeof operation.href === 'string') overlay.href = safeHref(operation.href);
+      if (typeof operation.linkTarget === 'string') {
+        overlay.linkTarget = operation.linkTarget === '_blank' ? '_blank' : '_self';
+      }
+      return true;
+    }
+
+    case 'overlay-move-section': {
+      if (!OVERLAY_ID.test(operation.id) || !isDevice(operation.device)) return false;
+      if (!(HOME_SECTION_KEYS as readonly string[]).includes(operation.to)) return false;
+      const overlay = content.overlays.find((item) => item.id === operation.id);
+      if (!overlay) return false;
+
+      overlay.section = operation.to as HomeSectionKey;
+      overlay[operation.device] = normalizeLayout(operation.layout);
+      return true;
     }
 
     default:

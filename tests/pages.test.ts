@@ -97,6 +97,8 @@ describe('sectionStyleAttr', () => {
     text: '',
     image: '',
     overlay: '',
+    minHeight: '',
+    paddingY: '',
     ...over,
   });
 
@@ -149,5 +151,35 @@ describe('sectionStyleAttr', () => {
     const css = sectionStyleAttr(style({ image: '/media/f.jpg', bg: '#123456' }));
     expect(css).toContain('background-color:#123456');
     expect(css).not.toContain('background:#123456');
+  });
+
+  it('altura mínima sai como min-height, nunca height fixa', () => {
+    const css = sectionStyleAttr(style({ minHeight: '500' }));
+    expect(css).toContain('min-height:500px');
+    // Garantia central do item: o conteúdo NUNCA é cortado. `height` fixa +
+    // overflow seriam a forma errada de fazer isso — não usamos nenhum dos dois.
+    expect(css).not.toMatch(/(?<!min-)height:/);
+    expect(css).not.toContain('overflow');
+  });
+
+  it('sem altura definida, não força min-height nenhum (permanece automática)', () => {
+    expect(sectionStyleAttr(style())).toBeUndefined();
+    expect(sectionStyleAttr(style({ minHeight: '' }))).toBeUndefined();
+  });
+
+  it('limita a altura mínima a uma faixa coerente', () => {
+    expect(sectionStyleAttr(style({ minHeight: '999999' }))).toContain('min-height:2000px');
+    expect(sectionStyleAttr(style({ minHeight: '-50' })) ?? '').not.toContain('min-height');
+    expect(sectionStyleAttr(style({ minHeight: 'abc' })) ?? '').not.toContain('min-height');
+  });
+
+  it('espaçamento interno vertical sai como padding-block, com limite', () => {
+    expect(sectionStyleAttr(style({ paddingY: '64' }))).toContain('padding-block:64px');
+    expect(sectionStyleAttr(style({ paddingY: '9999' }))).toContain('padding-block:300px');
+  });
+
+  it('espaçamento "0" explícito zera o padrão; vazio herda', () => {
+    expect(sectionStyleAttr(style({ paddingY: '0' }))).toContain('padding-block:0px');
+    expect(sectionStyleAttr(style({ paddingY: '' }))).toBeUndefined();
   });
 });
