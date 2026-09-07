@@ -10,6 +10,7 @@
  * Uso: <Icon name="shield-check" size={20} /> ou <Icon name="/media/x.svg" size={20} />
  */
 import { iconPaths } from '../data/icons';
+import { safeMediaUrl } from '../lib/urls';
 
 interface Props {
   name: string;
@@ -31,8 +32,19 @@ const {
   ...rest
 } = Astro.props;
 
-const isCustom = /^(\/|https?:\/\/)/.test(name);
-const d = isCustom ? '' : (iconPaths[name] ?? iconPaths['info']);
+// `name` vem do banco e é editável pelo painel. Duas saídas possíveis, ambas
+// fechadas: ou é uma chave da biblioteca embutida (lista permitida), ou é uma
+// URL de mídia validada. Qualquer outra coisa cai no ícone neutro.
+const builtIn = Object.prototype.hasOwnProperty.call(iconPaths, name) ? name : '';
+const customUrl = builtIn ? '' : safeMediaUrl(name);
+const isCustom = Boolean(customUrl);
+const d = isCustom ? '' : (iconPaths[builtIn] ?? iconPaths['info']);
+
+// O editor lê `data-edit-value` para saber qual ícone está aplicado. Publicamos
+// o valor que realmente foi usado, não o que veio do banco — assim um nome
+// recusado não chega ao HTML nem como texto.
+const attrs =
+  'data-edit-value' in rest ? { ...rest, 'data-edit-value': builtIn || customUrl } : rest;
 const aria = label
   ? { role: 'img' as const, 'aria-label': label }
   : { 'aria-hidden': 'true' as const };
@@ -41,13 +53,13 @@ const aria = label
 {
   isCustom ? (
     <img
-      src={name}
+      src={customUrl}
       width={size}
       height={size}
       alt={label ?? ''}
       class={`icon icon--custom ${className}`.trim()}
       loading="lazy"
-      {...rest}
+      {...attrs}
       {...(label ? {} : { 'aria-hidden': 'true' })}
     />
   ) : (
@@ -63,7 +75,7 @@ const aria = label
       stroke-linejoin="round"
       class={`icon ${className}`.trim()}
       focusable="false"
-      {...rest}
+      {...attrs}
       {...aria}
       set:html={d}
     />

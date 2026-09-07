@@ -8,6 +8,7 @@
  * imagem ou ícone — e não como desenho em canvas.
  */
 import Icon from './Icon.astro';
+import { safeMediaUrl } from '../lib/urls';
 import type { Overlay } from '../lib/pages';
 
 interface Props {
@@ -30,7 +31,7 @@ const mine = overlays.filter((item) => item.section === section);
         class="overlay overlay--image"
         data-overlay={overlay.id}
         data-edit-kind="image"
-        src={overlay.content}
+        src={safeMediaUrl(overlay.content)}
         alt={overlay.alt}
         loading="lazy"
       />

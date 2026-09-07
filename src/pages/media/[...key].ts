@@ -29,6 +29,12 @@ export const GET: APIRoute = async ({ params, request }) => {
     'Content-Type': contentType,
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Accept-Ranges': 'bytes',
+    // Arquivo enviado pelo painel é servido do nosso domínio. Um SVG aberto
+    // direto no navegador executaria script no nosso origin, então a resposta
+    // vai em sandbox — sem `allow-scripts`, nada roda — e sem adivinhação de
+    // tipo, que poderia transformar outro arquivo em HTML.
+    'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+    'X-Content-Type-Options': 'nosniff',
   };
 
   if (object.range) {

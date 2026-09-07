@@ -11,6 +11,7 @@ import ContactForm from '../components/ContactForm.astro';
 import { publishedOnly as publishedServicesOnly, findBySlug } from '../lib/services';
 import { publishedOnly as publishedPostsOnly } from '../lib/posts';
 import { waLink } from '../data/site';
+import { safeHref, safeMediaUrl } from '../lib/urls';
 import { getDB } from '../lib/db';
 import SectionOverlays from '../components/SectionOverlays.astro';
 import {
@@ -107,14 +108,14 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
           {hero.lead}
         </p>
         <div class="cluster hero__actions">
-          <a href={hero.primaryCta.href} class="hero__cta hero__cta--primary">
+          <a href={safeHref(hero.primaryCta.href)} class="hero__cta hero__cta--primary">
             <span data-edit="hero.primaryCta.label" data-edit-label="Botão principal">
               {hero.primaryCta.label}
             </span>
             <Icon name="arrow-right" size={18} class="icon--arrow" />
           </a>
           <a
-            href={hero.secondaryCta.href}
+            href={safeHref(hero.secondaryCta.href)}
             class="hero__cta hero__cta--secondary"
             data-edit="hero.secondaryCta.label"
             data-edit-label="Botão secundário"
@@ -142,18 +143,18 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         {
           promoVideo.url ? (
             <video
-              src={promoVideo.url}
+              src={safeMediaUrl(promoVideo.url)}
               class="hero__video"
               controls
               preload="metadata"
-              poster={/^\/(media|images)\//.test(hero.image) ? hero.image : undefined}
+              poster={safeMediaUrl(hero.image) || undefined}
               data-edit="promoVideo.url"
               data-edit-kind="video"
               data-edit-label="Vídeo do topo"
             />
           ) : (
             <img
-              src={hero.image}
+              src={safeMediaUrl(hero.image)}
               alt={hero.imageAlt}
               width="1200"
               height="900"
@@ -197,7 +198,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
           </div>
           <div class="promo-video" data-reveal>
             <video
-              src={promoVideo.url}
+              src={safeMediaUrl(promoVideo.url)}
               controls
               preload="metadata"
               data-edit="promoVideo.url"
@@ -271,7 +272,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
       <div class="media-frame" data-reveal>
         <figure class="figure">
           <img
-            src={valueProposition.image}
+            src={safeMediaUrl(valueProposition.image)}
             alt={valueProposition.imageAlt}
             width="1200"
             height="900"
@@ -690,7 +691,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     title={finalCta.title}
     text={finalCta.text}
     primaryLabel={finalCta.primary.label}
-    primaryHref={finalCta.primary.href}
+    primaryHref={safeHref(finalCta.primary.href)}
     style={sectionStyleAttr(sectionStyles.cta)}
     editPath="finalCta"
     sectionKey="cta"

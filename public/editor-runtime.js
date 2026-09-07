@@ -495,6 +495,61 @@
     { passive: true }
   );
 
+  // -------------------------------------------------- desenho de ícone
+  // Formas e atributos que um ícone da biblioteca pode ter. Fora desta lista,
+  // nada é copiado — nem <script>, nem <foreignObject>, nem manipulador de
+  // evento. É o que permite trocar o desenho sem usar innerHTML.
+  var ICON_SHAPES = ['path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse', 'g'];
+  var ICON_ATTRS = [
+    'd',
+    'cx',
+    'cy',
+    'r',
+    'rx',
+    'ry',
+    'x',
+    'y',
+    'x1',
+    'y1',
+    'x2',
+    'y2',
+    'width',
+    'height',
+    'points',
+    'transform',
+    'fill',
+    'stroke',
+    'stroke-width',
+    'stroke-linecap',
+    'stroke-linejoin',
+  ];
+
+  function copyShapes(source, target) {
+    [].forEach.call(source.children, function (node) {
+      var tag = node.tagName.toLowerCase();
+      if (ICON_SHAPES.indexOf(tag) === -1) return;
+
+      var clone = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      ICON_ATTRS.forEach(function (attribute) {
+        var value = node.getAttribute(attribute);
+        if (value !== null) clone.setAttribute(attribute, value);
+      });
+      copyShapes(node, clone);
+      target.appendChild(clone);
+    });
+  }
+
+  function drawIcon(svg, markup) {
+    var parsed = new DOMParser().parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg">' + markup + '</svg>',
+      'image/svg+xml'
+    );
+    if (parsed.querySelector('parsererror')) return;
+
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    copyShapes(parsed.documentElement, svg);
+  }
+
   // ----------------------------------------------- comandos vindos do editor
   // O mesmo campo pode aparecer em mais de um lugar da página (o vídeo do topo
   // e o da seção promocional são o mesmo dado), então todas as ocorrências
@@ -541,10 +596,8 @@
         return;
       }
 
-      // Ícone da biblioteca: o conteúdo vem do nosso próprio mapa de ícones,
-      // enviado pela janela do editor — não é texto digitado pelo usuário.
       if (svg && extra && typeof extra.svgInner === 'string') {
-        svg.innerHTML = extra.svgInner;
+        drawIcon(svg, extra.svgInner);
       }
       return;
     }
