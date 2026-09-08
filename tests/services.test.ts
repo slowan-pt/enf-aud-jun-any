@@ -8,6 +8,8 @@ import { describe, it, expect } from 'vitest';
 import { updateServiceById, findById, findBySlug, publishedOnly } from '../src/lib/services';
 import type { Service, ServiceUpdate } from '../src/lib/services';
 import type { D1Database } from '../src/lib/cf-types';
+import { setByPath, duplicateAtPath, removeAtPath, reorderAtPath } from '../src/lib/editable';
+import { getServiceEditorContent, updateServiceEditorContent } from '../src/lib/service-editor';
 
 interface Row {
   name: string;
@@ -219,5 +221,170 @@ describe('a listagem pública segue a regra de publishedOnly', () => {
       { ...existing, id: 3, slug: 'c', status: 'archived' },
     ];
     expect(publishedOnly(lista).map((s) => s.slug)).toEqual(['a']);
+  });
+});
+
+describe('edição inline de destaques e blocos (mesmo mecanismo de benefits.items da Home)', () => {
+  function doc() {
+    return {
+      highlights: [
+        { icon: 'search', title: 'Destaque 1', text: 'texto 1' },
+        { icon: 'activity', title: 'Destaque 2', text: 'texto 2' },
+        { icon: 'shield', title: 'Destaque 3', text: 'texto 3' },
+      ],
+      blocks: existing.blocks.map((b) => ({ ...b })),
+    };
+  }
+
+  it('edita título/texto/ícone de um destaque por caminho estável', () => {
+    const d = doc();
+    expect(setByPath(d, 'highlights.0.title', 'Novo título')).toBe(true);
+    expect(setByPath(d, 'highlights.0.text', 'Novo texto')).toBe(true);
+    expect(setByPath(d, 'highlights.0.icon', 'heart')).toBe(true);
+    expect(d.highlights[0]).toEqual({
+      icon: 'heart',
+      title: 'Novo título',
+      text: 'Novo texto',
+    });
+  });
+
+  it('edita título/texto de um bloco por caminho estável', () => {
+    const d = doc();
+    expect(setByPath(d, 'blocks.0.title', 'Novo título de bloco')).toBe(true);
+    expect(d.blocks[0]?.title).toBe('Novo título de bloco');
+  });
+
+  it('duplicar um destaque usa o modelo oficial (clona o objeto de content_json), não inventa campos', () => {
+    const d = doc();
+    const before = d.highlights.length;
+    expect(duplicateAtPath(d, 'highlights', 0)).toBe(true);
+    expect(d.highlights).toHaveLength(before + 1);
+    expect(d.highlights[1]).toEqual(d.highlights[0]); // cópia fiel
+    expect(d.highlights[1]).not.toBe(d.highlights[0]); // objeto novo, não referência
+  });
+
+  it('excluir um destaque remove exatamente o item pedido', () => {
+    const d = doc();
+    const segundo = d.highlights[1];
+    expect(removeAtPath(d, 'highlights', 0)).toBe(true);
+    expect(d.highlights[0]).toEqual(segundo);
+  });
+
+  it('não permite excluir o último item da lista', () => {
+    const d = { highlights: [existing.highlights[0]!] };
+    expect(removeAtPath(d, 'highlights', 0)).toBe(false);
+  });
+
+  it(
+    'reordenar destaques: caminho estável é por índice (mesmo comportamento de about.paragraphs ' +
+      'e benefits.items na Home) — uma posição customizada no editor_json segue o ÍNDICE, não o ' +
+      'item, então mover o item 0 para o índice 2 faz o item que passar a ocupar o índice 0 herdar ' +
+      'a posição salva ali. Comportamento documentado, não uma regressão desta rodada.',
+    () => {
+      const d = doc();
+      const original = d.highlights.map((h) => h.title);
+      expect(reorderAtPath(d, 'highlights', 0, 2)).toBe(true);
+      expect(d.highlights[2]?.title).toBe(original[0]);
+      expect(d.highlights[0]?.title).toBe(original[1]);
+    }
+  );
+});
+
+describe('Editor Visual (layout/aparência) preserva content_json integralmente', () => {
+  it('updateServiceEditorContent só grava a coluna editor_json — nunca content_json', async () => {
+    const sqlSeen: string[] = [];
+    const contentJsonOriginal = JSON.stringify({ intro: ['nunca deveria mudar'] });
+    const row = { editor_json: null as string | null };
+    const db = {
+      prepare(sql: string) {
+        sqlSeen.push(sql);
+        return {
+          bind(...params: unknown[]) {
+            return {
+              async run() {
+                row.editor_json = String(params[0]);
+              },
+              async first() {
+                return { editor_json: row.editor_json };
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const content = await getServiceEditorContent(db, 1);
+    await updateServiceEditorContent(db, 1, {
+      ...content,
+      pageStyle: { ...content.pageStyle, brandColor: '#ff0000' },
+    });
+
+    expect(sqlSeen.every((sql) => !sql.toLowerCase().includes('content_json'))).toBe(true);
+    // O "content_json" simulado acima nunca foi passado a nenhuma escrita — só existe para
+    // deixar explícito que nada nesta função tem acesso a ele.
+    expect(contentJsonOriginal).toContain('nunca deveria mudar');
+  });
+});
+
+describe('layouts desktop e mobile são independentes', () => {
+  it('mobile ausente herda o desktop; mobile definido não altera o desktop salvo', async () => {
+    const rows: Record<number, string | null> = {
+      1: JSON.stringify({
+        v: 1,
+        layouts: {
+          'highlights.0.title': {
+            desktop: {
+              v: 2,
+              x: 10,
+              y: 0,
+              w: 0,
+              h: 0,
+              z: 0,
+              fontSize: 0,
+              color: '',
+              align: '',
+              weight: 0,
+              r: 0,
+              locked: false,
+              hidden: false,
+              label: '',
+            },
+            mobile: null,
+          },
+        },
+      }),
+    };
+    const db = {
+      prepare() {
+        return {
+          bind(...params: unknown[]) {
+            return {
+              async first() {
+                const json = rows[params[0] as number];
+                return json == null ? null : { editor_json: json };
+              },
+              async run() {
+                rows[params[1] as number] = String(params[0]);
+              },
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+
+    const content = await getServiceEditorContent(db, 1);
+    expect(content.layouts['highlights.0.title']?.mobile).toBeNull(); // herda o desktop
+    expect(content.layouts['highlights.0.title']?.desktop.x).toBe(10);
+
+    // Define uma posição SÓ no mobile.
+    content.layouts['highlights.0.title']!.mobile = {
+      ...content.layouts['highlights.0.title']!.desktop,
+      x: 99,
+    };
+    await updateServiceEditorContent(db, 1, content);
+
+    const depois = await getServiceEditorContent(db, 1);
+    expect(depois.layouts['highlights.0.title']?.mobile?.x).toBe(99);
+    expect(depois.layouts['highlights.0.title']?.desktop.x).toBe(10); // desktop intacto
   });
 });

@@ -87,6 +87,32 @@ describe('normalizeServiceEditorContent — nunca confia na estrutura recebida',
     expect(content.sectionStyles.content.bg).toBe(''); // seções não citadas ficam herdadas
   });
 
+  it('minHeight/paddingY/overlay vazios continuam vazios (nunca viram "0") mesmo após vários round-trips', () => {
+    // Bug real encontrado em teste manual: renormalizar um sectionStyles já
+    // salvo (todo vazio = "herda") não pode zerar padding/altura a cada
+    // chamada — "" e "0" têm significados diferentes (herdado vs. explícito).
+    let content = normalizeServiceEditorContent({
+      v: SERVICE_EDITOR_VERSION,
+      sectionStyles: { highlights: { minHeight: '', paddingY: '', overlay: '' } },
+    });
+    for (let i = 0; i < 5; i++) {
+      content = normalizeServiceEditorContent(content);
+    }
+    expect(content.sectionStyles.highlights.minHeight).toBe('');
+    expect(content.sectionStyles.highlights.paddingY).toBe('');
+    expect(content.sectionStyles.highlights.overlay).toBe('');
+  });
+
+  it('minHeight/paddingY/overlay numéricos válidos são preservados', () => {
+    const content = normalizeServiceEditorContent({
+      v: SERVICE_EDITOR_VERSION,
+      sectionStyles: { highlights: { minHeight: '400', paddingY: '48', overlay: '30' } },
+    });
+    expect(content.sectionStyles.highlights.minHeight).toBe('400');
+    expect(content.sectionStyles.highlights.paddingY).toBe('48');
+    expect(content.sectionStyles.highlights.overlay).toBe('30');
+  });
+
   it('recusa __proto__/constructor mesmo dentro de sectionStyles — nunca poluem o objeto final', () => {
     const raw = JSON.parse(
       '{"v":1,"sectionStyles":{"__proto__":{"bg":"#000000"},"constructor":{"bg":"#111111"}}}'

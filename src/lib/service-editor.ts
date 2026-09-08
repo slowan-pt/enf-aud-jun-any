@@ -128,11 +128,15 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 function normalizeSectionStyle(value: unknown): SectionStyle {
   const raw = (value ?? {}) as Record<string, unknown>;
   const hex = (v: unknown) => (typeof v === 'string' && HEX.test(v) ? v : '');
+  // String vazia significa "não configurado / herda" — nunca vira "0". Só uma
+  // string NÃO vazia e numericamente válida é normalizada; qualquer outra
+  // coisa (incluindo vazio) volta como '', igual ao padrão das demais páginas
+  // (ver clampPx em src/lib/pages.ts, que só resolve o número no momento de
+  // gerar o CSS, nunca ao gravar).
   const num = (v: unknown, max: number) => {
+    if (typeof v !== 'string' || v === '') return '';
     const n = Number(v);
-    return typeof v === 'string' && Number.isFinite(n) && n >= 0 && n <= max
-      ? String(Math.round(n))
-      : '';
+    return Number.isFinite(n) && n >= 0 && n <= max ? String(Math.round(n)) : '';
   };
   return {
     bg: hex(raw.bg),
