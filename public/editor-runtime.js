@@ -140,6 +140,7 @@
       locked: false,
       hidden: false,
       label: '',
+      opacity: 100,
     };
   }
 
@@ -1259,6 +1260,19 @@
         break;
       }
 
+      // Ajuste de cover/contain/posição da imagem do hero (data-edit="image")
+      // — aplicado ao vivo, sem recarregar, igual às outras mudanças de estilo.
+      case 'editor:image-style': {
+        var imageNode = document.querySelector('[data-edit="image"]');
+        if (!imageNode) break;
+        var fit = data.value.fit === 'contain' ? 'contain' : 'cover';
+        var posX = typeof data.value.posX === 'number' ? data.value.posX : 50;
+        var posY = typeof data.value.posY === 'number' ? data.value.posY : 50;
+        imageNode.style.objectFit = fit;
+        imageNode.style.objectPosition = posX + '% ' + posY + '%';
+        break;
+      }
+
       case 'editor:overlay-create': {
         var created = createOverlayElement(data.overlay);
         if (!created) break;
@@ -1373,6 +1387,8 @@
     style.color = layout.color || '';
     style.textAlign = layout.align || '';
     style.fontWeight = layout.weight > 0 ? String(layout.weight) : '';
+    style.opacity =
+      typeof layout.opacity === 'number' && layout.opacity < 100 ? String(layout.opacity / 100) : '';
     element.classList.toggle('is-edit-locked', layout.locked === true);
   }
 

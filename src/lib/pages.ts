@@ -157,6 +157,13 @@ export interface ElementLayout {
   hidden: boolean;
   /** Nome dado no painel de camadas. Vazio = usa o rótulo padrão. */
   label: string;
+  /**
+   * Opacidade, 0 a 100. Neutro é 100 (totalmente opaco) — diferente dos
+   * outros campos numéricos aqui, cujo neutro é 0 ("herda"), porque 0 de
+   * opacidade seria "invisível", não "sem personalização". Ausente num
+   * layout salvo antes deste campo existir = 100 (ver normalizeLayout).
+   */
+  opacity: number;
 }
 
 /** Configuração por tamanho de tela. `mobile` nulo herda o desktop. */
@@ -217,6 +224,7 @@ export const EMPTY_LAYOUT: ElementLayout = {
   locked: false,
   hidden: false,
   label: '',
+  opacity: 100,
 };
 
 /** Largura a partir da qual vale a configuração de desktop. */
@@ -324,6 +332,13 @@ function clamp(value: unknown, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(num * 100) / 100));
 }
 
+/** Igual a `clamp`, mas cai em `fallback` (não 0) quando o valor é inválido. */
+function clampWithFallback(value: unknown, min: number, max: number, fallback: number): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(num * 100) / 100));
+}
+
 /** Descarta qualquer valor fora do esperado — o conteúdo vem do banco. */
 export function normalizeLayout(value: unknown): ElementLayout {
   const isStored = typeof value === 'object' && value !== null;
@@ -349,6 +364,10 @@ export function normalizeLayout(value: unknown): ElementLayout {
     locked: raw.locked === true,
     hidden: raw.hidden === true,
     label: typeof raw.label === 'string' ? raw.label.slice(0, 60) : '',
+    // Ausente ou inválido (todo layout salvo antes deste campo existir) =
+    // 100, nunca 0 — 0 significaria "invisível", e um layout antigo nunca
+    // foi invisível.
+    opacity: clampWithFallback(raw.opacity, 0, 100, 100),
   };
 }
 
@@ -485,6 +504,7 @@ function layoutDeclarations(
   if (layout.color) parts.push(`color:${layout.color}`);
   if (layout.align) parts.push(`text-align:${layout.align}`);
   if (layout.weight > 0) parts.push(`font-weight:${layout.weight}`);
+  if (layout.opacity < 100) parts.push(`opacity:${layout.opacity / 100}`);
 
   // `transform` e `width` não têm efeito em elemento inline (um <span>, por
   // exemplo), então quem foi movido ou redimensionado vira inline-block —

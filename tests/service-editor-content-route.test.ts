@@ -187,6 +187,13 @@ describe('contrato de gravação: conteúdo → content_json, aparência → edi
     expect(row.content_json).toBe(baseRow().content_json);
   });
 
+  it('"image-style" (cover/contain/posição) grava só editor_json, nunca a referência da imagem em content_json', async () => {
+    await postOps([{ op: 'image-style', value: { fit: 'contain', posX: 20, posY: 80 } }]);
+    const editor = JSON.parse(row.editor_json!);
+    expect(editor.imageStyle).toEqual({ fit: 'contain', posX: 20, posY: 80 });
+    expect(JSON.parse(row.content_json).image).toBe('/images/a.svg'); // fonte oficial intacta
+  });
+
   it('editar um destaque (highlights.0.title) grava content_json, preserva editor_json existente', async () => {
     row.editor_json = JSON.stringify({
       v: 1,

@@ -12,6 +12,8 @@ import {
   sectionStyleAttr,
   normalizePageStyle,
   pageStyleOverride,
+  normalizeLayout,
+  layoutStylesheet,
   HOME_SECTION_KEYS,
   HOME_EDITABLE_SLOTS,
 } from '../src/lib/pages';
@@ -236,7 +238,12 @@ describe('normalizePageStyle — sobrescrita de aparência por página', () => {
 describe('pageStyleOverride — o que chega em BaseHead', () => {
   it('página 100% herdada não manda nenhum campo', () => {
     expect(
-      pageStyleOverride({ brandColor: '', accentColor: '', backgroundColor: '', headingColor: '' })
+      pageStyleOverride({
+        brandColor: '',
+        accentColor: '',
+        backgroundColor: '',
+        headingColor: '',
+      })
     ).toEqual({});
   });
 
@@ -250,5 +257,38 @@ describe('pageStyleOverride — o que chega em BaseHead', () => {
     expect(override).toEqual({ brandColor: '#06203a', backgroundColor: '#ffffff' });
     expect(override).not.toHaveProperty('accentColor');
     expect(override).not.toHaveProperty('headingColor');
+  });
+});
+
+describe('opacidade (ElementLayout.opacity) — controle de ícones/elementos', () => {
+  it('layout gravado antes deste campo existir (sem "opacity") cai em 100 — nunca invisível', () => {
+    const legado = normalizeLayout({ v: 2, x: 5 });
+    expect(legado.opacity).toBe(100);
+  });
+
+  it('valor numérico válido é preservado dentro de 0–100', () => {
+    expect(normalizeLayout({ opacity: 40 }).opacity).toBe(40);
+    expect(normalizeLayout({ opacity: 0 }).opacity).toBe(0);
+    expect(normalizeLayout({ opacity: 100 }).opacity).toBe(100);
+  });
+
+  it('valor fora da faixa é limitado; valor inválido cai em 100 (nunca em 0)', () => {
+    expect(normalizeLayout({ opacity: 500 }).opacity).toBe(100);
+    expect(normalizeLayout({ opacity: -20 }).opacity).toBe(0);
+    expect(normalizeLayout({ opacity: 'abc' }).opacity).toBe(100);
+  });
+
+  it('layoutStylesheet só emite "opacity" quando é menor que 100 (100 não gera CSS nenhum)', () => {
+    const cheio = layoutStylesheet(
+      { icone: { desktop: normalizeLayout({ opacity: 100 }), mobile: null } },
+      []
+    );
+    expect(cheio).not.toContain('opacity');
+
+    const meio = layoutStylesheet(
+      { icone: { desktop: normalizeLayout({ opacity: 50 }), mobile: null } },
+      []
+    );
+    expect(meio).toContain('opacity:0.5');
   });
 });

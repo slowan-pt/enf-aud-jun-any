@@ -17,6 +17,15 @@ interface Props {
    * passam esta prop e continuam idênticas.
    */
   imageEditPath?: string;
+  /**
+   * Ajuste visual da imagem — `cover`/`contain` e posição do enquadramento.
+   * Ausente = comportamento de sempre (cover, centrado, via CSS abaixo).
+   * A proporção (aspect-ratio 4/3) e o tamanho mínimo nunca mudam: só o que
+   * fica visível dentro desse quadro muda.
+   */
+  imageFit?: 'cover' | 'contain';
+  imagePosX?: number;
+  imagePosY?: number;
 }
 
 const {
@@ -28,8 +37,15 @@ const {
   imageAlt = '',
   align = 'left',
   imageEditPath,
+  imageFit,
+  imagePosX,
+  imagePosY,
 } = Astro.props;
 const hasImage = Boolean(image);
+const imageStyle =
+  imageFit || imagePosX !== undefined || imagePosY !== undefined
+    ? `object-fit:${imageFit ?? 'cover'};object-position:${imagePosX ?? 50}% ${imagePosY ?? 50}%`
+    : undefined;
 ---
 
 <section class:list={['page-hero', { 'page-hero--with-image': hasImage }]}>
@@ -56,6 +72,7 @@ const hasImage = Boolean(image);
             width="720"
             height="540"
             loading="eager"
+            style={imageStyle}
             data-edit={imageEditPath}
             data-edit-kind={imageEditPath ? 'image' : undefined}
             data-edit-label={imageEditPath ? 'Imagem do topo' : undefined}

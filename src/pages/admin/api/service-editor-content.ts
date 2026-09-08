@@ -20,6 +20,7 @@ import {
   getServiceEditorContent,
   updateServiceEditorContent,
   normalizeServiceEditorContent,
+  normalizeImageStyle,
   SERVICE_SECTION_KEYS,
 } from '../../../lib/service-editor';
 import {
@@ -259,6 +260,10 @@ function applyLayoutOp(
 
     case 'page-style':
       content.pageStyle = normalizePageStyle(operation.value);
+      return true;
+
+    case 'image-style':
+      content.imageStyle = normalizeImageStyle(operation.value);
       return true;
 
     default:

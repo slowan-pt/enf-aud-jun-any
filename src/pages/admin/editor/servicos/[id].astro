@@ -75,6 +75,7 @@ const bootstrap = {
   labels: SECTION_LABELS,
   keys: SERVICE_SECTION_KEYS,
   icons: iconPaths,
+  imageStyle: content.imageStyle,
 };
 
 // `<` escapado para o JSON nunca poder fechar a própria tag <script>.
@@ -212,6 +213,32 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
               </label>
               <input class="input" data-media-url placeholder="/media/arquivo.jpg" />
               <p class="panel-hint" data-media-status></p>
+
+              <div class="icon-controls" data-image-controls hidden>
+                <span class="label">Ajuste da imagem</span>
+                <div class="prop-row" role="group" aria-label="Ajuste">
+                  <button type="button" class="ed-btn" data-image-fit="cover">Preencher</button>
+                  <button type="button" class="ed-btn" data-image-fit="contain">Conter</button>
+                </div>
+                <div class="prop-row">
+                  <span>Posição X</span>
+                  <input type="range" min="0" max="100" step="1" data-image-pos-x />
+                  <span class="bg-field__readout" data-image-pos-x-readout>50%</span>
+                </div>
+                <div class="prop-row">
+                  <span>Posição Y</span>
+                  <input type="range" min="0" max="100" step="1" data-image-pos-y />
+                  <span class="bg-field__readout" data-image-pos-y-readout>50%</span>
+                </div>
+                <div class="prop-row">
+                  <button type="button" class="ed-btn" data-image-restore>Restaurar</button>
+                </div>
+                <p class="panel-hint">
+                  Preserva a proporção original — a imagem nunca é distorcida, só recortada
+                  (Preencher) ou reduzida para caber inteira (Conter). Texto alternativo
+                  continua em Conteúdo → Serviços.
+                </p>
+              </div>
             </div>
 
             <!-- ícone -->
@@ -234,6 +261,39 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
                 />
               </label>
               <p class="panel-hint" data-icon-status></p>
+
+              <div class="icon-controls">
+                <div class="prop-row">
+                  <span>Cor</span>
+                  <input type="color" data-icon-color-swatch />
+                  <input type="text" data-icon-color placeholder="herda" />
+                </div>
+                <div class="prop-row">
+                  <span>Tamanho</span>
+                  <input type="number" step="1" min="0" max="100" data-icon-size />
+                  <span class="bg-field__readout">%</span>
+                </div>
+                <div class="prop-row">
+                  <span>Opacidade</span>
+                  <input type="range" min="0" max="100" step="1" data-icon-opacity />
+                  <span class="bg-field__readout" data-icon-opacity-readout>100%</span>
+                </div>
+                <div class="prop-row">
+                  <label class="prop-check">
+                    <input type="checkbox" data-icon-lock />
+                    Bloquear
+                  </label>
+                  <label class="prop-check">
+                    <input type="checkbox" data-icon-hide />
+                    Ocultar
+                  </label>
+                  <button type="button" class="ed-btn" data-icon-restore>Restaurar</button>
+                </div>
+                <p class="panel-hint">
+                  Desfazer/refazer (Ctrl+Z / Ctrl+Shift+Z) valem para qualquer alteração feita
+                  aqui.
+                </p>
+              </div>
             </div>
 
             <!-- posição, tamanho e estilo -->
@@ -723,6 +783,14 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   /* ------------------------------------------------------- campos */
+  .icon-controls {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    border-top: 1px dashed var(--line);
+    display: grid;
+    gap: 0.3rem;
+  }
+
   .media-box {
     display: grid;
     place-items: center;
@@ -1291,6 +1359,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     hidden: boolean;
     /** Nome dado no painel de camadas. */
     label: string;
+    /** Opacidade, 0 a 100. Neutro é 100 (ver src/lib/pages.ts). */
+    opacity: number;
   }
 
   interface LayoutPair {
@@ -1322,6 +1392,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     labels: Record<string, string>;
     keys: string[];
     icons: Record<string, string>;
+    imageStyle: { fit: 'cover' | 'contain'; posX: number; posY: number };
   }
 
   type Op =
@@ -1362,7 +1433,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         to: string;
         device: string;
         layout: ElementLayout | null;
-      };
+      }
+    | { op: 'image-style'; value: { fit: 'cover' | 'contain'; posX: number; posY: number } };
 
   interface Selection {
     path: string | null;
@@ -1391,6 +1463,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const styles = data.sectionStyles;
   const layouts: Record<string, LayoutPair> = { ...data.layouts };
   let overlays: OverlayItem[] = [...data.overlays];
+  let imageStyle = { ...data.imageStyle };
   let selection: Selection | null = null;
   let device = 'desktop';
   let migrationCount = 0;
@@ -1411,6 +1484,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       locked: false,
       hidden: false,
       label: '',
+      opacity: 100,
     };
   }
 
@@ -1746,6 +1820,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const textArea = document.querySelector<HTMLTextAreaElement>('#prop-text')!;
   const mediaField = document.querySelector<HTMLElement>('[data-props-media]')!;
   const iconField = document.querySelector<HTMLElement>('[data-props-icon]')!;
+  const imageControlsField = document.querySelector<HTMLElement>('[data-image-controls]')!;
   const itemField = document.querySelector<HTMLElement>('[data-props-item]')!;
   const shapeField = document.querySelector<HTMLElement>('[data-props-shape]')!;
   const layoutField = document.querySelector<HTMLElement>('[data-props-layout]')!;
@@ -1764,6 +1839,17 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     hideBox.checked = layout.hidden;
     rotateRange.value = String(layout.r ?? 0);
     rotateReadout.textContent = `${layout.r ?? 0}°`;
+
+    // Espelha os mesmos valores nos controles próprios do ícone (seção
+    // separada, mas o dado é o mesmo layout do elemento selecionado).
+    iconColorSwatch.value = layout.color || '#000000';
+    iconColorHex.value = layout.color || '';
+    iconSize.value = String(layout.w || 0);
+    const opacityValue = typeof layout.opacity === 'number' ? layout.opacity : 100;
+    iconOpacity.value = String(opacityValue);
+    iconOpacityReadout.textContent = `${opacityValue}%`;
+    iconLock.checked = layout.locked;
+    iconHide.checked = layout.hidden;
     actionsHint.textContent = selection?.overlay
       ? 'Elemento livre: excluir remove de vez.'
       : 'Elemento da estrutura: duplicar cria uma cópia livre e excluir apenas oculta no site.';
@@ -1916,6 +2002,45 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   });
   rotateRange.addEventListener('change', () => setLayoutProp('r', Number(rotateRange.value)));
 
+  // ---------------------------------------- controles próprios do ícone
+  // Seção dedicada, visível só quando o elemento selecionado é um ícone
+  // (ver showProps/data-props-icon) — cor, tamanho, opacidade, bloquear,
+  // ocultar e restaurar, tudo pelo mesmo setLayoutProp/editor:layout-reset
+  // já usados pelo painel genérico, então desfazer/refazer valem igual.
+  const iconColorSwatch = document.querySelector<HTMLInputElement>('[data-icon-color-swatch]')!;
+  const iconColorHex = document.querySelector<HTMLInputElement>('[data-icon-color]')!;
+  const iconSize = document.querySelector<HTMLInputElement>('[data-icon-size]')!;
+  const iconOpacity = document.querySelector<HTMLInputElement>('[data-icon-opacity]')!;
+  const iconOpacityReadout = document.querySelector<HTMLElement>(
+    '[data-icon-opacity-readout]'
+  )!;
+  const iconLock = document.querySelector<HTMLInputElement>('[data-icon-lock]')!;
+  const iconHide = document.querySelector<HTMLInputElement>('[data-icon-hide]')!;
+
+  iconColorSwatch.addEventListener('input', () => {
+    iconColorHex.value = iconColorSwatch.value;
+    setLayoutProp('color', iconColorSwatch.value);
+  });
+  iconColorHex.addEventListener('change', () => {
+    if (/^#[0-9a-fA-F]{6}$/.test(iconColorHex.value)) {
+      iconColorSwatch.value = iconColorHex.value;
+      setLayoutProp('color', iconColorHex.value);
+    }
+  });
+  iconSize.addEventListener('change', () => setLayoutProp('w', Number(iconSize.value)));
+  iconOpacity.addEventListener('input', () => {
+    iconOpacityReadout.textContent = `${iconOpacity.value}%`;
+  });
+  iconOpacity.addEventListener('change', () =>
+    setLayoutProp('opacity', Number(iconOpacity.value))
+  );
+  iconLock.addEventListener('change', () => setLayoutProp('locked', iconLock.checked));
+  iconHide.addEventListener('change', () => setLayoutProp('hidden', iconHide.checked));
+  document.querySelector('[data-icon-restore]')!.addEventListener('click', () => {
+    if (!selection) return;
+    toFrame({ type: 'editor:layout-reset' });
+  });
+
   // ------------------------------------------- duplicar / excluir elemento
   const actionsHint = document.querySelector<HTMLElement>('[data-el-actions-hint]')!;
 
@@ -2004,11 +2129,15 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     mediaField.hidden = !isMedia;
     iconField.hidden = current.kind !== 'icon';
     shapeField.hidden = current.kind !== 'shape';
+    // Ajuste de imagem só faz sentido para imagem (não vídeo) — e só para a
+    // imagem do hero (path "image"), a única imagem editável nesta página.
+    imageControlsField.hidden = !(isMedia && current.kind === 'image');
 
     if (isText) textArea.value = current.value;
     if (isMedia) showMedia(current);
     if (current.kind === 'icon') showIcons(current.value);
     if (current.kind === 'shape') showShapeProps();
+    if (current.kind === 'image') showImageControls();
 
     const listInfo = current.path ? listOf(current.path) : null;
     itemField.hidden = !listInfo;
@@ -2070,6 +2199,53 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (!isVideo && current.value) mediaPreview.src = current.value;
     if (isVideo && current.value) mediaVideo.src = current.value;
   }
+
+  // ------------------------------------ controles próprios da imagem
+  const imageFitButtons = document.querySelectorAll<HTMLButtonElement>('[data-image-fit]');
+  const imagePosX = document.querySelector<HTMLInputElement>('[data-image-pos-x]')!;
+  const imagePosY = document.querySelector<HTMLInputElement>('[data-image-pos-y]')!;
+  const imagePosXReadout = document.querySelector<HTMLElement>('[data-image-pos-x-readout]')!;
+  const imagePosYReadout = document.querySelector<HTMLElement>('[data-image-pos-y-readout]')!;
+
+  function showImageControls() {
+    imageFitButtons.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.imageFit === imageStyle.fit);
+    });
+    imagePosX.value = String(imageStyle.posX);
+    imagePosY.value = String(imageStyle.posY);
+    imagePosXReadout.textContent = `${imageStyle.posX}%`;
+    imagePosYReadout.textContent = `${imageStyle.posY}%`;
+  }
+
+  function pushImageStyle(next: typeof imageStyle) {
+    const previous = imageStyle;
+    imageStyle = next;
+    toFrame({ type: 'editor:image-style', value: next });
+    push({ op: 'image-style', value: next }, { op: 'image-style', value: previous });
+    showImageControls();
+  }
+
+  imageFitButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const fit = button.dataset.imageFit === 'contain' ? 'contain' : 'cover';
+      pushImageStyle({ ...imageStyle, fit });
+    });
+  });
+  imagePosX.addEventListener('input', () => {
+    imagePosXReadout.textContent = `${imagePosX.value}%`;
+  });
+  imagePosX.addEventListener('change', () => {
+    pushImageStyle({ ...imageStyle, posX: Number(imagePosX.value) });
+  });
+  imagePosY.addEventListener('input', () => {
+    imagePosYReadout.textContent = `${imagePosY.value}%`;
+  });
+  imagePosY.addEventListener('change', () => {
+    pushImageStyle({ ...imageStyle, posY: Number(imagePosY.value) });
+  });
+  document.querySelector('[data-image-restore]')!.addEventListener('click', () => {
+    pushImageStyle({ fit: 'cover', posX: 50, posY: 50 });
+  });
 
   mediaUrl.addEventListener('change', () => {
     if (!selection) return;

@@ -11,8 +11,10 @@ import {
   getServiceEditorContent,
   updateServiceEditorContent,
   normalizeServiceEditorContent,
+  normalizeImageStyle,
   resolveServicePageStyle,
   EMPTY_SERVICE_EDITOR_CONTENT,
+  EMPTY_SERVICE_IMAGE_STYLE,
   SERVICE_SECTION_KEYS,
   SERVICE_EDITOR_VERSION,
 } from '../src/lib/service-editor';
@@ -275,5 +277,50 @@ describe('elementos livres (overlays) por seção do serviço', () => {
     );
     expect(validos).toHaveLength(1);
     expect(validos[0]?.id).toBe('a');
+  });
+});
+
+describe('imageStyle — cover/contain e posição da imagem do hero', () => {
+  it('padrão (nunca personalizado) é cover, centrado', () => {
+    expect(EMPTY_SERVICE_IMAGE_STYLE).toEqual({ fit: 'cover', posX: 50, posY: 50 });
+  });
+
+  it('aceita "contain"; qualquer outro valor cai em "cover"', () => {
+    expect(normalizeImageStyle({ fit: 'contain' }).fit).toBe('contain');
+    expect(normalizeImageStyle({ fit: 'esconder' }).fit).toBe('cover');
+    expect(normalizeImageStyle({}).fit).toBe('cover');
+  });
+
+  it('posX/posY são limitados a 0–100; valor inválido cai em 50 (centro)', () => {
+    expect(normalizeImageStyle({ posX: 30, posY: 70 })).toEqual({
+      fit: 'cover',
+      posX: 30,
+      posY: 70,
+    });
+    expect(normalizeImageStyle({ posX: 500 }).posX).toBe(100);
+    expect(normalizeImageStyle({ posX: -20 }).posX).toBe(0);
+    expect(normalizeImageStyle({ posX: 'abc' }).posX).toBe(50);
+  });
+
+  it('editor_json sem imageStyle (registro antigo) cai no padrão via normalizeServiceEditorContent', () => {
+    const content = normalizeServiceEditorContent({ v: SERVICE_EDITOR_VERSION });
+    expect(content.imageStyle).toEqual(EMPTY_SERVICE_IMAGE_STYLE);
+  });
+
+  it('imageStyle é isolado por serviço — igual a pageStyle/sectionStyles', async () => {
+    const { db, rows } = fakeDb({
+      1: JSON.stringify({ v: 1, imageStyle: { fit: 'contain', posX: 10, posY: 90 } }),
+      2: JSON.stringify({ v: 1, imageStyle: { fit: 'cover', posX: 50, posY: 50 } }),
+    });
+    const a = await getServiceEditorContent(db, 1);
+    const b = await getServiceEditorContent(db, 2);
+    expect(a.imageStyle.fit).toBe('contain');
+    expect(b.imageStyle.fit).toBe('cover');
+
+    await updateServiceEditorContent(db, 1, {
+      ...a,
+      imageStyle: { fit: 'cover', posX: 0, posY: 0 },
+    });
+    expect(JSON.parse(rows[2]!).imageStyle.posX).toBe(50); // serviço 2 intacto
   });
 });

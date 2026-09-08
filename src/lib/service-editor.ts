@@ -43,6 +43,29 @@ export type ServiceSectionKey = (typeof SERVICE_SECTION_KEYS)[number];
 /** Versão do formato de `editor_json` — permite evoluir o formato sem quebrar registros antigos. */
 export const SERVICE_EDITOR_VERSION = 1 as const;
 
+/**
+ * Ajuste visual da imagem do hero — SEMPRE aqui, nunca na fonte oficial: a
+ * referência do arquivo e o texto alternativo continuam em
+ * `services.content_json` (ver src/lib/services.ts), só cover/contain e
+ * posição são "decoração" sem coluna própria. `fit`/`posX`/`posY` no valor
+ * neutro (cover, 50/50) não é "sem imagem personalizada" — é literalmente
+ * o comportamento padrão do CSS já usado por PageHero para toda página, só
+ * fica explícito aqui quando alguém personaliza.
+ */
+export interface ServiceImageStyle {
+  fit: 'cover' | 'contain';
+  /** Posição horizontal do `object-position`, 0 a 100 (%). */
+  posX: number;
+  /** Posição vertical do `object-position`, 0 a 100 (%). */
+  posY: number;
+}
+
+export const EMPTY_SERVICE_IMAGE_STYLE: ServiceImageStyle = {
+  fit: 'cover',
+  posX: 50,
+  posY: 50,
+};
+
 export interface ServiceEditorContent {
   v: typeof SERVICE_EDITOR_VERSION;
   pageStyle: PageStyle;
@@ -51,6 +74,7 @@ export interface ServiceEditorContent {
   hiddenSections: ServiceSectionKey[];
   layouts: Record<string, LayoutPair>;
   overlays: Overlay[];
+  imageStyle: ServiceImageStyle;
 }
 
 export const EMPTY_SERVICE_EDITOR_CONTENT: ServiceEditorContent = {
@@ -66,7 +90,18 @@ export const EMPTY_SERVICE_EDITOR_CONTENT: ServiceEditorContent = {
   hiddenSections: [],
   layouts: {},
   overlays: [],
+  imageStyle: { ...EMPTY_SERVICE_IMAGE_STYLE },
 };
+
+export function normalizeImageStyle(value: unknown): ServiceImageStyle {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const fit = raw.fit === 'contain' ? 'contain' : 'cover';
+  const pos = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 50;
+  };
+  return { fit, posX: pos(raw.posX), posY: pos(raw.posY) };
+}
 
 /** Tamanho máximo do JSON gravado — mesma ordem de grandeza do conteúdo de uma página inteira. */
 const MAX_JSON_LENGTH = 200_000;
@@ -120,6 +155,7 @@ export function normalizeServiceEditorContent(raw: unknown): ServiceEditorConten
     hiddenSections: normalizeSectionKeys(stored.hiddenSections, []),
     layouts: normalizeLayouts(stored.layouts),
     overlays: normalizeOverlays(stored.overlays, SERVICE_SECTION_KEYS),
+    imageStyle: normalizeImageStyle(stored.imageStyle),
   };
 }
 

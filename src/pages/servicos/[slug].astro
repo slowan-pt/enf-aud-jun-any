@@ -36,6 +36,7 @@ const {
   hiddenSections,
   layouts,
   overlays,
+  imageStyle,
 } = await getServiceEditorContent(db, service.id);
 
 const effectivePageStyle = resolveServicePageStyle(moldura.pageStyle, servicePageStyle);
@@ -84,6 +85,9 @@ const serviceLd = {
       image={service.image}
       imageAlt={service.imageAlt}
       imageEditPath={ed('image')}
+      imageFit={imageStyle.fit}
+      imagePosX={imageStyle.posX}
+      imagePosY={imageStyle.posY}
     >
       <div class="cluster hero-actions">
         <a href="#solicitar" class="btn btn--on-brand">
