@@ -67,7 +67,7 @@
     return {
       path: element.getAttribute('data-edit'),
       overlay: overlayId,
-      key: overlayId ? 'overlay:' + overlayId : element.getAttribute('data-edit'),
+      key: keyOf(element),
       kind: kindOf(element),
       value: valueOf(element),
       label: element.getAttribute('data-edit-label') || (overlayId ? 'Elemento livre' : ''),
@@ -97,10 +97,20 @@
     return element.hasAttribute('data-overlay');
   }
 
+  // `data-layout-key`: quando presente, é a chave usada para GRAVAR a
+  // posição/estilo (editor_json) — separada do `data-edit` (caminho de
+  // CONTEÚDO, content_json). Existe para item de lista com identidade
+  // estável (ex.: destaques/blocos de um serviço, ver
+  // src/lib/service-item-ids.ts): o conteúdo continua endereçado por
+  // índice (a posição no array), mas o layout precisa sobreviver a
+  // reordenar/duplicar/excluir, o que só uma chave por id garante. Ausente
+  // em toda página que não declarar isso (Home, Quem Somos, Contato,
+  // moldura de Serviços) — nesse caso cai no `data-edit` de sempre, sem
+  // qualquer mudança de comportamento.
   function keyOf(element) {
     return isOverlay(element)
       ? 'overlay:' + element.getAttribute('data-overlay')
-      : element.getAttribute('data-edit');
+      : element.getAttribute('data-layout-key') || element.getAttribute('data-edit');
   }
 
   function sectionOf(element) {
@@ -547,9 +557,16 @@
 
   // -------------------------------------------------------- migração
   function elementForKey(key) {
-    return key.indexOf('overlay:') === 0
-      ? document.querySelector('[data-overlay="' + CSS.escape(key.slice(8)) + '"]')
-      : document.querySelector('[data-edit="' + CSS.escape(key) + '"]');
+    if (key.indexOf('overlay:') === 0) {
+      return document.querySelector('[data-overlay="' + CSS.escape(key.slice(8)) + '"]');
+    }
+    // `data-layout-key` primeiro: é a chave que existe quando o elemento usa
+    // identidade estável (ver keyOf) — só cai para `data-edit` quando não há
+    // essa sobrescrita, que é o caso de toda página que não a declara.
+    return (
+      document.querySelector('[data-layout-key="' + CSS.escape(key) + '"]') ||
+      document.querySelector('[data-edit="' + CSS.escape(key) + '"]')
+    );
   }
 
   /**

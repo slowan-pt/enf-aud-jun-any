@@ -10,12 +10,22 @@
 import type { D1Database } from './cf-types';
 
 export interface ServiceHighlight {
+  /**
+   * Identidade estável do item — NUNCA o índice na lista, nunca derivado do
+   * texto (título/hash mudam com a edição, o id não pode). Gerado uma única
+   * vez (ver `ensureItemIds` em src/lib/service-item-ids.ts) e persistido
+   * dentro do próprio `content_json`; usado como chave de layout no
+   * `editor_json` para sobreviver a reordenar/duplicar/excluir. Ausente em
+   * registros salvos antes desta migração — sempre tratado como opcional.
+   */
+  id?: string;
   icon: string;
   title: string;
   text: string;
 }
 
 export interface ServiceBlock {
+  id?: string;
   title: string;
   text?: string;
   items?: string[];
@@ -51,7 +61,7 @@ export interface Service {
   updatedAt: string;
 }
 
-interface ServiceContentJson {
+export interface ServiceContentJson {
   image: string;
   imageAlt: string;
   intro: string[];
@@ -252,5 +262,28 @@ export async function updateServiceById(
       patch.icon,
       id
     )
+    .run();
+}
+
+/**
+ * Gravação atômica de `content_json` + `editor_json` na MESMA instrução SQL
+ * — usada exclusivamente pela migração de identidade estável de destaques/
+ * blocos (ver src/lib/service-item-ids.ts): materializar ids em
+ * `content_json` e migrar as chaves de layout correspondentes em
+ * `editor_json` precisam virar visíveis juntos, nunca um sem o outro.
+ * Não altera nome, resumo, hero, SEO ou status.
+ */
+export async function updateServiceContentAndEditorJson(
+  db: D1Database,
+  id: number,
+  content: ServiceContentJson,
+  editorJson: string
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE services SET content_json = ?1, editor_json = ?2, updated_at = datetime('now')
+       WHERE id = ?3 AND deleted_at IS NULL`
+    )
+    .bind(JSON.stringify(content), editorJson, id)
     .run();
 }

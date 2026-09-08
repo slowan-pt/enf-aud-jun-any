@@ -120,6 +120,7 @@ const serviceLd = {
                   name={item.icon}
                   size={18}
                   data-edit={`highlights.${index}.icon`}
+                  data-layout-key={item.id && ed(`highlights.${item.id}.icon`)}
                   data-edit-kind={ed('icon')}
                   data-edit-value={item.icon}
                   data-edit-label={ed('Ícone')}
@@ -127,12 +128,14 @@ const serviceLd = {
               </span>
               <h2
                 data-edit={`highlights.${index}.title`}
+                data-layout-key={item.id && ed(`highlights.${item.id}.title`)}
                 data-edit-label={ed('Título do destaque')}
               >
                 {item.title}
               </h2>
               <p
                 data-edit={`highlights.${index}.text`}
+                data-layout-key={item.id && ed(`highlights.${item.id}.text`)}
                 data-edit-kind={ed('multiline')}
                 data-edit-label={ed('Texto do destaque')}
               >
@@ -176,6 +179,7 @@ const serviceLd = {
                 <h2
                   class="title-md"
                   data-edit={`blocks.${index}.title`}
+                  data-layout-key={block.id && ed(`blocks.${block.id}.title`)}
                   data-edit-label={ed('Título do bloco')}
                 >
                   {block.title}
@@ -184,6 +188,7 @@ const serviceLd = {
                   <p
                     class="svc-block__text"
                     data-edit={`blocks.${index}.text`}
+                    data-layout-key={block.id && ed(`blocks.${block.id}.text`)}
                     data-edit-kind={ed('multiline')}
                     data-edit-label={ed('Texto do bloco')}
                   >

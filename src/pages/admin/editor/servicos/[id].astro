@@ -15,8 +15,9 @@
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import Icon from '../../../../components/Icon.astro';
 import { getDB } from '../../../../lib/db';
-import { getServiceById } from '../../../../lib/services';
+import { getServiceById, updateServiceContentAndEditorJson } from '../../../../lib/services';
 import { getServiceEditorContent, SERVICE_SECTION_KEYS } from '../../../../lib/service-editor';
+import { migrateServiceItemIds } from '../../../../lib/service-item-ids';
 import { iconPaths } from '../../../../data/icons';
 
 const serviceId = Number(Astro.params.id);
@@ -26,7 +27,36 @@ const db = getDB();
 const service = await getServiceById(db, serviceId);
 if (!service) return Astro.rewrite('/404');
 
-const content = await getServiceEditorContent(db, serviceId);
+let content = await getServiceEditorContent(db, serviceId);
+
+/**
+ * Abrir o Editor Visual é a "operação segura de edição" em que ids de
+ * destaques/blocos antigos (salvos por índice) são materializados e as
+ * chaves de layout correspondentes migradas — nunca ao abrir a página
+ * PÚBLICA (/servicos/[slug], que só lê). Idempotente: se nada precisa
+ * mudar, não grava nada (não gera id novo a cada carregamento). Quando
+ * precisa, grava content_json + editor_json juntos, na mesma instrução SQL.
+ */
+const migration = migrateServiceItemIds(service.highlights, service.blocks, content);
+if (migration.changed) {
+  service.highlights = migration.highlights;
+  service.blocks = migration.blocks;
+  content = { ...content, layouts: migration.layouts };
+  await updateServiceContentAndEditorJson(
+    db,
+    serviceId,
+    {
+      image: service.image,
+      imageAlt: service.imageAlt,
+      intro: service.intro,
+      highlights: service.highlights,
+      blocks: service.blocks,
+      deliverables: service.deliverables,
+      audience: service.audience,
+    },
+    JSON.stringify(content)
+  );
+}
 
 const SECTION_LABELS: Record<string, string> = {
   highlights: 'Destaques',
@@ -1390,14 +1420,21 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     return (forDevice === 'mobile' ? pair.mobile : pair.desktop) ?? emptyLayout();
   }
 
-  /** Elemento existente e elemento livre gravam por operações diferentes. */
+  /**
+   * Elemento existente e elemento livre gravam por operações diferentes.
+   * A chave GRAVADA é `key` (não `path`): para a maioria dos elementos as
+   * duas coincidem, mas um item de lista com identidade estável (destaque/
+   * bloco de um serviço — ver data-layout-key/keyOf em editor-runtime.js)
+   * tem `key` por id e `path` por índice — o layout precisa ir pela chave
+   * estável, senão reordenar troca a posição de item.
+   */
   function layoutOp(
-    target: { overlay: string | null; path: string | null; device: string },
+    target: { overlay: string | null; path: string | null; key?: string; device: string },
     layout: ElementLayout
   ): Op {
     return target.overlay
       ? { op: 'overlay-layout', id: target.overlay, device: target.device, layout }
-      : { op: 'layout', path: target.path!, device: target.device, layout };
+      : { op: 'layout', path: target.key ?? target.path!, device: target.device, layout };
   }
 
   // ------------------------------------------------------------ estado
@@ -2946,7 +2983,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (device === 'mobile') layouts[item.key].mobile = next;
     else layouts[item.key].desktop = next;
 
-    const target = { overlay: item.overlay, path: item.path, device };
+    const target = { overlay: item.overlay, path: item.path, key: item.key, device };
     push(layoutOp(target, next), layoutOp(target, previous));
     toFrame({ type: 'editor:layouts', layouts });
     toFrame({ type: 'editor:inventory-request' });

@@ -30,6 +30,11 @@ import {
 } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
 import { safeHref } from '../../../lib/urls';
+import {
+  migrateServiceItemIds,
+  generateItemId,
+  REPEATABLE_LISTS,
+} from '../../../lib/service-item-ids';
 
 export const prerender = false;
 
@@ -292,8 +297,22 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const doc = toDoc(existing) as unknown as Record<string, unknown>;
   const layoutContent = await getServiceEditorContent(db, serviceId);
 
-  let docChanged = false;
-  let layoutChanged = false;
+  // Rede de segurança: o GET de /admin/editor/servicos/[id] já materializa
+  // ids estáveis e migra chaves de layout por índice (ver src/lib/service-
+  // item-ids.ts) — isto aqui é defensivo, para qualquer chamada direta a
+  // esta API sem ter passado por lá. Idempotente: sem nada pendente, não
+  // marca nada como alterado.
+  const migration = migrateServiceItemIds(
+    doc.highlights as ServiceHighlight[],
+    doc.blocks as ServiceBlock[],
+    layoutContent
+  );
+  doc.highlights = migration.highlights;
+  doc.blocks = migration.blocks;
+  layoutContent.layouts = migration.layouts;
+
+  let docChanged = migration.changed;
+  let layoutChanged = migration.changed;
   const rejected: number[] = [];
 
   ops.forEach((rawOp, index) => {
@@ -302,16 +321,52 @@ export const POST: APIRoute = async ({ request, locals }) => {
       rejected.push(index);
       return;
     }
+
     if (CONTENT_OPS.has(operation.op)) {
-      if (applyContentOp(doc, operation)) docChanged = true;
-      else rejected.push(index);
+      const path = operation.path as string;
+      const isRepeatableList = (REPEATABLE_LISTS as readonly string[]).includes(path);
+
+      // Captura o id do item ANTES de removê-lo — depois de removeAtPath
+      // não existe mais nada para ler.
+      let removedId: string | undefined;
+      if (operation.op === 'remove' && isRepeatableList) {
+        const list = doc[path] as { id?: string }[] | undefined;
+        removedId = list?.[operation.index as number]?.id;
+      }
+
+      if (!applyContentOp(doc, operation)) {
+        rejected.push(index);
+        return;
+      }
+      docChanged = true;
+
+      // Duplicar precisa de um id PRÓPRIO — nunca o mesmo do original, ou a
+      // cópia herdaria (e colidiria com) a posição/estilo dele no editor_json.
+      if (operation.op === 'duplicate' && isRepeatableList) {
+        const list = doc[path] as { id?: string }[];
+        const copy = list[(operation.index as number) + 1];
+        if (copy) copy.id = generateItemId();
+      }
+
+      // Excluir remove também qualquer layout salvo para aquele item — nunca
+      // deixa um metadado órfão em editor_json apontando para nada.
+      if (removedId) {
+        const prefix = `${path}.${removedId}.`;
+        for (const key of Object.keys(layoutContent.layouts)) {
+          if (key.startsWith(prefix)) {
+            delete layoutContent.layouts[key];
+            layoutChanged = true;
+          }
+        }
+      }
       return;
     }
+
     if (applyLayoutOp(layoutContent, operation)) layoutChanged = true;
     else rejected.push(index);
   });
 
-  if (rejected.length === ops.length) {
+  if (rejected.length === ops.length && !migration.changed) {
     return new Response(
       JSON.stringify({ error: 'Nenhuma alteração pôde ser aplicada.', rejected }),
       {
