@@ -18,6 +18,8 @@
     "db:studio:local": "wrangler d1 execute essencial-saude-db --local --command=\"SELECT id,name,email,role,status FROM users\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ui:snapshot": "node scripts/ui-test-db.mjs snapshot",
+    "test:ui:restore": "node scripts/ui-test-db.mjs restore --last",
     "vendor": "node scripts/vendor-assets.mjs",
     "predev": "npm run vendor",
     "prebuild": "npm run vendor",

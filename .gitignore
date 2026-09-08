@@ -13,3 +13,7 @@ mobile-app/
 
 # Copiado de node_modules por scripts/vendor-assets.mjs
 public/vendor/
+
+# Snapshots do banco local tirados por scripts/ui-test-db.mjs antes de testes
+# de interface — dados de desenvolvimento, nunca versionados.
+.testing/
