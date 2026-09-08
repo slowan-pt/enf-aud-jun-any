@@ -15,7 +15,7 @@
 import type { APIRoute } from 'astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getServiceById, updateServiceById } from '../../../lib/services';
-import type { ServiceUpdate } from '../../../lib/services';
+import type { ServiceUpdate, ServiceHighlight, ServiceBlock } from '../../../lib/services';
 import {
   getServiceEditorContent,
   updateServiceEditorContent,
@@ -45,16 +45,24 @@ type EditOp = Record<string, unknown> & { op: string };
 const EDIT_PATH = /^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/;
 const OVERLAY_ID = /^[a-z0-9-]{1,40}$/;
 
-/** Campos do serviço editáveis inline na tela (o resto continua só no CRUD). */
+/**
+ * Campos do serviço editáveis inline na tela (o resto continua só no CRUD).
+ * `highlights`/`blocks` continuam em `content_json` — nunca copiados para
+ * `editor_json`; só a posição/estilo deles (via `layouts`, indexado pelo
+ * mesmo caminho `highlights.N.*`) fica no editor_json.
+ */
 interface ServiceDoc {
   heroTitle: string;
   heroLead: string;
   image: string;
   imageAlt: string;
+  icon: string;
   whatsappMessage: string;
   intro: string[];
   deliverables: string[];
   audience: string[];
+  highlights: ServiceHighlight[];
+  blocks: ServiceBlock[];
 }
 
 function toDoc(existing: NonNullable<Awaited<ReturnType<typeof getServiceById>>>): ServiceDoc {
@@ -63,10 +71,16 @@ function toDoc(existing: NonNullable<Awaited<ReturnType<typeof getServiceById>>>
     heroLead: existing.heroLead,
     image: existing.image,
     imageAlt: existing.imageAlt,
+    icon: existing.icon,
     whatsappMessage: existing.whatsappMessage,
     intro: [...existing.intro],
     deliverables: [...existing.deliverables],
     audience: [...existing.audience],
+    highlights: existing.highlights.map((item) => ({ ...item })),
+    blocks: existing.blocks.map((block) => ({
+      ...block,
+      items: block.items ? [...block.items] : block.items,
+    })),
   };
 }
 
@@ -309,7 +323,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (docChanged) {
     const patch: ServiceUpdate = {
       name: existing.name,
-      icon: existing.icon,
+      icon: String(doc.icon),
       shortName: existing.shortName,
       summary: existing.summary,
       heroTitle: String(doc.heroTitle),
@@ -324,6 +338,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       intro: doc.intro as string[],
       deliverables: doc.deliverables as string[],
       audience: doc.audience as string[],
+      highlights: doc.highlights as ServiceHighlight[],
+      blocks: doc.blocks as ServiceBlock[],
     };
     await updateServiceById(db, serviceId, patch, existing);
   }

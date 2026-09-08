@@ -154,6 +154,14 @@ export interface ServiceUpdate {
   intro: string[];
   deliverables: string[];
   audience: string[];
+  /**
+   * Opcionais: quando ausentes, mantém `existing.highlights`/`existing.blocks`
+   * sem mudança — é o que o CRUD tradicional (que ainda não edita esses dois
+   * campos) sempre fez. O Editor Visual passa os dois explicitamente quando
+   * o usuário edita um destaque/bloco pelo canvas.
+   */
+  highlights?: ServiceHighlight[];
+  blocks?: ServiceBlock[];
 }
 
 export async function updateService(
@@ -166,8 +174,8 @@ export async function updateService(
     image: patch.image,
     imageAlt: patch.imageAlt,
     intro: patch.intro,
-    highlights: existing.highlights,
-    blocks: existing.blocks,
+    highlights: patch.highlights ?? existing.highlights,
+    blocks: patch.blocks ?? existing.blocks,
     deliverables: patch.deliverables,
     audience: patch.audience,
   };
@@ -215,8 +223,8 @@ export async function updateServiceById(
     image: patch.image,
     imageAlt: patch.imageAlt,
     intro: patch.intro,
-    highlights: existing.highlights,
-    blocks: existing.blocks,
+    highlights: patch.highlights ?? existing.highlights,
+    blocks: patch.blocks ?? existing.blocks,
     deliverables: patch.deliverables,
     audience: patch.audience,
   };
