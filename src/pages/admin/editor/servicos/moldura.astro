@@ -9,11 +9,11 @@
  * pelo CRUD em /admin/servicos — aqui só posição/visibilidade/fundo da
  * seção mudam, não o conteúdo dos cartões.
  */
-import AdminLayout from '../../../layouts/AdminLayout.astro';
-import Icon from '../../../components/Icon.astro';
-import { getDB } from '../../../lib/db';
-import { getServicosContent, SERVICOS_SECTION_KEYS } from '../../../lib/documents';
-import { iconPaths } from '../../../data/icons';
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../components/Icon.astro';
+import { getDB } from '../../../../lib/db';
+import { getServicosContent, SERVICOS_SECTION_KEYS } from '../../../../lib/documents';
+import { iconPaths } from '../../../../data/icons';
 
 const db = getDB();
 const content = await getServicosContent(db);

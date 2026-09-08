@@ -64,7 +64,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
   active="/admin/editor"
 >
   <div slot="actions">
-    <a href="/admin/editor/servicos" class="btn btn--sm">
+    <a href="/admin/editor/servicos/moldura" class="btn btn--sm">
       <Icon name="pointer" size={16} />
       Editor visual
     </a>
@@ -192,11 +192,17 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           A lista de serviços é gerenciada em <a href="/admin/servicos">Conteúdo → Serviços</a>.
         </p>
         <p class="muted small" style="margin-top: var(--sp-3)">
-          Elementos livres e formas ficam no <a href="/admin/editor/servicos">Editor Visual</a>.
+          Elementos livres e formas ficam no <a href="/admin/editor/servicos/moldura"
+            >Editor Visual</a
+          >.
         </p>
         <p class="muted small" style="margin-top: var(--sp-3)">
           Cores e fundo desta página ficam em
           <a href="/admin/editor/servicos/aparencia">Editor Visual → Serviços → Aparência</a>.
+        </p>
+        <p class="muted small" style="margin-top: var(--sp-3)">
+          Serviços individuais têm seu próprio Editor Visual e Aparência em
+          <a href="/admin/editor/servicos">Editor Visual → Páginas → Serviços</a>.
         </p>
       </div>
     </section>

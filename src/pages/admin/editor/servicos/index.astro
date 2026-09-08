@@ -1,0 +1,235 @@
+---
+/**
+ * Detalhe de "Serviços" dentro do fluxo Editor Visual → Páginas: a moldura
+ * (lista + "Como atuamos" + "Para quem atuamos", ver moldura.astro) e,
+ * abaixo, a lista automática dos serviços individuais — direto da tabela
+ * `services` (Astro.locals.services), nunca escrita à mão. Um serviço novo
+ * aparece aqui assim que é criado; um serviço removido (soft delete) some
+ * junto — como a Aparência de cada serviço vive na PRÓPRIA linha
+ * (`editor_json`), não existe configuração órfã para limpar.
+ */
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../components/Icon.astro';
+
+const STATUS_LABEL: Record<string, string> = {
+  published: 'Publicado',
+  draft: 'Rascunho',
+  archived: 'Arquivado',
+};
+
+const services = [...Astro.locals.services].sort((a, b) => a.order - b.order);
+---
+
+<AdminLayout
+  title="Serviços — Editor Visual"
+  description="Página principal de Serviços e a lista automática dos serviços individuais."
+  active="/admin/editor"
+>
+  <nav class="breadcrumb" aria-label="Caminho">
+    <a href="/admin/editor">Editor Visual</a>
+    <Icon name="chevron-right" size={14} />
+    <a href="/admin/paginas">Páginas</a>
+    <Icon name="chevron-right" size={14} />
+    <span class="breadcrumb__current">Serviços</span>
+  </nav>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Página principal (moldura)</h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Hero, "Como atuamos", "Para quem atuamos" e a chamada final de <code>/servicos</code>. A
+        grade de cartões abaixo é a lista de serviços — o conteúdo de cada um continua
+        gerenciado individualmente.
+      </p>
+      <div class="page-card__actions">
+        <a class="page-action" href="/admin/paginas/servicos">
+          <Icon name="edit" size={16} />
+          <span>
+            <strong>Editar conteúdo</strong>
+            <small>Textos de abertura, "Como atuamos" e chamada final.</small>
+          </span>
+        </a>
+        <a class="page-action" href="/admin/editor/servicos/moldura">
+          <Icon name="pointer" size={16} />
+          <span>
+            <strong>Editor visual</strong>
+            <small>Arraste, redimensione e posicione elementos na página real.</small>
+          </span>
+        </a>
+        <a class="page-action" href="/admin/editor/servicos/aparencia">
+          <Icon name="palette" size={16} />
+          <span>
+            <strong>Aparência</strong>
+            <small>Cores globais, desta página e de cada seção.</small>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">Serviços individuais ({services.length})</h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Lista automática da tabela <code>services</code>. O conteúdo oficial (nome, resumo,
+        hero, textos, imagem, SEO) continua editado em <a href="/admin/servicos"
+          >Conteúdo → Serviços</a
+        >
+        — aqui só a posição, o layout livre e a Aparência de cada página são geridos.
+      </p>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Serviço</th>
+              <th>Slug</th>
+              <th>Status</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              services.map((service) => (
+                <tr>
+                  <td>
+                    <span class="table__main">{service.name}</span>
+                  </td>
+                  <td>
+                    <span class="kbd">/servicos/{service.slug}</span>
+                  </td>
+                  <td>
+                    <span
+                      class:list={[
+                        'badge',
+                        service.status === 'published'
+                          ? 'badge--success'
+                          : service.status === 'draft'
+                            ? 'badge--warning'
+                            : 'badge--neutral',
+                      ]}
+                    >
+                      {STATUS_LABEL[service.status] ?? service.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/servicos/${service.slug}`}
+                        aria-label={`Editar conteúdo de ${service.name}`}
+                        title="Editar conteúdo"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/admin/editor/servicos/${service.id}`}
+                        aria-label={`Editor visual de ${service.name}`}
+                        title="Editor visual"
+                      >
+                        <Icon name="pointer" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/admin/editor/servicos/${service.id}/aparencia`}
+                        aria-label={`Aparência de ${service.name}`}
+                        title="Aparência"
+                      >
+                        <Icon name="palette" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/servicos/${service.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Ver no site"
+                        title="Ver no site"
+                      >
+                        <Icon name="eye" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {
+        services.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="search" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhum serviço cadastrado</h2>
+            <p>Crie um serviço em Conteúdo → Serviços para ele aparecer aqui.</p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--sp-5);
+  }
+
+  .breadcrumb a {
+    color: inherit;
+  }
+
+  .breadcrumb__current {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .page-card__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--sp-3);
+  }
+
+  .page-action {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .page-action:hover {
+    border-color: var(--c-accent-500);
+  }
+
+  .page-action strong {
+    display: block;
+    font-size: var(--fs-sm);
+  }
+
+  .page-action small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    margin-top: 0.15rem;
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+</style>

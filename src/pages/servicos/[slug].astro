@@ -4,14 +4,50 @@ import PageHero from '../../components/PageHero.astro';
 import Icon from '../../components/Icon.astro';
 import ContactForm from '../../components/ContactForm.astro';
 import ServiceCard from '../../components/ServiceCard.astro';
+import SectionOverlays from '../../components/SectionOverlays.astro';
 import { publishedOnly, findBySlug } from '../../lib/services';
 import { seo, waLink } from '../../data/site';
+import { getDB } from '../../lib/db';
+import { getServicosContent } from '../../lib/documents';
+import { getServiceEditorContent, resolveServicePageStyle } from '../../lib/service-editor';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
+
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
 const publishedServices = publishedOnly(Astro.locals.services);
-const service = findBySlug(publishedServices, Astro.params.slug ?? '');
+// Em modo de edição, o admin precisa conseguir pré-visualizar um serviço
+// ainda não publicado (rascunho) dentro do próprio Editor Visual — fora do
+// editor, a regra de sempre continua: só serviço publicado é encontrado.
+const lookupPool = editMode ? Astro.locals.services : publishedServices;
+const service = findBySlug(lookupPool, Astro.params.slug ?? '');
 if (!service) return Astro.rewrite('/404');
 const others = publishedServices.filter((item) => item.slug !== service.slug).slice(0, 3);
+
+const db = getDB();
+const moldura = await getServicosContent(db);
+const {
+  pageStyle: servicePageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+} = await getServiceEditorContent(db, service.id);
+
+const effectivePageStyle = resolveServicePageStyle(moldura.pageStyle, servicePageStyle);
+const layoutCss = layoutStylesheet(layouts, overlays);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: (typeof sectionStyles)[keyof typeof sectionStyles]) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
 
 const serviceLd = {
   '@context': 'https://schema.org',
@@ -36,34 +72,43 @@ const serviceLd = {
   ogImage={service.image}
   jsonLd={[serviceLd]}
   whatsappMessage={service.whatsappMessage}
+  colorOverride={pageStyleOverride(effectivePageStyle)}
+  bodyClass="page-servico"
 >
-  <PageHero
-    eyebrow="Serviço"
-    title={service.heroTitle}
-    lead={service.heroLead}
-    crumbs={[{ label: 'Serviços', href: '/servicos' }, { label: service.name }]}
-    image={service.image}
-    imageAlt={service.imageAlt}
-  >
-    <div class="cluster hero-actions">
-      <a href="#solicitar" class="btn btn--on-brand">
-        Solicitar apresentação
-        <Icon name="arrow-right" size={16} class="icon--arrow" />
-      </a>
-      <a
-        href={waLink(whatsapp.number, service.whatsappMessage)}
-        class="btn btn--outline-on-brand"
-        target="_blank"
-        rel="noopener"
-      >
-        <Icon name="whatsapp" size={16} />
-        Falar no WhatsApp
-      </a>
-    </div>
-  </PageHero>
+  <div style="order:-1">
+    <PageHero
+      eyebrow="Serviço"
+      title={service.heroTitle}
+      lead={service.heroLead}
+      crumbs={[{ label: 'Serviços', href: '/servicos' }, { label: service.name }]}
+      image={service.image}
+      imageAlt={service.imageAlt}
+    >
+      <div class="cluster hero-actions">
+        <a href="#solicitar" class="btn btn--on-brand">
+          Solicitar apresentação
+          <Icon name="arrow-right" size={16} class="icon--arrow" />
+        </a>
+        <a
+          href={waLink(whatsapp.number, service.whatsappMessage)}
+          class="btn btn--outline-on-brand"
+          target="_blank"
+          rel="noopener"
+        >
+          <Icon name="whatsapp" size={16} />
+          Falar no WhatsApp
+        </a>
+      </div>
+    </PageHero>
+  </div>
 
   <!-- ------------------------------------------------- destaques -->
-  <section class="section section--tight">
+  <section
+    class:list={['section', 'section--tight', secClass('highlights')]}
+    style={secStyle('highlights', sectionStyles.highlights)}
+    data-section="highlights"
+    data-section-label={ed('Destaques')}
+  >
     <div class="container">
       <div class="grid grid--4">
         {
@@ -78,15 +123,31 @@ const serviceLd = {
           ))
         }
       </div>
+      <SectionOverlays section="highlights" overlays={overlays} />
     </div>
   </section>
 
   <!-- ---------------------------------------------- conteúdo -->
-  <section class="section section--tight">
+  <section
+    class:list={['section', 'section--tight', secClass('content')]}
+    style={secStyle('content', sectionStyles.content)}
+    data-section="content"
+    data-section-label={ed('Conteúdo e barra lateral')}
+  >
     <div class="container svc-layout">
       <article class="svc-content">
-        <div class="prose" data-reveal>
-          {service.intro.map((paragraph) => <p>{paragraph}</p>)}
+        <div class="prose" data-reveal data-edit-list={ed('intro')}>
+          {
+            service.intro.map((paragraph, index) => (
+              <p
+                data-edit={`intro.${index}`}
+                data-edit-kind={ed('multiline')}
+                data-edit-item={ed(index)}
+              >
+                {paragraph}
+              </p>
+            ))
+          }
         </div>
 
         {
@@ -115,12 +176,14 @@ const serviceLd = {
             <Icon name="file-check" size={18} />
             O que entregamos
           </h2>
-          <ul class="aside-list">
+          <ul class="aside-list" data-edit-list={ed('deliverables')}>
             {
-              service.deliverables.map((item) => (
+              service.deliverables.map((item, index) => (
                 <li>
                   <Icon name="check" size={15} />
-                  <span>{item}</span>
+                  <span data-edit={`deliverables.${index}`} data-edit-item={ed(index)}>
+                    {item}
+                  </span>
                 </li>
               ))
             }
@@ -132,12 +195,14 @@ const serviceLd = {
             <Icon name="users" size={18} />
             Para quem
           </h2>
-          <ul class="aside-list">
+          <ul class="aside-list" data-edit-list={ed('audience')}>
             {
-              service.audience.map((item) => (
+              service.audience.map((item, index) => (
                 <li>
                   <Icon name="check" size={15} />
-                  <span>{item}</span>
+                  <span data-edit={`audience.${index}`} data-edit-item={ed(index)}>
+                    {item}
+                  </span>
                 </li>
               ))
             }
@@ -161,11 +226,18 @@ const serviceLd = {
           <a href="#solicitar" class="btn btn--secondary btn--block">Solicitar apresentação</a>
         </div>
       </aside>
+      <SectionOverlays section="content" overlays={overlays} />
     </div>
   </section>
 
   <!-- ------------------------------------------------ formulário -->
-  <section class="section section--subtle" id="solicitar">
+  <section
+    class:list={['section', 'section--subtle', secClass('form')]}
+    style={secStyle('form', sectionStyles.form)}
+    data-section="form"
+    data-section-label={ed('Formulário')}
+    id="solicitar"
+  >
     <div class="container form-layout">
       <div data-reveal>
         <p class="eyebrow">Solicitar apresentação</p>
@@ -198,11 +270,17 @@ const serviceLd = {
           origin={`Serviço: ${service.name}`}
         />
       </div>
+      <SectionOverlays section="form" overlays={overlays} />
     </div>
   </section>
 
   <!-- --------------------------------------------- outros serviços -->
-  <section class="section">
+  <section
+    class:list={['section', secClass('others')]}
+    style={secStyle('others', sectionStyles.others)}
+    data-section="others"
+    data-section-label={ed('Outros serviços')}
+  >
     <div class="container">
       <div class="section-head" data-reveal>
         <p class="eyebrow">Outros serviços</p>
@@ -211,9 +289,42 @@ const serviceLd = {
       <div class="grid grid--3">
         {others.map((item) => <ServiceCard service={item} variant="compact" />)}
       </div>
+      <SectionOverlays section="others" overlays={overlays} />
     </div>
   </section>
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  body.page-servico main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-servico main > section {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+</style>
 
 <style>
   .hero-actions {

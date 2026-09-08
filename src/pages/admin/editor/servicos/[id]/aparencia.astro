@@ -1,31 +1,39 @@
 ---
 /**
- * Aparência dos Serviços — mesmo padrão da Home/Quem Somos (ver
- * src/pages/admin/editor/home/aparencia.astro), terceira página a ganhar
- * essa tela.
+ * Aparência de UM serviço individual (/servicos/[slug]).
  *
- * Hierarquia (nunca duplicada, sempre esparsa):
- *   1. Global   — `settings.theme` (D1 `settings`, chave "theme"). Vale para
- *      o site inteiro, inclusive cabeçalho e rodapé.
- *   2. Página   — `ServicosContent.pageStyle` (D1 `pages`, linha de Serviços).
- *      Campo vazio herda o valor global; um hex sobrescreve só nesta
- *      página — nunca a Home, a Quem Somos ou outra.
- *   3. Seção    — `ServicosContent.sectionStyles[chave]`, editado no Editor
- *      Visual (aqui só um resumo com link, para não ter duas telas
- *      gravando o mesmo dado de formas diferentes).
+ * Hierarquia (nunca duplicada, sempre esparsa — cada nível só grava a
+ * própria diferença, nunca o valor herdado):
+ *   1. Global    — `settings.theme`. Vale para o site inteiro.
+ *   2. Serviços  — `ServicosContent.pageStyle` (moldura de /servicos, ver
+ *      src/pages/admin/editor/servicos/aparencia.astro).
+ *   3. Este serviço — `editor_json.pageStyle` (D1 `services`, esta linha).
+ *      Campo vazio herda o valor da moldura de Serviços (que por sua vez
+ *      herda do global) — nunca a Home, a Quem Somos nem outro serviço.
+ *   4. Seção     — `editor_json.sectionStyles[chave]`, editada no Editor
+ *      Visual deste serviço.
  */
-import AdminLayout from '../../../../layouts/AdminLayout.astro';
-import Icon from '../../../../components/Icon.astro';
-import { getDB, writeAuditLog } from '../../../../lib/db';
-import { updateSetting } from '../../../../lib/settings';
-import { normalizePageStyle } from '../../../../lib/pages';
+import AdminLayout from '../../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../../../lib/db';
+import { updateSetting } from '../../../../../lib/settings';
+import { normalizePageStyle } from '../../../../../lib/pages';
+import { getServicosContent } from '../../../../../lib/documents';
+import { getServiceById } from '../../../../../lib/services';
 import {
-  getServicosContent,
-  updateServicosContent,
-  SERVICOS_SECTION_KEYS,
-} from '../../../../lib/documents';
+  getServiceEditorContent,
+  updateServiceEditorContent,
+  resolveServicePageStyle,
+  SERVICE_SECTION_KEYS,
+} from '../../../../../lib/service-editor';
+
+const serviceId = Number(Astro.params.id);
+if (!Number.isInteger(serviceId) || serviceId <= 0) return Astro.rewrite('/404');
 
 const db = getDB();
+const service = await getServiceById(db, serviceId);
+if (!service) return Astro.rewrite('/404');
+
 const userId = Astro.locals.user?.id;
 const userName = Astro.locals.user?.name ?? '';
 const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
@@ -57,41 +65,53 @@ if (Astro.request.method === 'POST') {
         target: 'Aparência: padrão global do site',
         ip,
       });
-      return Astro.redirect('/admin/editor/servicos/aparencia?saved=global');
+      return Astro.redirect(`/admin/editor/servicos/${serviceId}/aparencia?saved=global`);
     }
   }
 
-  if (scope === 'page') {
+  if (scope === 'service') {
     const field = (key: string) => {
       const mode = String(form.get(`${key}_mode`) ?? 'inherit');
       if (mode !== 'custom') return '';
       const value = String(form.get(`${key}_value`) ?? '');
       return HEX.test(value) ? value : '';
     };
-    const current = await getServicosContent(db);
+    const current = await getServiceEditorContent(db, serviceId);
     const pageStyle = normalizePageStyle({
       brandColor: field('brandColor'),
       accentColor: field('accentColor'),
       backgroundColor: field('backgroundColor'),
       headingColor: field('headingColor'),
     });
-    await updateServicosContent(db, { ...current, pageStyle }, userId);
+    await updateServiceEditorContent(db, serviceId, { ...current, pageStyle });
     await writeAuditLog(db, {
       userId,
       userName,
       action: 'page.update',
-      target: 'Aparência: Serviços (sobrescrita da página)',
+      target: `Aparência: ${service.name} (sobrescrita do serviço)`,
       ip,
     });
-    return Astro.redirect('/admin/editor/servicos/aparencia?saved=page');
+    return Astro.redirect(`/admin/editor/servicos/${serviceId}/aparencia?saved=service`);
   }
 }
 
 const { theme } = Astro.locals.settings;
-const content = await getServicosContent(db);
+const moldura = await getServicosContent(db);
+const content = await getServiceEditorContent(db, serviceId);
 const { pageStyle, sectionStyles } = content;
 const savedParam = Astro.url.searchParams.get('saved');
-if (savedParam === 'global' || savedParam === 'page') savedScope = savedParam;
+if (savedParam === 'global' || savedParam === 'service') savedScope = savedParam;
+
+// Valor que este serviço mostraria HOJE se não personalizasse nada — usado
+// só para preencher o seletor de cor com o tom herdado correto (moldura, que
+// por sua vez já herda do global), nunca gravado enquanto o campo continuar
+// em branco.
+const inheritedFromMoldura = resolveServicePageStyle(moldura.pageStyle, {
+  brandColor: '',
+  accentColor: '',
+  backgroundColor: '',
+  headingColor: '',
+});
 
 const COLOR_FIELDS: { key: keyof typeof theme; label: string; hint: string }[] = [
   {
@@ -113,36 +133,37 @@ const COLOR_FIELDS: { key: keyof typeof theme; label: string; hint: string }[] =
 ];
 
 const SECTION_LABELS: Record<string, string> = {
-  list: 'Lista de serviços',
-  howWeWork: 'Como atuamos',
-  segments: 'Para quem atuamos',
+  highlights: 'Destaques',
+  content: 'Conteúdo e barra lateral',
+  form: 'Formulário',
+  others: 'Outros serviços',
 };
 
-function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
+function sectionIsCustom(key: (typeof SERVICE_SECTION_KEYS)[number]): boolean {
   const s = sectionStyles[key];
   return Boolean(s.bg || s.text || s.image || s.minHeight || s.paddingY);
 }
 ---
 
 <AdminLayout
-  title="Aparência — Serviços"
-  description="Hierarquia de cores: padrão global do site → sobrescrita desta página → sobrescrita de cada seção."
+  title={`Aparência — ${service.name}`}
+  description="Hierarquia de cores: padrão global → moldura de Serviços → este serviço → cada seção."
   active="/admin/editor"
 >
   <nav class="breadcrumb" aria-label="Caminho">
     <a href="/admin/editor">Editor Visual</a>
     <Icon name="chevron-right" size={14} />
-    <a href="/admin/paginas">Páginas</a>
+    <a href="/admin/editor/servicos">Serviços</a>
     <Icon name="chevron-right" size={14} />
-    <span class="breadcrumb__current">Serviços</span>
+    <span class="breadcrumb__current">{service.name}</span>
     <Icon name="chevron-right" size={14} />
     <span class="breadcrumb__current">Aparência</span>
   </nav>
 
   <div slot="actions">
-    <a href="/admin/editor/servicos/moldura" class="btn btn--sm btn--secondary">
+    <a href={`/admin/editor/servicos/${serviceId}`} class="btn btn--sm btn--secondary">
       <Icon name="pointer" size={16} />
-      Editor visual dos Serviços
+      Editor visual deste serviço
     </a>
   </div>
 
@@ -161,14 +182,14 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
     )
   }
   {
-    savedScope === 'page' && (
+    savedScope === 'service' && (
       <div
         class="form-alert form-alert--success"
         role="status"
         style="margin-bottom: var(--sp-5)"
       >
         <Icon name="check-circle" size={18} />
-        <span>Aparência dos Serviços salva. As demais páginas não foram alteradas.</span>
+        <span>Aparência de {service.name} salva. Nenhum outro serviço foi alterado.</span>
       </div>
     )
   }
@@ -184,21 +205,24 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">
-        <span class="scope-badge scope-badge--page">Desta página</span>
-        Aparência dos Serviços
+        <span class="scope-badge scope-badge--page">Deste serviço</span>
+        Aparência de {service.name}
       </h2>
     </div>
-    <form class="panel__body stack" method="post" id="page-style-form">
-      <input type="hidden" name="scope" value="page" />
+    <form class="panel__body stack" method="post" id="service-style-form">
+      <input type="hidden" name="scope" value="service" />
       <p class="hint">
-        Cada cor abaixo pode usar o padrão global do site ou um valor só para esta página.
-        Alterar aqui nunca muda outra página.
+        Cada cor abaixo pode herdar da moldura de Serviços (que por sua vez herda do padrão
+        global) ou usar um valor só para este serviço. Alterar aqui nunca muda outro serviço nem
+        a página principal de Serviços.
       </p>
 
       {
         COLOR_FIELDS.map((field) => {
           const current = pageStyle[field.key as keyof typeof pageStyle];
           const isCustom = Boolean(current);
+          const inherited =
+            inheritedFromMoldura[field.key as keyof typeof inheritedFromMoldura];
           return (
             <div class="page-color-field" data-field={field.key}>
               <div class="page-color-field__head">
@@ -209,7 +233,7 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
                     isCustom ? 'scope-badge--page' : 'scope-badge--inherited',
                   ]}
                 >
-                  {isCustom ? 'Personalizada' : 'Herdada do global'}
+                  {isCustom ? 'Personalizada' : 'Herdada'}
                 </span>
               </div>
               <span class="hint">{field.hint}</span>
@@ -222,7 +246,7 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
                     checked={!isCustom}
                     data-mode-radio={field.key}
                   />
-                  Usar padrão global
+                  Herdar da moldura de Serviços
                 </label>
                 <label class="radio-pill">
                   <input
@@ -232,20 +256,16 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
                     checked={isCustom}
                     data-mode-radio={field.key}
                   />
-                  Personalizar nesta página
+                  Personalizar este serviço
                 </label>
               </div>
               <div class="color-field__row" data-custom-row={field.key} hidden={!isCustom}>
-                <input
-                  type="color"
-                  data-color-input={field.key}
-                  value={current || theme[field.key as keyof typeof theme]}
-                />
+                <input type="color" data-color-input={field.key} value={current || inherited} />
                 <input
                   class="input"
                   name={`${field.key}_value`}
                   data-hex-input={field.key}
-                  value={current || theme[field.key as keyof typeof theme]}
+                  value={current || inherited}
                 />
               </div>
             </div>
@@ -256,7 +276,7 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
       <div class="cluster">
         <button type="submit" class="btn">
           <Icon name="save" size={16} />
-          Salvar aparência dos Serviços
+          Salvar aparência deste serviço
         </button>
       </div>
     </form>
@@ -275,7 +295,8 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
         <Icon name="alert-triangle" size={16} />
         <span>
           Afeta <strong>todas as páginas</strong>, incluindo cabeçalho e rodapé. Uma
-          personalização feita acima, nesta página, continua valendo por cima deste padrão.
+          personalização feita na moldura de Serviços ou neste serviço continua valendo por cima
+          deste padrão.
         </span>
       </p>
 
@@ -318,13 +339,14 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
     <div class="panel__head">
       <h2 class="panel__title">
         <span class="scope-badge scope-badge--section">Seções</span>
-        Aparência das seções desta página
+        Aparência das seções deste serviço
       </h2>
     </div>
     <div class="panel__body">
       <p class="hint" style="margin-bottom: var(--sp-4)">
-        Fundo, altura mínima e espaçamento de cada seção são editados no Editor Visual (clique
-        na área vazia da seção lá). Aqui é só um resumo de quem está personalizado.
+        Fundo, altura mínima e espaçamento de cada seção são editados no Editor Visual deste
+        serviço (clique na área vazia da seção lá). Aqui é só um resumo de quem está
+        personalizado.
       </p>
       <div class="table-wrap">
         <table class="table">
@@ -337,7 +359,7 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
           </thead>
           <tbody>
             {
-              SERVICOS_SECTION_KEYS.map((key) => (
+              SERVICE_SECTION_KEYS.map((key) => (
                 <tr>
                   <td>{SECTION_LABELS[key] ?? key}</td>
                   <td>
@@ -353,7 +375,7 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
                   <td class="text-right">
                     <a
                       class="row-btn"
-                      href={`/admin/editor/servicos/moldura#section=${key}`}
+                      href={`/admin/editor/servicos/${serviceId}#section=${key}`}
                       aria-label={`Editar ${key}`}
                     >
                       <Icon name="edit" size={16} />
@@ -490,8 +512,6 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
 </style>
 
 <script>
-  // Alterna o campo de cor conforme "Usar padrão global" / "Personalizar" —
-  // sem isso o valor herdado ficaria escondido atrás de um input vazio.
   document.querySelectorAll<HTMLInputElement>('[data-mode-radio]').forEach((radio) => {
     radio.addEventListener('change', () => {
       const key = radio.dataset.modeRadio;
@@ -541,7 +561,6 @@ function sectionIsCustom(key: (typeof SERVICOS_SECTION_KEYS)[number]): boolean {
     });
   });
 
-  // Escopo global afeta o site inteiro — confirmação explícita antes de gravar.
   document.getElementById('global-style-form')?.addEventListener('submit', (event) => {
     const ok = window.confirm(
       'Isto muda a paleta de TODAS as páginas do site, incluindo cabeçalho e rodapé. Continuar?'
