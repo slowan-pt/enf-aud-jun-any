@@ -10,9 +10,25 @@ interface Props {
   image?: string;
   imageAlt?: string;
   align?: 'left' | 'center';
+  /**
+   * Caminho `data-edit` da imagem, só quando o chamador quiser essa imagem
+   * editável no Editor Visual (ex.: /servicos/[slug]). Ausente = comportamento
+   * de sempre, sem nenhum atributo extra — Home, Quem Somos e Contato não
+   * passam esta prop e continuam idênticas.
+   */
+  imageEditPath?: string;
 }
 
-const { eyebrow, title, lead, crumbs, image, imageAlt = '', align = 'left' } = Astro.props;
+const {
+  eyebrow,
+  title,
+  lead,
+  crumbs,
+  image,
+  imageAlt = '',
+  align = 'left',
+  imageEditPath,
+} = Astro.props;
 const hasImage = Boolean(image);
 ---
 
@@ -34,7 +50,16 @@ const hasImage = Boolean(image);
     {
       hasImage && (
         <div class="page-hero__media">
-          <img src={image} alt={imageAlt} width="720" height="540" loading="eager" />
+          <img
+            src={image}
+            alt={imageAlt}
+            width="720"
+            height="540"
+            loading="eager"
+            data-edit={imageEditPath}
+            data-edit-kind={imageEditPath ? 'image' : undefined}
+            data-edit-label={imageEditPath ? 'Imagem do topo' : undefined}
+          />
         </div>
       )
     }
