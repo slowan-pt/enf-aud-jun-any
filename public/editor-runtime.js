@@ -1093,10 +1093,20 @@
         clearSelection();
         break;
 
-      // Layouts já gravados, enviados quando a pré-visualização abre.
+      // Layouts já gravados, enviados quando a pré-visualização abre — MAS
+      // também reenviados inteiros a cada alteração feita pelo painel de
+      // Camadas (reordenar, travar, ocultar, renomear — ver `setLayerProp`
+      // no admin). Sem repintar aqui, essas mudanças só apareciam depois de
+      // outra ação disparar `applyLayoutStyle` por acaso (ex.: selecionar o
+      // elemento) — o painel achava que tinha mudado, a pré-visualização
+      // continuava com o estilo antigo.
       case 'editor:layouts':
         layouts = data.layouts || {};
         migrateLegacy();
+        Object.keys(layouts).forEach(function (key) {
+          var element = elementForKey(key);
+          if (element) applyLayoutStyle(element, layoutFor(element));
+        });
         sendInventory();
         break;
 
