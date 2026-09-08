@@ -15,6 +15,17 @@ interface Props {
   jsonLd?: Record<string, unknown>[];
   publishedTime?: string;
   modifiedTime?: string;
+  /**
+   * Sobrescrita de cor só desta página (Editor Visual → página → Aparência).
+   * Campo ausente/vazio usa o padrão global normalmente — a herança acontece
+   * aqui, mesclando por campo, nunca substituindo a paleta inteira.
+   */
+  colorOverride?: Partial<{
+    brandColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    headingColor: string;
+  }>;
 }
 
 const {
@@ -27,6 +38,7 @@ const {
   jsonLd = [],
   publishedTime,
   modifiedTime,
+  colorOverride,
 } = Astro.props;
 
 const fullTitle = title ? seo.titleTemplate.replace('%s', title) : seo.defaultTitle;
@@ -78,11 +90,15 @@ const gaInlineScript = gaId
  * Valida formato hex antes de injetar, por segurança (defesa em profundidade).
  */
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const safeHex = (value: string, fallback: string) => (HEX.test(value) ? value : fallback);
-const brand = safeHex(theme.brandColor, '#06203a');
-const accent = safeHex(theme.accentColor, '#0d8b7d');
-const background = safeHex(theme.backgroundColor, '#ffffff');
-const heading = safeHex(theme.headingColor, '#06203a');
+const safeHex = (value: string | undefined, fallback: string) =>
+  value && HEX.test(value) ? value : fallback;
+const brand = safeHex(colorOverride?.brandColor, safeHex(theme.brandColor, '#06203a'));
+const accent = safeHex(colorOverride?.accentColor, safeHex(theme.accentColor, '#0d8b7d'));
+const background = safeHex(
+  colorOverride?.backgroundColor,
+  safeHex(theme.backgroundColor, '#ffffff')
+);
+const heading = safeHex(colorOverride?.headingColor, safeHex(theme.headingColor, '#06203a'));
 ---
 
 <meta charset="utf-8" />

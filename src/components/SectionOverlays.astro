@@ -27,33 +27,32 @@ const mine = overlays.filter((item) => item.section === section);
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
-/** Recorte de cada silhueta. Retângulo e círculo usam border-radius, não clip-path. */
-const SHAPE_CLIP: Record<string, string> = {
-  triangle: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-  diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-  arrow: 'polygon(0% 35%, 55% 35%, 55% 10%, 100% 50%, 55% 90%, 55% 65%, 0% 65%)',
+/**
+ * Contorno via SVG, não CSS: um `border` reto não acompanha uma silhueta
+ * recortada (triângulo, losango, seta) — teria que desenhar por cima do
+ * clip-path, o que produz uma linha reta sem relação com o desenho. Com SVG,
+ * `stroke` segue exatamente o `<polygon>`/`<rect>`/`<ellipse>`, em qualquer
+ * forma. Mesma tabela de pontos usada por `public/editor-runtime.js`.
+ */
+const POLY_POINTS: Record<string, string> = {
+  triangle: '50,2 98,98 2,98',
+  diamond: '50,2 98,50 50,98 2,50',
+  arrow: '2,35 60,35 60,10 98,50 60,90 60,65 2,65',
 };
 
-function shapeStyle(overlay: Overlay): string {
-  const parts: string[] = [];
+const SVG_BG_STYLE =
+  'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+
+function shapeGeometry(overlay: Overlay) {
   const fill = HEX.test(overlay.fill) ? overlay.fill : '#12a794';
-  parts.push(`background:${fill}`);
-
-  if (overlay.content === 'rounded') parts.push('border-radius:12px');
-  else if (overlay.content === 'ellipse') parts.push('border-radius:50%');
-
-  const clip = SHAPE_CLIP[overlay.content];
-  if (clip) parts.push(`clip-path:${clip}`);
-
   const strokeWidth = Math.min(20, Math.max(0, Math.round(Number(overlay.strokeWidth) || 0)));
-  if (strokeWidth > 0 && HEX.test(overlay.stroke) && !clip) {
-    // Contorno visível só faz sentido sem clip-path (que já recorta a borda
-    // fora da silhueta); nas formas recortadas o contorno viraria uma linha
-    // reta por cima, sem seguir o desenho.
-    parts.push(`border:${strokeWidth}px solid ${overlay.stroke}`);
-  }
-
-  return parts.join(';');
+  const hasStroke = strokeWidth > 0 && HEX.test(overlay.stroke);
+  return {
+    fill,
+    stroke: hasStroke ? overlay.stroke : 'none',
+    strokeWidth: hasStroke ? strokeWidth : 0,
+    points: POLY_POINTS[overlay.content],
+  };
 }
 ---
 
@@ -74,12 +73,20 @@ function shapeStyle(overlay: Overlay): string {
           data-shape={overlay.content}
           data-overlay={overlay.id}
           data-edit-kind={ed('shape')}
-          style={shapeStyle(overlay)}
           href={safeHref(overlay.href)}
           target={overlay.linkTarget === '_blank' ? '_blank' : undefined}
           rel={overlay.linkTarget === '_blank' ? 'noopener' : undefined}
         >
-          {overlay.text}
+          <svg class="overlay__shape-bg" viewBox="0 0 100 100" preserveAspectRatio="none" style={SVG_BG_STYLE} aria-hidden="true">
+            {overlay.content === 'ellipse' ? (
+              <ellipse cx="50" cy="50" rx="49" ry="49" fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} vector-effect="non-scaling-stroke" />
+            ) : shapeGeometry(overlay).points ? (
+              <polygon points={shapeGeometry(overlay).points} fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            ) : (
+              <rect x="1" y="1" width="98" height="98" rx={overlay.content === 'rounded' ? 14 : 0} ry={overlay.content === 'rounded' ? 14 : 0} fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} vector-effect="non-scaling-stroke" />
+            )}
+          </svg>
+          <span class="overlay__shape-text" style="position:relative;z-index:1">{overlay.text}</span>
         </a>
       ) : (
         <span
@@ -87,9 +94,17 @@ function shapeStyle(overlay: Overlay): string {
           data-shape={overlay.content}
           data-overlay={overlay.id}
           data-edit-kind={ed('shape')}
-          style={shapeStyle(overlay)}
         >
-          {overlay.text}
+          <svg class="overlay__shape-bg" viewBox="0 0 100 100" preserveAspectRatio="none" style={SVG_BG_STYLE} aria-hidden="true">
+            {overlay.content === 'ellipse' ? (
+              <ellipse cx="50" cy="50" rx="49" ry="49" fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} vector-effect="non-scaling-stroke" />
+            ) : shapeGeometry(overlay).points ? (
+              <polygon points={shapeGeometry(overlay).points} fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            ) : (
+              <rect x="1" y="1" width="98" height="98" rx={overlay.content === 'rounded' ? 14 : 0} ry={overlay.content === 'rounded' ? 14 : 0} fill={shapeGeometry(overlay).fill} stroke={shapeGeometry(overlay).stroke} stroke-width={shapeGeometry(overlay).strokeWidth} vector-effect="non-scaling-stroke" />
+            )}
+          </svg>
+          <span class="overlay__shape-text" style="position:relative;z-index:1">{overlay.text}</span>
         </span>
       )
     ) : overlay.kind === 'video' ? (
@@ -149,6 +164,7 @@ function shapeStyle(overlay: Overlay): string {
      a mesma conta no editor). O texto interno é centralizado; se virar link,
      perde o sublinhado e a cor azul padrão do navegador. */
   .overlay--shape {
+    position: relative;
     display: grid;
     place-items: center;
     min-height: 2rem;

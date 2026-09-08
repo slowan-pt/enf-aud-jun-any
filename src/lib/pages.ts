@@ -26,6 +26,29 @@ export interface PromoVideo {
   url: string;
 }
 
+/**
+ * Sobrescrita de aparência DESTA página sobre a paleta global (Configurações
+ * → Aparência). Cada campo vazio herda o valor global; um valor hex passa a
+ * valer só nesta página, sem tocar no dado global nem nas demais páginas.
+ *
+ * Hierarquia completa: global (site inteiro) → página (este registro) →
+ * seção (`SectionStyle`, abaixo) — cada nível sobrescreve o anterior, esparso
+ * (nunca duplica o valor global aqui: campo vazio significa "usa o de cima").
+ */
+export interface PageStyle {
+  brandColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  headingColor: string;
+}
+
+export const EMPTY_PAGE_STYLE: PageStyle = {
+  brandColor: '',
+  accentColor: '',
+  backgroundColor: '',
+  headingColor: '',
+};
+
 /** Fundo/texto por seção — campo vazio herda a paleta global (Aparência). */
 export interface SectionStyle {
   bg: string;
@@ -204,6 +227,8 @@ export interface HomeContent {
   finalCta: typeof defaultFinalCta;
   /** Vídeo institucional/promocional — some da Home enquanto `url` estiver vazia. */
   promoVideo: PromoVideo;
+  /** Sobrescrita da paleta global só para esta página (opcional) — ver PageStyle. */
+  pageStyle: PageStyle;
   /** Cor de fundo/texto por seção (opcional) — ver SectionStyle. */
   sectionStyles: SectionStyles;
   /** Ordem de exibição das seções, definida ao arrastar no editor visual. */
@@ -253,6 +278,7 @@ const DEFAULT_HOME: HomeContent = {
   clientSegments: defaultClientSegments,
   finalCta: defaultFinalCta,
   promoVideo: DEFAULT_PROMO_VIDEO,
+  pageStyle: { ...EMPTY_PAGE_STYLE },
   sectionStyles: DEFAULT_SECTION_STYLES,
   sectionOrder: [...HOME_SECTION_KEYS],
   hiddenSections: [],
@@ -335,6 +361,18 @@ function normalizeLayouts(value: unknown): Record<string, LayoutPair> {
     if (EDIT_PATH.test(path)) out[path] = normalizeLayoutPair(pair);
   }
   return out;
+}
+
+/** Cada campo é hex válido ou vazio (herda) — nunca outro texto. */
+export function normalizePageStyle(value: unknown): PageStyle {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const field = (v: unknown) => (typeof v === 'string' && HEX.test(v) ? v : '');
+  return {
+    brandColor: field(raw.brandColor),
+    accentColor: field(raw.accentColor),
+    backgroundColor: field(raw.backgroundColor),
+    headingColor: field(raw.headingColor),
+  };
 }
 
 export function normalizeOverlays(value: unknown): Overlay[] {
@@ -581,6 +619,15 @@ interface PageRow {
   updated_at: string;
 }
 
+/** Só os campos realmente personalizados nesta página — o que `BaseHead` recebe. */
+export function pageStyleOverride(pageStyle: PageStyle): Partial<PageStyle> {
+  const out: Partial<PageStyle> = {};
+  (Object.keys(pageStyle) as (keyof PageStyle)[]).forEach((key) => {
+    if (pageStyle[key]) out[key] = pageStyle[key];
+  });
+  return out;
+}
+
 export async function getHomeContent(
   db: D1Database
 ): Promise<HomeContent & { updatedAt: string }> {
@@ -603,6 +650,7 @@ export async function getHomeContent(
       clientSegments: { ...DEFAULT_HOME.clientSegments, ...stored.clientSegments },
       finalCta: { ...DEFAULT_HOME.finalCta, ...stored.finalCta },
       promoVideo: { ...DEFAULT_HOME.promoVideo, ...stored.promoVideo },
+      pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {
         ...DEFAULT_HOME.sectionStyles,
         ...Object.fromEntries(

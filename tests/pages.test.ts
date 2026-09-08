@@ -10,6 +10,8 @@ import { describe, it, expect } from 'vitest';
 import {
   getHomeContent,
   sectionStyleAttr,
+  normalizePageStyle,
+  pageStyleOverride,
   HOME_SECTION_KEYS,
   HOME_EDITABLE_SLOTS,
 } from '../src/lib/pages';
@@ -82,6 +84,21 @@ describe('getHomeContent — compatibilidade com conteúdo antigo', () => {
     const content = await getHomeContent(fakeDb(null));
     expect(content.sectionOrder).toEqual([...HOME_SECTION_KEYS]);
     expect(content.updatedAt).toBe('');
+  });
+
+  it('conteúdo gravado antes da Aparência por página existir abre 100% herdado', async () => {
+    // Nenhum registro salvo antes desta mudança tem `pageStyle` — precisa
+    // continuar abrindo do jeito que sempre esteve: herdando tudo do global,
+    // sem apagar nem inventar nenhuma cor.
+    const content = await getHomeContent(
+      fakeDb(JSON.stringify({ hero: { title: 'Pré-existente' } }))
+    );
+    expect(content.pageStyle).toEqual({
+      brandColor: '',
+      accentColor: '',
+      backgroundColor: '',
+      headingColor: '',
+    });
   });
 
   it('JSON corrompido não derruba a página', async () => {
@@ -181,5 +198,57 @@ describe('sectionStyleAttr', () => {
   it('espaçamento "0" explícito zera o padrão; vazio herda', () => {
     expect(sectionStyleAttr(style({ paddingY: '0' }))).toContain('padding-block:0px');
     expect(sectionStyleAttr(style({ paddingY: '' }))).toBeUndefined();
+  });
+});
+
+describe('normalizePageStyle — sobrescrita de aparência por página', () => {
+  it('campo vazio ou ausente herda o padrão global (nunca duplica o valor)', () => {
+    expect(normalizePageStyle({})).toEqual({
+      brandColor: '',
+      accentColor: '',
+      backgroundColor: '',
+      headingColor: '',
+    });
+  });
+
+  it('aceita apenas hexadecimal de 6 dígitos por campo', () => {
+    const style = normalizePageStyle({
+      brandColor: '#123456',
+      accentColor: 'red',
+      backgroundColor: '#fff',
+      headingColor: '#ABCDEF',
+    });
+    expect(style.brandColor).toBe('#123456');
+    expect(style.accentColor).toBe(''); // não é hex
+    expect(style.backgroundColor).toBe(''); // hex de 3 dígitos, fora do formato
+    expect(style.headingColor).toBe('#ABCDEF');
+  });
+
+  it('sobrescrita é esparsa: um campo customizado não obriga os outros', () => {
+    const style = normalizePageStyle({ brandColor: '#06203a' });
+    expect(style.brandColor).toBe('#06203a');
+    expect(style.accentColor).toBe('');
+    expect(style.backgroundColor).toBe('');
+    expect(style.headingColor).toBe('');
+  });
+});
+
+describe('pageStyleOverride — o que chega em BaseHead', () => {
+  it('página 100% herdada não manda nenhum campo', () => {
+    expect(
+      pageStyleOverride({ brandColor: '', accentColor: '', backgroundColor: '', headingColor: '' })
+    ).toEqual({});
+  });
+
+  it('só os campos personalizados aparecem — o resto continua herdando o global', () => {
+    const override = pageStyleOverride({
+      brandColor: '#06203a',
+      accentColor: '',
+      backgroundColor: '#ffffff',
+      headingColor: '',
+    });
+    expect(override).toEqual({ brandColor: '#06203a', backgroundColor: '#ffffff' });
+    expect(override).not.toHaveProperty('accentColor');
+    expect(override).not.toHaveProperty('headingColor');
   });
 });

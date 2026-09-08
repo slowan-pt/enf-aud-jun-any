@@ -27,7 +27,7 @@ export const adminNav: AdminNavItem[] = [
     href: '#',
     icon: 'file-text',
     children: [
-      { label: 'Editor visual', href: '/admin/editor/home' },
+      { label: 'Editor Visual', href: '/admin/editor' },
       { label: 'Páginas', href: '/admin/paginas' },
       { label: 'Serviços', href: '/admin/servicos' },
       { label: 'Matérias', href: '/admin/conteudos' },
@@ -46,7 +46,6 @@ export const adminNav: AdminNavItem[] = [
       { label: 'Redirecionamentos', href: '/admin/seo#redirects' },
     ],
   },
-  { label: 'Aparência', href: '/admin/aparencia', icon: 'palette' },
   { label: 'Ícones', href: '/admin/icones', icon: 'star' },
   { label: 'Configurações', href: '/admin/configuracoes', icon: 'settings' },
   { label: 'Usuários', href: '/admin/usuarios', icon: 'users' },

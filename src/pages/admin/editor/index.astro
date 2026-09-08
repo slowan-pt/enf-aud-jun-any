@@ -1,0 +1,158 @@
+---
+/**
+ * Hub do Editor Visual — ponto de entrada único do fluxo:
+ *   Conteúdo → Editor Visual → Páginas → selecionar uma página → Aparência
+ *
+ * A Home é a única página com conteúdo estruturado e editor visual de verdade
+ * nesta etapa (ver `src/lib/pages.ts`). As demais páginas listadas em
+ * `data/admin.ts` são registros de demonstração, sem sections_json próprio —
+ * aparecem aqui para deixar claro que EXISTEM no site, mas o editor visual e
+ * a Aparência por página, por enquanto, só valem para a Home. Fingir que
+ * funcionam para elas seria pior do que avisar.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { pages } from '../../../data/admin';
+
+const HOME_ACTIONS = [
+  {
+    label: 'Editar conteúdo',
+    href: '/admin/paginas/home',
+    icon: 'edit',
+    hint: 'Textos, ícones e imagens de cada seção, em formulário.',
+  },
+  {
+    label: 'Editor visual',
+    href: '/admin/editor/home',
+    icon: 'pointer',
+    hint: 'Arraste, redimensione e posicione elementos na página real.',
+  },
+  {
+    label: 'Aparência',
+    href: '/admin/editor/home/aparencia',
+    icon: 'palette',
+    hint: 'Cores globais, desta página e de cada seção.',
+  },
+  {
+    label: 'Configurações da página',
+    href: '/admin/paginas/home#pagina-config',
+    icon: 'settings',
+    hint: 'SEO e demais ajustes específicos da Home.',
+  },
+];
+---
+
+<AdminLayout
+  title="Editor Visual"
+  description="Selecione uma página para editar seu conteúdo, layout visual e aparência."
+  active="/admin/editor"
+>
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Páginas do site</h2>
+    </div>
+    <div class="panel__body stack">
+      {
+        pages.map((page) => {
+          const isHome = page.title === 'Home';
+          return (
+            <div class:list={['page-card', { 'page-card--active': isHome }]}>
+              <div class="page-card__head">
+                <div>
+                  <p class="page-card__title">{page.title}</p>
+                  <span class="kbd">{page.slug}</span>
+                </div>
+                <span
+                  class:list={[
+                    'badge',
+                    isHome ? 'badge--success' : 'badge--neutral',
+                  ]}
+                >
+                  {isHome ? 'Editor visual disponível' : 'Somente conteúdo estático'}
+                </span>
+              </div>
+
+              {isHome ? (
+                <div class="page-card__actions">
+                  {HOME_ACTIONS.map((action) => (
+                    <a class="page-action" href={action.href}>
+                      <Icon name={action.icon} size={16} />
+                      <span>
+                        <strong>{action.label}</strong>
+                        <small>{action.hint}</small>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p class="muted small">
+                  Editor visual e Aparência por página disponíveis apenas para a Home nesta
+                  etapa. Esta página continua sendo gerenciada como conteúdo estático.
+                </p>
+              )}
+            </div>
+          );
+        })
+      }
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .page-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: var(--sp-5);
+  }
+
+  .page-card--active {
+    border-color: var(--c-accent-300);
+  }
+
+  .page-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+  }
+
+  .page-card__title {
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+  }
+
+  .page-card__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--sp-3);
+  }
+
+  .page-action {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .page-action:hover {
+    border-color: var(--c-accent-500);
+  }
+
+  .page-action strong {
+    display: block;
+    font-size: var(--fs-sm);
+  }
+
+  .page-action small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    margin-top: 0.15rem;
+  }
+</style>

@@ -48,11 +48,15 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 ---
 
 <AdminLayout
-  title="Editor visual"
+  title="Editor visual — Home"
   description="Clique em qualquer elemento da página para editar no lugar."
-  active="/admin/paginas"
+  active="/admin/editor"
 >
   <div slot="actions">
+    <a href="/admin/editor/home/aparencia" class="btn btn--secondary btn--sm">
+      <Icon name="palette" size={16} />
+      Aparência
+    </a>
     <a href="/admin/paginas/home" class="btn btn--secondary btn--sm">
       <Icon name="edit" size={16} />
       Editar por formulário
@@ -2530,6 +2534,17 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       }
       commitStyle(key, 'paddingY', padding.value ? String(Math.min(300, Math.round(n))) : '');
     });
+
+    const padReset = document.createElement('button');
+    padReset.type = 'button';
+    padReset.className = 'ed-btn';
+    padReset.textContent = 'Herdar';
+    padReset.title = 'Restaurar o espaçamento padrão do site';
+    padReset.addEventListener('click', () => {
+      padding.value = '';
+      commitStyle(key, 'paddingY', '');
+    });
+    padRow.appendChild(padReset);
     wrap.appendChild(padRow);
 
     return wrap;
@@ -2561,6 +2576,11 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   renderColors();
+
+  // Link vindo do resumo em Aparência (#section=chave) — abre direto na
+  // linha da seção em vez de deixar a pessoa procurar na lista.
+  const hashSection = window.location.hash.match(/^#section=([a-zA-Z]+)$/)?.[1];
+  if (hashSection) focusSectionStyleRow(hashSection);
 
   /** Abre a aba Cores e destaca a linha da seção clicada no fundo vazio. */
   function focusSectionStyleRow(key: string) {

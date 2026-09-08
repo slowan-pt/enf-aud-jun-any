@@ -19,6 +19,7 @@ import {
   sectionStyleAttr,
   layoutStylesheet,
   HOME_EDITABLE_SLOTS,
+  pageStyleOverride,
 } from '../lib/pages';
 import type { SectionStyle } from '../lib/pages';
 
@@ -41,6 +42,7 @@ const {
   clientSegments,
   finalCta,
   promoVideo,
+  pageStyle,
   sectionStyles,
   sectionOrder,
   hiddenSections,
@@ -82,6 +84,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   description="Essencial Saúde Auditoria: auditoria concorrente, auditoria de contas hospitalares, gestão da jornada do paciente e gestão hospitalar, com foco na segurança do paciente e na sustentabilidade do sistema. Brasília - DF."
   path="/"
   bodyClass="page-home"
+  colorOverride={pageStyleOverride(pageStyle)}
 >
   <!-- ==================================================== HERO -->
   <section

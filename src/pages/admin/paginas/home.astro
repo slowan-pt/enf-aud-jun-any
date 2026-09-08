@@ -148,13 +148,19 @@ if (Astro.request.method === 'POST') {
       HOME_SECTION_KEYS.map((key) => [
         key,
         {
+          // Espalha o que já existe primeiro: este formulário só edita bg/text,
+          // e sobrescrever o registro inteiro apagaria imagem, escurecimento,
+          // altura mínima e espaçamento configurados no Editor Visual.
+          ...current.sectionStyles[key],
           bg: text(`style_${key}_bg`, current.sectionStyles[key].bg),
           text: text(`style_${key}_text`, current.sectionStyles[key].text),
         },
       ])
     ) as typeof current.sectionStyles,
-    // Ordem e visibilidade são definidas no editor visual; o formulário não as
-    // edita, então repassa o que já está salvo em vez de zerar.
+    // Ordem, visibilidade e aparência da página são definidas no Editor
+    // Visual; o formulário não as edita, então repassa o que já está salvo
+    // em vez de zerar.
+    pageStyle: current.pageStyle,
     sectionOrder: current.sectionOrder,
     hiddenSections: current.hiddenSections,
     layouts: current.layouts,
@@ -854,14 +860,18 @@ function formatDate(iso: string): string {
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="pagina-config">
         <div class="panel__head">
-          <h2 class="panel__title">SEO da Home</h2>
+          <h2 class="panel__title">Configurações da página</h2>
         </div>
         <div class="panel__body">
           <p class="muted small">
             Metadados de SEO por página ainda não são editáveis — a Home usa o título e a
             descrição padrão definidos em Configurações.
+          </p>
+          <p class="muted small" style="margin-top: var(--sp-3)">
+            Cores e fundo desta página ficam em
+            <a href="/admin/editor/home/aparencia">Editor Visual → Home → Aparência</a>.
           </p>
         </div>
       </section>

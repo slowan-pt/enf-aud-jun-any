@@ -485,7 +485,14 @@
       el.className = 'overlay overlay--shape';
       el.setAttribute('data-edit-kind', 'shape');
       el.setAttribute('data-shape', spec.content || 'rect');
-      el.textContent = spec.text || '';
+      el.style.position = 'relative';
+      el.appendChild(buildShapeSvg(spec.content || 'rect'));
+      var shapeText = document.createElement('span');
+      shapeText.className = 'overlay__shape-text';
+      shapeText.style.position = 'relative';
+      shapeText.style.zIndex = '1';
+      shapeText.textContent = spec.text || '';
+      el.appendChild(shapeText);
     } else if (spec.kind === 'video') {
       el = document.createElement('video');
       el.className = 'overlay overlay--video';
@@ -581,11 +588,19 @@
   }
 
   // -------------------------------------------------------------- seleção
+  /** Nó que de fato recebe `contenteditable` — numa forma é o texto interno,
+   * nunca o pacote inteiro (que também contém o SVG do desenho). */
+  function editableTargetOf(element) {
+    if (kindOf(element) === 'shape') return shapeTextNode(element) || element;
+    return element;
+  }
+
   function clearSelection() {
     detachMoveable();
     clearSectionSelection();
     if (!selected) return;
-    if (selected.isContentEditable) selected.removeAttribute('contenteditable');
+    var editable = editableTargetOf(selected);
+    if (editable.isContentEditable) editable.removeAttribute('contenteditable');
     selected.classList.remove('is-edit-selected');
     selected = null;
     editingText = false;
@@ -626,14 +641,15 @@
     if (kind !== 'text' && kind !== 'multiline' && kind !== 'shape') return;
     detachMoveable();
     editingText = true;
-    element.setAttribute('contenteditable', 'true');
-    element.spellcheck = false;
-    element.focus();
+    var editable = editableTargetOf(element);
+    editable.setAttribute('contenteditable', 'true');
+    editable.spellcheck = false;
+    editable.focus();
   }
 
   function stopTextEdit() {
     if (!editingText || !selected) return;
-    selected.removeAttribute('contenteditable');
+    editableTargetOf(selected).removeAttribute('contenteditable');
     editingText = false;
     attachMoveable(selected);
   }
@@ -718,12 +734,12 @@
   // Digitação em elemento de texto: avisa o editor a cada alteração.
   document.addEventListener('input', function (event) {
     var target = event.target.closest(SELECTABLE);
-    if (!target || !target.isContentEditable) return;
+    if (!target || !editingText) return;
     post({
       type: 'editor:change',
       path: target.getAttribute('data-edit'),
       overlay: target.getAttribute('data-overlay'),
-      value: target.textContent.trim(),
+      value: editableTargetOf(target).textContent.trim(),
     });
   });
 
@@ -736,16 +752,16 @@
     var activeTag = document.activeElement && document.activeElement.tagName;
     if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
 
-    if (selected.isContentEditable) {
+    if (editingText) {
       // Enter fecha a edição de um título de uma linha em vez de criar parágrafo.
       if (event.key === 'Enter' && kindOf(selected) !== 'multiline') {
         event.preventDefault();
-        selected.blur();
+        editableTargetOf(selected).blur();
         stopTextEdit();
         return;
       }
       if (event.key === 'Escape') {
-        selected.blur();
+        editableTargetOf(selected).blur();
         stopTextEdit();
         return;
       }
@@ -827,38 +843,90 @@
     });
   }
 
-  // Mesmo recorte de SHAPE_CLIP em src/components/SectionOverlays.astro.
-  var SHAPE_CLIP = {
-    triangle: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-    diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-    arrow: 'polygon(0% 35%, 55% 35%, 55% 10%, 100% 50%, 55% 90%, 55% 65%, 0% 65%)',
+  // Mesma geometria (pontos, rx) usada em src/components/SectionOverlays.astro
+  // — o contorno agora é `stroke` de um SVG, não `border` de CSS, porque só
+  // assim ele acompanha a silhueta recortada (triângulo, losango, seta).
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var SHAPE_POLY_POINTS = {
+    triangle: '50,2 98,98 2,98',
+    diamond: '50,2 98,50 50,98 2,50',
+    arrow: '2,35 60,35 60,10 98,50 60,90 60,65 2,65',
   };
   var HEX6 = /^#[0-9a-fA-F]{6}$/;
 
+  /** Constrói o `<rect>`/`<ellipse>`/`<polygon>` de dentro do SVG de fundo da forma. */
+  function buildShapeGeometry(kind) {
+    if (kind === 'ellipse') {
+      var ellipse = document.createElementNS(SVGNS, 'ellipse');
+      ellipse.setAttribute('cx', '50');
+      ellipse.setAttribute('cy', '50');
+      ellipse.setAttribute('rx', '49');
+      ellipse.setAttribute('ry', '49');
+      ellipse.setAttribute('vector-effect', 'non-scaling-stroke');
+      return ellipse;
+    }
+    if (SHAPE_POLY_POINTS[kind]) {
+      var polygon = document.createElementNS(SVGNS, 'polygon');
+      polygon.setAttribute('points', SHAPE_POLY_POINTS[kind]);
+      polygon.setAttribute('stroke-linejoin', 'round');
+      polygon.setAttribute('vector-effect', 'non-scaling-stroke');
+      return polygon;
+    }
+    var rect = document.createElementNS(SVGNS, 'rect');
+    rect.setAttribute('x', '1');
+    rect.setAttribute('y', '1');
+    rect.setAttribute('width', '98');
+    rect.setAttribute('height', '98');
+    if (kind === 'rounded') {
+      rect.setAttribute('rx', '14');
+      rect.setAttribute('ry', '14');
+    }
+    rect.setAttribute('vector-effect', 'non-scaling-stroke');
+    return rect;
+  }
+
+  /** SVG de fundo, esticado à caixa toda (`preserveAspectRatio="none"`) — o
+   * `stroke` fica com espessura constante em tela via `vector-effect`. */
+  function buildShapeSvg(kind) {
+    var svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'overlay__shape-bg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute(
+      'style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none'
+    );
+    svg.appendChild(buildShapeGeometry(kind));
+    return svg;
+  }
+
+  /** Nó de texto editável de uma forma — separado do SVG para que reescrever
+   * o texto (`textContent =`) nunca apague o desenho de fundo. */
+  function shapeTextNode(node) {
+    return node.querySelector('.overlay__shape-text');
+  }
+
   /**
-   * Mesma conta de `shapeStyle()` no servidor. `full` sempre traz o estado
+   * Mesma conta de `shapeGeometry()` no servidor. `full` sempre traz o estado
    * COMPLETO da forma (não um patch parcial) — o remetente (painel do editor)
    * é quem mantém o registro inteiro e manda tudo de novo a cada mudança,
    * senão redesenhar com só o campo alterado apagaria os outros.
    */
   function applyShapeStyle(node, full) {
-    if (typeof full.text === 'string' && node.textContent.trim() !== full.text) {
-      node.textContent = full.text;
+    var textEl = shapeTextNode(node);
+    if (textEl && typeof full.text === 'string' && textEl.textContent.trim() !== full.text) {
+      textEl.textContent = full.text;
     }
 
-    var shapeType = node.getAttribute('data-shape') || 'rect';
+    var shapePrimitive = node.querySelector('.overlay__shape-bg > *');
+    if (!shapePrimitive) return;
     var fill = HEX6.test(full.fill) ? full.fill : '#12a794';
     var strokeWidth = Math.min(20, Math.max(0, Math.round(Number(full.strokeWidth) || 0)));
-    var clip = SHAPE_CLIP[shapeType];
-
-    node.style.background = fill;
-    node.style.borderRadius =
-      shapeType === 'rounded' ? '12px' : shapeType === 'ellipse' ? '50%' : '';
-    node.style.clipPath = clip || '';
-    node.style.border =
-      strokeWidth > 0 && HEX6.test(full.stroke) && !clip
-        ? strokeWidth + 'px solid ' + full.stroke
-        : '';
+    var hasStroke = strokeWidth > 0 && HEX6.test(full.stroke);
+    shapePrimitive.setAttribute('fill', fill);
+    shapePrimitive.setAttribute('stroke', hasStroke ? full.stroke : 'none');
+    shapePrimitive.setAttribute('stroke-width', hasStroke ? String(strokeWidth) : '0');
   }
 
   function drawIcon(svg, markup) {
@@ -921,6 +989,13 @@
       if (svg && extra && typeof extra.svgInner === 'string') {
         drawIcon(svg, extra.svgInner);
       }
+      return;
+    }
+
+    if (kind === 'shape') {
+      // Nunca `element.textContent =` aqui: apagaria o SVG do desenho junto.
+      var shapeText = shapeTextNode(element);
+      if (shapeText && shapeText.textContent.trim() !== value) shapeText.textContent = value;
       return;
     }
 
