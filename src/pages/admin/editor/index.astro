@@ -3,43 +3,77 @@
  * Hub do Editor Visual — ponto de entrada único do fluxo:
  *   Conteúdo → Editor Visual → Páginas → selecionar uma página → Aparência
  *
- * A Home é a única página com conteúdo estruturado e editor visual de verdade
- * nesta etapa (ver `src/lib/pages.ts`). As demais páginas listadas em
- * `data/admin.ts` são registros de demonstração, sem sections_json próprio —
- * aparecem aqui para deixar claro que EXISTEM no site, mas o editor visual e
- * a Aparência por página, por enquanto, só valem para a Home. Fingir que
- * funcionam para elas seria pior do que avisar.
+ * Migração incremental (ver plano apresentado antes de começar): cada página
+ * convertida para o banco entra em `MIGRATED_PAGES` com suas 4 ações. As
+ * demais, listadas em `data/admin.ts`, aparecem como "Migração pendente" —
+ * um estado deliberadamente temporário, não uma resposta definitiva.
  */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import { pages } from '../../../data/admin';
 
-const HOME_ACTIONS = [
-  {
-    label: 'Editar conteúdo',
-    href: '/admin/paginas/home',
-    icon: 'edit',
-    hint: 'Textos, ícones e imagens de cada seção, em formulário.',
-  },
-  {
-    label: 'Editor visual',
-    href: '/admin/editor/home',
-    icon: 'pointer',
-    hint: 'Arraste, redimensione e posicione elementos na página real.',
-  },
-  {
-    label: 'Aparência',
-    href: '/admin/editor/home/aparencia',
-    icon: 'palette',
-    hint: 'Cores globais, desta página e de cada seção.',
-  },
-  {
-    label: 'Configurações da página',
-    href: '/admin/paginas/home#pagina-config',
-    icon: 'settings',
-    hint: 'SEO e demais ajustes específicos da Home.',
-  },
-];
+interface PageAction {
+  label: string;
+  href: string;
+  icon: string;
+  hint: string;
+}
+
+/** Próxima página migrada entra aqui, com suas 4 ações. */
+const MIGRATED_PAGES: Record<string, PageAction[]> = {
+  Home: [
+    {
+      label: 'Editar conteúdo',
+      href: '/admin/paginas/home',
+      icon: 'edit',
+      hint: 'Textos, ícones e imagens de cada seção, em formulário.',
+    },
+    {
+      label: 'Editor visual',
+      href: '/admin/editor/home',
+      icon: 'pointer',
+      hint: 'Arraste, redimensione e posicione elementos na página real.',
+    },
+    {
+      label: 'Aparência',
+      href: '/admin/editor/home/aparencia',
+      icon: 'palette',
+      hint: 'Cores globais, desta página e de cada seção.',
+    },
+    {
+      label: 'Configurações da página',
+      href: '/admin/paginas/home#pagina-config',
+      icon: 'settings',
+      hint: 'SEO e demais ajustes específicos da Home.',
+    },
+  ],
+  'Quem Somos': [
+    {
+      label: 'Editar conteúdo',
+      href: '/admin/paginas/quem-somos',
+      icon: 'edit',
+      hint: 'Textos de abertura de cada seção, em formulário.',
+    },
+    {
+      label: 'Editor visual',
+      href: '/admin/editor/quem-somos',
+      icon: 'pointer',
+      hint: 'Arraste, redimensione e posicione elementos na página real.',
+    },
+    {
+      label: 'Aparência',
+      href: '/admin/editor/quem-somos/aparencia',
+      icon: 'palette',
+      hint: 'Cores globais, desta página e de cada seção.',
+    },
+    {
+      label: 'Configurações da página',
+      href: '/admin/paginas/quem-somos#pagina-config',
+      icon: 'settings',
+      hint: 'Itens de lista e elementos livres ficam no Editor Visual.',
+    },
+  ],
+};
 ---
 
 <AdminLayout
@@ -54,27 +88,23 @@ const HOME_ACTIONS = [
     <div class="panel__body stack">
       {
         pages.map((page) => {
-          const isHome = page.title === 'Home';
+          const actions = MIGRATED_PAGES[page.title];
+          const isMigrated = Boolean(actions);
           return (
-            <div class:list={['page-card', { 'page-card--active': isHome }]}>
+            <div class:list={['page-card', { 'page-card--active': isMigrated }]}>
               <div class="page-card__head">
                 <div>
                   <p class="page-card__title">{page.title}</p>
                   <span class="kbd">{page.slug}</span>
                 </div>
-                <span
-                  class:list={[
-                    'badge',
-                    isHome ? 'badge--success' : 'badge--neutral',
-                  ]}
-                >
-                  {isHome ? 'Editor visual disponível' : 'Somente conteúdo estático'}
+                <span class:list={['badge', isMigrated ? 'badge--success' : 'badge--warning']}>
+                  {isMigrated ? 'Editável' : 'Migração pendente'}
                 </span>
               </div>
 
-              {isHome ? (
+              {actions ? (
                 <div class="page-card__actions">
-                  {HOME_ACTIONS.map((action) => (
+                  {actions.map((action) => (
                     <a class="page-action" href={action.href}>
                       <Icon name={action.icon} size={16} />
                       <span>
@@ -86,8 +116,8 @@ const HOME_ACTIONS = [
                 </div>
               ) : (
                 <p class="muted small">
-                  Editor visual e Aparência por página disponíveis apenas para a Home nesta
-                  etapa. Esta página continua sendo gerenciada como conteúdo estático.
+                  Ainda gerenciada como conteúdo estático — Editor Visual e Aparência própria
+                  chegam nas próximas rodadas de migração.
                 </p>
               )}
             </div>

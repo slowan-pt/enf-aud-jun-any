@@ -2,6 +2,12 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import { pages } from '../../../data/admin';
+
+/** Página migrada para o banco → rota do formulário de conteúdo. Ver Editor Visual para a lista completa de ações. */
+const EDIT_HREF: Record<string, string> = {
+  Home: '/admin/paginas/home',
+  'Quem Somos': '/admin/paginas/quem-somos',
+};
 ---
 
 <AdminLayout
@@ -55,7 +61,7 @@ import { pages } from '../../../data/admin';
                 <td>
                   <a
                     class="table__main"
-                    href={page.title === 'Home' ? '/admin/paginas/home' : '#'}
+                    href={EDIT_HREF[page.title] ?? '#'}
                   >
                     {page.title}
                   </a>
@@ -80,7 +86,7 @@ import { pages } from '../../../data/admin';
                   <div class="table__actions">
                     <a
                       class="row-btn"
-                      href={page.title === 'Home' ? '/admin/paginas/home' : '#'}
+                      href={EDIT_HREF[page.title] ?? '#'}
                       aria-label={`Editar ${page.title}`}
                     >
                       <Icon name="edit" size={16} />

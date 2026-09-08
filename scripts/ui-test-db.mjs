@@ -101,15 +101,26 @@ function doRestore(pathArg) {
   for (const table of TABLES) {
     const rows = dump[table];
     if (!Array.isArray(rows)) continue;
+    const pk = table === 'settings' ? 'key' : 'id';
 
-    // Restaura linha a linha por chave primária conhecida — nunca um
-    // DELETE+INSERT do zero, que perderia linhas criadas DEPOIS do snapshot
-    // (ex.: uma página nova) em vez de só desfazer o que o teste mudou.
+    // 1. Restaura linha a linha por chave primária conhecida — cada campo
+    // volta exatamente ao valor gravado no snapshot.
     for (const row of rows) {
       const cols = Object.keys(row);
       const assignments = cols.map((c) => `${c} = ${quote(row[c])}`).join(', ');
-      const pk = table === 'settings' ? 'key' : 'id';
       d1(`UPDATE ${table} SET ${assignments} WHERE ${pk} = ${quote(row[pk])}`);
+    }
+
+    // 2. Remove linhas que não existiam no snapshot — é exatamente o que um
+    // teste de interface cria (ex.: a primeira gravação de uma página nova
+    // gera a linha dela). Sem isto, "restaurar" deixaria a linha nova para
+    // trás, que foi exatamente o bug encontrado ao testar este script.
+    const known = rows.map((row) => row[pk]);
+    const current = d1(`SELECT ${pk} FROM ${table}`);
+    const extra = current.map((row) => row[pk]).filter((id) => !known.includes(id));
+    for (const id of extra) {
+      console.log(`  removendo linha criada durante o teste: ${table}.${pk} = ${id}`);
+      d1(`DELETE FROM ${table} WHERE ${pk} = ${quote(id)}`);
     }
   }
   console.log(`Restaurado a partir de: ${path}`);

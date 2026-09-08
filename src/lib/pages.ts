@@ -179,7 +179,13 @@ export type ShapeKind = (typeof SHAPE_KINDS)[number];
 
 export interface Overlay {
   id: string;
-  section: HomeSectionKey;
+  /**
+   * Chave da seção, na lista de seções DESTA página. Tipada como `string`
+   * (não `HomeSectionKey`) para o mesmo tipo `Overlay` valer em qualquer
+   * documento de página — `normalizeOverlays()` é quem valida contra a
+   * lista de seções certa a cada chamada.
+   */
+  section: string;
   kind: OverlayKind;
   /** Texto, caminho da mídia, nome do ícone ou silhueta da forma, conforme `kind`. */
   content: string;
@@ -354,7 +360,7 @@ function normalizeLayoutPair(value: unknown): LayoutPair {
   };
 }
 
-function normalizeLayouts(value: unknown): Record<string, LayoutPair> {
+export function normalizeLayouts(value: unknown): Record<string, LayoutPair> {
   if (!value || typeof value !== 'object') return {};
   const out: Record<string, LayoutPair> = {};
   for (const [path, pair] of Object.entries(value as Record<string, unknown>)) {
@@ -375,7 +381,16 @@ export function normalizePageStyle(value: unknown): PageStyle {
   };
 }
 
-export function normalizeOverlays(value: unknown): Overlay[] {
+/**
+ * `sectionKeys` é a lista de seções válidas NESTA página — o padrão é a
+ * Home, mas qualquer outro documento (Quem Somos, Contato...) passa a sua
+ * própria lista, para um overlay nunca apontar para uma seção que não existe
+ * naquela página.
+ */
+export function normalizeOverlays(
+  value: unknown,
+  sectionKeys: readonly string[] = HOME_SECTION_KEYS
+): Overlay[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const out: Overlay[] = [];
@@ -387,14 +402,14 @@ export function normalizeOverlays(value: unknown): Overlay[] {
     const kind = String(raw.kind ?? '');
 
     if (!OVERLAY_ID.test(id) || seen.has(id)) continue;
-    if (!(HOME_SECTION_KEYS as readonly string[]).includes(section)) continue;
+    if (!sectionKeys.includes(section)) continue;
     if (!(OVERLAY_KINDS as readonly string[]).includes(kind)) continue;
 
     seen.add(id);
     const content = String(raw.content ?? '').slice(0, 2000);
     out.push({
       id,
-      section: section as HomeSectionKey,
+      section,
       kind: kind as OverlayKind,
       // Para forma, `content` é a silhueta — fora da lista permitida, cai em
       // "rect" em vez de guardar um valor que não corresponde a nada.

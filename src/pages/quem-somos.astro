@@ -5,143 +5,253 @@ import Icon from '../components/Icon.astro';
 import EloDiagram from '../components/EloDiagram.astro';
 import ProcessSteps from '../components/ProcessSteps.astro';
 import CtaBand from '../components/CtaBand.astro';
-import {
-  about,
-  missionVisionValues,
-  elo,
-  howWeWork,
-  clientSegments,
-} from '../data/institutional';
+import SectionOverlays from '../components/SectionOverlays.astro';
 import { publishedOnly } from '../lib/services';
+import { getDB } from '../lib/db';
+import { getQuemSomosContent } from '../lib/documents';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../lib/pages';
+import type { SectionStyle } from '../lib/pages';
 
 const publishedServices = publishedOnly(Astro.locals.services);
+
+// Atributos usados só pelo editor não vão para o HTML de quem visita o site
+// — mesma regra da Home (ver src/pages/index.astro).
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
+const db = getDB();
+const {
+  about,
+  elo,
+  howWeWork,
+  missionVisionValues,
+  clientSegments,
+  pageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+} = await getQuemSomosContent(db);
+
+const layoutCss = layoutStylesheet(layouts, overlays);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+
+// As 5 seções editáveis ficam entre o Hero (fixo antes, order:-1) e o CTA
+// final (fixo depois, order:99) — só a ordem ENTRE elas muda no editor.
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: SectionStyle) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
 ---
 
 <BaseLayout
   title="Quem Somos"
   description="Conheça a Essencial Saúde Auditoria: empresa técnica de gestão e auditoria em saúde em Brasília - DF, atuando como elo entre fontes pagadoras, prestadores e beneficiários."
   path="/quem-somos"
+  colorOverride={pageStyleOverride(pageStyle)}
+  bodyClass="page-quem-somos"
 >
-  <PageHero
-    eyebrow={about.eyebrow}
-    title={about.title}
-    lead={about.lead}
-    crumbs={[{ label: 'Quem Somos' }]}
-    image={about.image}
-    imageAlt={about.imageAlt}
-  />
+  <div style="order:-1">
+    <PageHero
+      eyebrow={about.eyebrow}
+      title={about.title}
+      lead={about.lead}
+      crumbs={[{ label: 'Quem Somos' }]}
+      image={about.image}
+      imageAlt={about.imageAlt}
+    />
+  </div>
 
-  <section class="section">
+  <section
+    class:list={['section', secClass('about')]}
+    style={secStyle('about', sectionStyles.about)}
+    data-section="about"
+    data-section-label={ed('Nossa atuação')}
+  >
     <div class="container split split--wide-text">
       <div data-reveal>
         <p class="eyebrow">Nossa atuação</p>
         <h2 class="title-md">Técnica, presente e orientada por evidência</h2>
-        <div class="stack" style="margin-top: var(--sp-5)">
-          {about.paragraphs.map((paragraph) => <p class="about__p">{paragraph}</p>)}
+        <div class="stack" style="margin-top: var(--sp-5)" data-edit-list={ed('about.paragraphs')}>
+          {
+            about.paragraphs.map((paragraph, index) => (
+              <p
+                class="about__p"
+                data-edit={`about.paragraphs.${index}`}
+                data-edit-kind={ed('multiline')}
+                data-edit-item={ed(index)}
+              >
+                {paragraph}
+              </p>
+            ))
+          }
         </div>
       </div>
 
-      <div class="principles" data-reveal>
+      <div class="principles" data-reveal data-edit-list={ed('about.principles')}>
         {
-          about.principles.map((item) => (
-            <article class="principle">
+          about.principles.map((item, index) => (
+            <article class="principle" data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--sm">
                 <Icon name={item.icon} size={20} />
               </span>
               <div>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
+                <h3 data-edit={`about.principles.${index}.title`}>{item.title}</h3>
+                <p data-edit={`about.principles.${index}.text`} data-edit-kind={ed('multiline')}>
+                  {item.text}
+                </p>
               </div>
             </article>
           ))
         }
       </div>
+
+      <SectionOverlays section="about" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section section--brand">
+  <section
+    class:list={['section', 'section--brand', secClass('elo')]}
+    style={secStyle('elo', sectionStyles.elo)}
+    data-section="elo"
+    data-section-label={ed('O modelo Essencial')}
+  >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow">{elo.eyebrow}</p>
-        <h2 class="title-lg">{elo.title}</h2>
-        <p class="lead">{elo.text}</p>
+        <p class="eyebrow" data-edit="elo.eyebrow">{elo.eyebrow}</p>
+        <h2 class="title-lg" data-edit="elo.title">{elo.title}</h2>
+        <p class="lead" data-edit="elo.text" data-edit-kind={ed('multiline')}>
+          {elo.text}
+        </p>
       </div>
       <div data-reveal>
         <EloDiagram />
       </div>
+      <SectionOverlays section="elo" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section section--subtle">
+  <section
+    class:list={['section', 'section--subtle', secClass('howWeWork')]}
+    style={secStyle('howWeWork', sectionStyles.howWeWork)}
+    data-section="howWeWork"
+    data-section-label={ed('Como atuamos')}
+  >
     <div class="container">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">{howWeWork.eyebrow}</p>
-        <h2 class="title-lg">{howWeWork.title}</h2>
-        <p class="lead">{howWeWork.text}</p>
+        <p class="eyebrow" data-edit="howWeWork.eyebrow">{howWeWork.eyebrow}</p>
+        <h2 class="title-lg" data-edit="howWeWork.title">{howWeWork.title}</h2>
+        <p class="lead" data-edit="howWeWork.text" data-edit-kind={ed('multiline')}>
+          {howWeWork.text}
+        </p>
       </div>
       <ProcessSteps />
+      <SectionOverlays section="howWeWork" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section">
+  <section
+    class:list={['section', secClass('mvv')]}
+    style={secStyle('mvv', sectionStyles.mvv)}
+    data-section="mvv"
+    data-section-label={ed('Missão, visão e valores')}
+  >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow">{missionVisionValues.eyebrow}</p>
-        <h2 class="title-lg">{missionVisionValues.title}</h2>
+        <p class="eyebrow" data-edit="missionVisionValues.eyebrow">{missionVisionValues.eyebrow}</p>
+        <h2 class="title-lg" data-edit="missionVisionValues.title">{missionVisionValues.title}</h2>
       </div>
 
       <div class="mvv" data-reveal>
         {
-          [missionVisionValues.mission, missionVisionValues.vision].map((item) => (
+          (
+            [
+              ['mission', missionVisionValues.mission],
+              ['vision', missionVisionValues.vision],
+            ] as const
+          ).map(([key, item]) => (
             <article class="mvv__card">
               <span class="icon-badge">
                 <Icon name={item.icon} size={22} />
               </span>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
+              <h3 data-edit={`missionVisionValues.${key}.title`}>{item.title}</h3>
+              <p data-edit={`missionVisionValues.${key}.text`} data-edit-kind={ed('multiline')}>
+                {item.text}
+              </p>
             </article>
           ))
         }
       </div>
 
-      <div class="grid grid--3" style="margin-top: var(--sp-8)">
+      <div class="grid grid--3" style="margin-top: var(--sp-8)" data-edit-list={ed('missionVisionValues.values')}>
         {
-          missionVisionValues.values.map((value) => (
-            <article class="card" data-reveal>
+          missionVisionValues.values.map((value, index) => (
+            <article class="card" data-reveal data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--accent icon-badge--sm">
                 <Icon name={value.icon} size={18} />
               </span>
-              <h3>{value.title}</h3>
-              <p>{value.text}</p>
+              <h3 data-edit={`missionVisionValues.values.${index}.title`}>{value.title}</h3>
+              <p
+                data-edit={`missionVisionValues.values.${index}.text`}
+                data-edit-kind={ed('multiline')}
+              >
+                {value.text}
+              </p>
             </article>
           ))
         }
       </div>
+      <SectionOverlays section="mvv" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section section--subtle">
+  <section
+    class:list={['section', 'section--subtle', secClass('segments')]}
+    style={secStyle('segments', sectionStyles.segments)}
+    data-section="segments"
+    data-section-label={ed('Para quem atuamos')}
+  >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow">{clientSegments.eyebrow}</p>
-        <h2 class="title-lg">{clientSegments.title}</h2>
-        <p class="lead">{clientSegments.text}</p>
+        <p class="eyebrow" data-edit="clientSegments.eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-lg" data-edit="clientSegments.title">{clientSegments.title}</h2>
+        <p class="lead" data-edit="clientSegments.text" data-edit-kind={ed('multiline')}>
+          {clientSegments.text}
+        </p>
       </div>
 
-      <div class="segments" data-reveal>
+      <div class="segments" data-reveal data-edit-list={ed('clientSegments.items')}>
         {
-          clientSegments.items.map((item) => (
-            <article class="segment">
+          clientSegments.items.map((item, index) => (
+            <article class="segment" data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--sm">
                 <Icon name={item.icon} size={18} />
               </span>
-              <h3>{item.label}</h3>
-              <p class="segment__detail">{item.detail}</p>
-              <p class="segment__behavior">{item.behavior}</p>
+              <h3 data-edit={`clientSegments.items.${index}.label`}>{item.label}</h3>
+              <p
+                class="segment__detail"
+                data-edit={`clientSegments.items.${index}.detail`}
+                data-edit-kind={ed('multiline')}
+              >
+                {item.detail}
+              </p>
+              <p
+                class="segment__behavior"
+                data-edit={`clientSegments.items.${index}.behavior`}
+                data-edit-kind={ed('multiline')}
+              >
+                {item.behavior}
+              </p>
             </article>
           ))
         }
       </div>
+      <SectionOverlays section="segments" overlays={overlays} />
 
       <div class="services-line" data-reveal>
         <p class="muted small">Serviços disponíveis:</p>
@@ -161,12 +271,50 @@ const publishedServices = publishedOnly(Astro.locals.services);
     </div>
   </section>
 
-  <CtaBand
-    eyebrow="Fale com a Essencial"
-    title="Quer entender como aplicamos isso na sua operação?"
-    text="Nossa equipe apresenta o método, o escopo e os indicadores de acompanhamento conforme o seu contrato."
-  />
+  <div style="order:99">
+    <CtaBand
+      eyebrow="Fale com a Essencial"
+      title="Quer entender como aplicamos isso na sua operação?"
+      text="Nossa equipe apresenta o método, o escopo e os indicadores de acompanhamento conforme o seu contrato."
+    />
+  </div>
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  /* Mesma base da Home (ver src/pages/index.astro): `container-type` é o que
+     faz o `cqw` dos elementos livres/formas resolver contra a LARGURA DA
+     SEÇÃO, não da tela — sem isso, posição/tamanho salvos no editor não
+     bateriam com o que aparece aqui. */
+  body.page-quem-somos main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-quem-somos main > section {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+</style>
 
 <style>
   .about__p {

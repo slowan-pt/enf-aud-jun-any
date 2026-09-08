@@ -1,0 +1,519 @@
+---
+/**
+ * Aparência da Quem Somos — mesmo padrão da Home (ver
+ * src/pages/admin/editor/home/aparencia.astro), segunda página a ganhar essa
+ * tela.
+ *
+ * Hierarquia (nunca duplicada, sempre esparsa):
+ *   1. Global   — `settings.theme` (D1 `settings`, chave "theme"). Vale para
+ *      o site inteiro, inclusive cabeçalho e rodapé.
+ *   2. Página   — `QuemSomosContent.pageStyle` (D1 `pages`, linha da Quem
+ *      Somos). Campo vazio herda o valor global; um hex sobrescreve só
+ *      nesta página — nunca a Home ou outra.
+ *   3. Seção    — `QuemSomosContent.sectionStyles[chave]`, editado no Editor
+ *      Visual (aqui só um resumo com link, para não ter duas telas
+ *      gravando o mesmo dado de formas diferentes).
+ */
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../../lib/db';
+import { updateSetting } from '../../../../lib/settings';
+import { normalizePageStyle } from '../../../../lib/pages';
+import {
+  getQuemSomosContent,
+  updateQuemSomosContent,
+  QUEM_SOMOS_SECTION_KEYS,
+} from '../../../../lib/documents';
+
+const db = getDB();
+const userId = Astro.locals.user?.id;
+const userName = Astro.locals.user?.name ?? '';
+const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+let formError = '';
+let savedScope = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const scope = String(form.get('scope') ?? '');
+
+  if (scope === 'global') {
+    const values = {
+      brandColor: String(form.get('brandColor') ?? ''),
+      accentColor: String(form.get('accentColor') ?? ''),
+      backgroundColor: String(form.get('backgroundColor') ?? ''),
+      headingColor: String(form.get('headingColor') ?? ''),
+    };
+    const invalid = Object.values(values).find((v) => !HEX.test(v));
+    if (invalid) {
+      formError = 'Todas as cores globais devem estar no formato hexadecimal (ex.: #06203A).';
+    } else {
+      await updateSetting(db, 'theme', values, userId);
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'settings.update',
+        target: 'Aparência: padrão global do site',
+        ip,
+      });
+      return Astro.redirect('/admin/editor/quem-somos/aparencia?saved=global');
+    }
+  }
+
+  if (scope === 'page') {
+    const field = (key: string) => {
+      const mode = String(form.get(`${key}_mode`) ?? 'inherit');
+      if (mode !== 'custom') return '';
+      const value = String(form.get(`${key}_value`) ?? '');
+      return HEX.test(value) ? value : '';
+    };
+    const current = await getQuemSomosContent(db);
+    const pageStyle = normalizePageStyle({
+      brandColor: field('brandColor'),
+      accentColor: field('accentColor'),
+      backgroundColor: field('backgroundColor'),
+      headingColor: field('headingColor'),
+    });
+    await updateQuemSomosContent(db, { ...current, pageStyle }, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'page.update',
+      target: 'Aparência: Quem Somos (sobrescrita da página)',
+      ip,
+    });
+    return Astro.redirect('/admin/editor/quem-somos/aparencia?saved=page');
+  }
+}
+
+const { theme } = Astro.locals.settings;
+const content = await getQuemSomosContent(db);
+const { pageStyle, sectionStyles } = content;
+const savedParam = Astro.url.searchParams.get('saved');
+if (savedParam === 'global' || savedParam === 'page') savedScope = savedParam;
+
+const COLOR_FIELDS: { key: keyof typeof theme; label: string; hint: string }[] = [
+  { key: 'brandColor', label: 'Cor da marca', hint: 'Cabeçalho, rodapé e áreas de destaque escuras.' },
+  { key: 'accentColor', label: 'Cor de destaque / botões', hint: 'Botões, links e foco de teclado.' },
+  { key: 'backgroundColor', label: 'Cor de fundo do site', hint: 'Fundo das páginas, cards e painéis.' },
+  { key: 'headingColor', label: 'Cor dos títulos', hint: 'Títulos e textos em destaque.' },
+];
+
+const SECTION_LABELS: Record<string, string> = {
+  about: 'Nossa atuação',
+  elo: 'O modelo Essencial',
+  howWeWork: 'Como atuamos',
+  mvv: 'Missão, visão e valores',
+  segments: 'Para quem atuamos',
+};
+
+function sectionIsCustom(key: (typeof QUEM_SOMOS_SECTION_KEYS)[number]): boolean {
+  const s = sectionStyles[key];
+  return Boolean(s.bg || s.text || s.image || s.minHeight || s.paddingY);
+}
+---
+
+<AdminLayout
+  title="Aparência — Quem Somos"
+  description="Hierarquia de cores: padrão global do site → sobrescrita desta página → sobrescrita de cada seção."
+  active="/admin/editor"
+>
+  <nav class="breadcrumb" aria-label="Caminho">
+    <a href="/admin/editor">Editor Visual</a>
+    <Icon name="chevron-right" size={14} />
+    <a href="/admin/paginas">Páginas</a>
+    <Icon name="chevron-right" size={14} />
+    <span class="breadcrumb__current">Quem Somos</span>
+    <Icon name="chevron-right" size={14} />
+    <span class="breadcrumb__current">Aparência</span>
+  </nav>
+
+  <div slot="actions">
+    <a href="/admin/editor/quem-somos" class="btn btn--sm btn--secondary">
+      <Icon name="pointer" size={16} />
+      Editor visual da Quem Somos
+    </a>
+  </div>
+
+  {
+    savedScope === 'global' && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>Padrão global salvo. Vale para todas as páginas, inclusive cabeçalho e rodapé.</span>
+      </div>
+    )
+  }
+  {
+    savedScope === 'page' && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>Aparência da Quem Somos salva. As demais páginas não foram alteradas.</span>
+      </div>
+    )
+  }
+  {
+    formError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{formError}</span>
+      </div>
+    )
+  }
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">
+        <span class="scope-badge scope-badge--page">Desta página</span>
+        Aparência da Quem Somos
+      </h2>
+    </div>
+    <form class="panel__body stack" method="post" id="page-style-form">
+      <input type="hidden" name="scope" value="page" />
+      <p class="hint">
+        Cada cor abaixo pode usar o padrão global do site ou um valor só para esta página.
+        Alterar aqui nunca muda outra página.
+      </p>
+
+      {
+        COLOR_FIELDS.map((field) => {
+          const current = pageStyle[field.key as keyof typeof pageStyle];
+          const isCustom = Boolean(current);
+          return (
+            <div class="page-color-field" data-field={field.key}>
+              <div class="page-color-field__head">
+                <label class="label">{field.label}</label>
+                <span class:list={['scope-badge', isCustom ? 'scope-badge--page' : 'scope-badge--inherited']}>
+                  {isCustom ? 'Personalizada' : 'Herdada do global'}
+                </span>
+              </div>
+              <span class="hint">{field.hint}</span>
+              <div class="page-color-field__modes">
+                <label class="radio-pill">
+                  <input
+                    type="radio"
+                    name={`${field.key}_mode`}
+                    value="inherit"
+                    checked={!isCustom}
+                    data-mode-radio={field.key}
+                  />
+                  Usar padrão global
+                </label>
+                <label class="radio-pill">
+                  <input
+                    type="radio"
+                    name={`${field.key}_mode`}
+                    value="custom"
+                    checked={isCustom}
+                    data-mode-radio={field.key}
+                  />
+                  Personalizar nesta página
+                </label>
+              </div>
+              <div class="color-field__row" data-custom-row={field.key} hidden={!isCustom}>
+                <input
+                  type="color"
+                  data-color-input={field.key}
+                  value={current || theme[field.key as keyof typeof theme]}
+                />
+                <input
+                  class="input"
+                  name={`${field.key}_value`}
+                  data-hex-input={field.key}
+                  value={current || theme[field.key as keyof typeof theme]}
+                />
+              </div>
+            </div>
+          );
+        })
+      }
+
+      <div class="cluster">
+        <button type="submit" class="btn">
+          <Icon name="save" size={16} />
+          Salvar aparência da Quem Somos
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" style="margin-top: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">
+        <span class="scope-badge scope-badge--global">Global</span>
+        Padrão global do site
+      </h2>
+    </div>
+    <form class="panel__body stack" method="post" id="global-style-form">
+      <input type="hidden" name="scope" value="global" />
+      <p class="form-alert form-alert--warning">
+        <Icon name="alert-triangle" size={16} />
+        <span>
+          Afeta <strong>todas as páginas</strong>, incluindo cabeçalho e rodapé. Uma
+          personalização feita acima, nesta página, continua valendo por cima deste padrão.
+        </span>
+      </p>
+
+      {
+        COLOR_FIELDS.map((field) => (
+          <div class="color-field">
+            <label class="label" for={`global_${field.key}`}>{field.label}</label>
+            <div class="color-field__row">
+              <input
+                type="color"
+                id={`global_${field.key}`}
+                data-color-sync={`global_${field.key}Hex`}
+                value={theme[field.key as keyof typeof theme]}
+              />
+              <input
+                class="input"
+                id={`global_${field.key}Hex`}
+                name={field.key}
+                data-color-sync-hex={`global_${field.key}`}
+                value={theme[field.key as keyof typeof theme]}
+              />
+            </div>
+            <span class="hint">{field.hint}</span>
+          </div>
+        ))
+      }
+
+      <div class="cluster">
+        <button type="submit" class="btn btn--secondary" id="global-submit">
+          <Icon name="save" size={16} />
+          Salvar padrão global
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" style="margin-top: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">
+        <span class="scope-badge scope-badge--section">Seções</span>
+        Aparência das seções desta página
+      </h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Fundo, altura mínima e espaçamento de cada seção são editados no Editor Visual (clique
+        na área vazia da seção lá). Aqui é só um resumo de quem está personalizado.
+      </p>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Seção</th>
+              <th>Status</th>
+              <th class="text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              QUEM_SOMOS_SECTION_KEYS.map((key) => (
+                <tr>
+                  <td>{SECTION_LABELS[key] ?? key}</td>
+                  <td>
+                    <span
+                      class:list={[
+                        'scope-badge',
+                        sectionIsCustom(key) ? 'scope-badge--page' : 'scope-badge--inherited',
+                      ]}
+                    >
+                      {sectionIsCustom(key) ? 'Personalizada' : 'Herdada'}
+                    </span>
+                  </td>
+                  <td class="text-right">
+                    <a class="row-btn" href={`/admin/editor/quem-somos#section=${key}`} aria-label={`Editar ${key}`}>
+                      <Icon name="edit" size={16} />
+                    </a>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--sp-5);
+  }
+
+  .breadcrumb a {
+    color: inherit;
+  }
+
+  .breadcrumb__current {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .scope-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.55rem;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-right: var(--sp-2);
+    vertical-align: middle;
+  }
+
+  .scope-badge--global {
+    background: var(--c-brand-100);
+    color: var(--c-brand-900);
+  }
+
+  .scope-badge--page {
+    background: var(--c-accent-100);
+    color: var(--c-accent-700);
+  }
+
+  .scope-badge--section {
+    background: var(--bg-muted);
+    color: var(--text-strong);
+  }
+
+  .scope-badge--inherited {
+    background: var(--bg-muted);
+    color: var(--text-muted);
+  }
+
+  .page-color-field {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .page-color-field__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-color-field__modes {
+    display: flex;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .radio-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+  }
+
+  .color-field__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+  }
+
+  .color-field__row input[type='color'] {
+    width: 44px;
+    height: 40px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .color-field__row .input {
+    max-width: 140px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .form-alert--warning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    background: var(--c-accent-50);
+    border: 1px solid var(--c-accent-300);
+    border-radius: var(--r-md);
+    padding: var(--sp-3);
+    font-size: var(--fs-sm);
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+</style>
+
+<script>
+  // Alterna o campo de cor conforme "Usar padrão global" / "Personalizar" —
+  // sem isso o valor herdado ficaria escondido atrás de um input vazio.
+  document.querySelectorAll<HTMLInputElement>('[data-mode-radio]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const key = radio.dataset.modeRadio;
+      const row = document.querySelector<HTMLElement>(`[data-custom-row="${key}"]`);
+      if (row) row.hidden = radio.value !== 'custom';
+    });
+  });
+
+  document.querySelectorAll<HTMLInputElement>('[data-color-input]').forEach((colorInput) => {
+    const key = colorInput.dataset.colorInput;
+    const hexInput = document.querySelector<HTMLInputElement>(`[data-hex-input="${key}"]`);
+    colorInput.addEventListener('input', () => {
+      if (hexInput) hexInput.value = colorInput.value;
+    });
+  });
+
+  document.querySelectorAll<HTMLInputElement>('[data-hex-input]').forEach((hexInput) => {
+    const key = hexInput.dataset.hexInput;
+    const colorInput = document.querySelector<HTMLInputElement>(`[data-color-input="${key}"]`);
+    hexInput.addEventListener('input', () => {
+      if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value) && colorInput) colorInput.value = hexInput.value;
+    });
+  });
+
+  document.querySelectorAll('[data-color-sync]').forEach((colorInput) => {
+    const hexId = (colorInput as HTMLElement).dataset.colorSync;
+    const hexInput = hexId ? document.getElementById(hexId) : null;
+    colorInput.addEventListener('input', () => {
+      if (hexInput instanceof HTMLInputElement && colorInput instanceof HTMLInputElement) {
+        hexInput.value = colorInput.value;
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-color-sync-hex]').forEach((hexInput) => {
+    const colorId = (hexInput as HTMLElement).dataset.colorSyncHex;
+    const colorInput = colorId ? document.getElementById(colorId) : null;
+    hexInput.addEventListener('input', () => {
+      if (
+        hexInput instanceof HTMLInputElement &&
+        /^#[0-9a-fA-F]{6}$/.test(hexInput.value) &&
+        colorInput instanceof HTMLInputElement
+      ) {
+        colorInput.value = hexInput.value;
+      }
+    });
+  });
+
+  // Escopo global afeta o site inteiro — confirmação explícita antes de gravar.
+  document.getElementById('global-style-form')?.addEventListener('submit', (event) => {
+    const ok = window.confirm(
+      'Isto muda a paleta de TODAS as páginas do site, incluindo cabeçalho e rodapé. Continuar?'
+    );
+    if (!ok) event.preventDefault();
+  });
+</script>
