@@ -196,7 +196,7 @@ describe('migrateServiceItemIds — exemplo antes/depois completo', () => {
 describe('teste do usuário: posicionar A e B, reordenar, confirmar que a posição acompanha o item', () => {
   it('depois de reordenar (A para o índice 1, B para o índice 0), a busca por id ainda acha a posição certa de cada um', () => {
     // 1. Posicionar destaque A e B em locais diferentes.
-    let highlights = [
+    const highlights = [
       { id: 'idA', icon: 'search', title: 'Destaque A', text: 'texto A' },
       { id: 'idB', icon: 'shield', title: 'Destaque B', text: 'texto B' },
     ];

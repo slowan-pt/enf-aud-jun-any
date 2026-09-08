@@ -1,7 +1,7 @@
 {
   "extends": "astro/tsconfigs/strict",
   "include": [".astro/types.d.ts", "**/*.astro", "**/*.ts", "**/*.tsx"],
-  "exclude": ["dist", "node_modules"],
+  "exclude": ["dist", "node_modules", "mobile-app", ".testing", ".wrangler", "public/vendor"],
   "compilerOptions": {
     "strictNullChecks": true,
     "allowJs": true,

@@ -83,7 +83,11 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
 
   {
     justSaved && (
-      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
         <Icon name="check-circle" size={18} />
         <span>Conteúdo salvo.</span>
       </div>
@@ -106,7 +110,9 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         </div>
         <div class="field">
           <label class="label" for="about_lead">Texto de apoio</label>
-          <textarea class="textarea" id="about_lead" name="about_lead" rows="3">{about.lead}</textarea>
+          <textarea class="textarea" id="about_lead" name="about_lead" rows="3"
+            >{about.lead}</textarea
+          >
         </div>
       </div>
     </section>
@@ -126,7 +132,8 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         </div>
         <div class="field">
           <label class="label" for="elo_text">Texto</label>
-          <textarea class="textarea" id="elo_text" name="elo_text" rows="3">{elo.text}</textarea>
+          <textarea class="textarea" id="elo_text" name="elo_text" rows="3">{elo.text}</textarea
+          >
         </div>
       </div>
     </section>
@@ -146,7 +153,9 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         </div>
         <div class="field">
           <label class="label" for="how_text">Texto</label>
-          <textarea class="textarea" id="how_text" name="how_text" rows="3">{howWeWork.text}</textarea>
+          <textarea class="textarea" id="how_text" name="how_text" rows="3"
+            >{howWeWork.text}</textarea
+          >
         </div>
       </div>
     </section>
@@ -167,7 +176,12 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         </div>
         <div class="field">
           <label class="label" for="mvv_title">Título</label>
-          <input class="input" id="mvv_title" name="mvv_title" value={missionVisionValues.title} />
+          <input
+            class="input"
+            id="mvv_title"
+            name="mvv_title"
+            value={missionVisionValues.title}
+          />
         </div>
       </div>
     </section>
@@ -179,7 +193,12 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       <div class="panel__body stack">
         <div class="field">
           <label class="label" for="seg_eyebrow">Selo</label>
-          <input class="input" id="seg_eyebrow" name="seg_eyebrow" value={clientSegments.eyebrow} />
+          <input
+            class="input"
+            id="seg_eyebrow"
+            name="seg_eyebrow"
+            value={clientSegments.eyebrow}
+          />
         </div>
         <div class="field">
           <label class="label" for="seg_title">Título</label>
@@ -187,7 +206,9 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         </div>
         <div class="field">
           <label class="label" for="seg_text">Texto</label>
-          <textarea class="textarea" id="seg_text" name="seg_text" rows="3">{clientSegments.text}</textarea>
+          <textarea class="textarea" id="seg_text" name="seg_text" rows="3"
+            >{clientSegments.text}</textarea
+          >
         </div>
       </div>
     </section>
@@ -199,12 +220,13 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       <div class="panel__body">
         <p class="muted small">
           Princípios, missão/visão/valores individuais, segmentos e qualquer elemento livre ou
-          forma são editados diretamente no <a href="/admin/editor/quem-somos">Editor Visual</a>,
-          clicando no próprio texto ou imagem.
+          forma são editados diretamente no <a href="/admin/editor/quem-somos">Editor Visual</a
+          >, clicando no próprio texto ou imagem.
         </p>
         <p class="muted small" style="margin-top: var(--sp-3)">
           Cores e fundo desta página ficam em
-          <a href="/admin/editor/quem-somos/aparencia">Editor Visual → Quem Somos → Aparência</a>.
+          <a href="/admin/editor/quem-somos/aparencia">Editor Visual → Quem Somos → Aparência</a
+          >.
         </p>
       </div>
     </section>

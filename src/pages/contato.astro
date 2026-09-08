@@ -190,12 +190,14 @@ const channels = [
           <address>
             <strong>{company.name}</strong>
             <br />
-            {effectiveAddressLines.map((line) => (
-              <>
-                {line}
-                <br />
-              </>
-            ))}
+            {
+              effectiveAddressLines.map((line) => (
+                <>
+                  {line}
+                  <br />
+                </>
+              ))
+            }
           </address>
           <a
             class="link-arrow"

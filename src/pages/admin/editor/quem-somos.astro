@@ -485,8 +485,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
             src="/quem-somos?__edit=1"
             title="Pré-visualização da Quem Somos"
             data-preview
-            loading="eager"
-          ></iframe>
+            loading="eager"></iframe>
         </div>
       </div>
     </div>
@@ -2662,7 +2661,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       if (operation.op === 'layout' || operation.op === 'overlay-layout') {
         const key = operation.op === 'layout' ? operation.path : 'overlay:' + operation.id;
         layouts[key] = layouts[key] ?? { desktop: emptyLayout(), mobile: null };
-        const previous = operation.device === 'mobile' ? layouts[key].mobile : layouts[key].desktop;
+        const previous =
+          operation.device === 'mobile' ? layouts[key].mobile : layouts[key].desktop;
 
         if (operation.clear && operation.device === 'mobile') {
           layouts[key].mobile = null;

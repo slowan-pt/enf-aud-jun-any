@@ -94,9 +94,21 @@ const savedParam = Astro.url.searchParams.get('saved');
 if (savedParam === 'global' || savedParam === 'page') savedScope = savedParam;
 
 const COLOR_FIELDS: { key: keyof typeof theme; label: string; hint: string }[] = [
-  { key: 'brandColor', label: 'Cor da marca', hint: 'Cabeçalho, rodapé e áreas de destaque escuras.' },
-  { key: 'accentColor', label: 'Cor de destaque / botões', hint: 'Botões, links e foco de teclado.' },
-  { key: 'backgroundColor', label: 'Cor de fundo do site', hint: 'Fundo das páginas, cards e painéis.' },
+  {
+    key: 'brandColor',
+    label: 'Cor da marca',
+    hint: 'Cabeçalho, rodapé e áreas de destaque escuras.',
+  },
+  {
+    key: 'accentColor',
+    label: 'Cor de destaque / botões',
+    hint: 'Botões, links e foco de teclado.',
+  },
+  {
+    key: 'backgroundColor',
+    label: 'Cor de fundo do site',
+    hint: 'Fundo das páginas, cards e painéis.',
+  },
   { key: 'headingColor', label: 'Cor dos títulos', hint: 'Títulos e textos em destaque.' },
 ];
 
@@ -135,15 +147,25 @@ function sectionIsCustom(key: (typeof CONTATO_SECTION_KEYS)[number]): boolean {
 
   {
     savedScope === 'global' && (
-      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
         <Icon name="check-circle" size={18} />
-        <span>Padrão global salvo. Vale para todas as páginas, inclusive cabeçalho e rodapé.</span>
+        <span>
+          Padrão global salvo. Vale para todas as páginas, inclusive cabeçalho e rodapé.
+        </span>
       </div>
     )
   }
   {
     savedScope === 'page' && (
-      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
         <Icon name="check-circle" size={18} />
         <span>Aparência do Contato salva. As demais páginas não foram alteradas.</span>
       </div>
@@ -180,7 +202,12 @@ function sectionIsCustom(key: (typeof CONTATO_SECTION_KEYS)[number]): boolean {
             <div class="page-color-field" data-field={field.key}>
               <div class="page-color-field__head">
                 <label class="label">{field.label}</label>
-                <span class:list={['scope-badge', isCustom ? 'scope-badge--page' : 'scope-badge--inherited']}>
+                <span
+                  class:list={[
+                    'scope-badge',
+                    isCustom ? 'scope-badge--page' : 'scope-badge--inherited',
+                  ]}
+                >
                   {isCustom ? 'Personalizada' : 'Herdada do global'}
                 </span>
               </div>
@@ -254,7 +281,9 @@ function sectionIsCustom(key: (typeof CONTATO_SECTION_KEYS)[number]): boolean {
       {
         COLOR_FIELDS.map((field) => (
           <div class="color-field">
-            <label class="label" for={`global_${field.key}`}>{field.label}</label>
+            <label class="label" for={`global_${field.key}`}>
+              {field.label}
+            </label>
             <div class="color-field__row">
               <input
                 type="color"
@@ -321,7 +350,11 @@ function sectionIsCustom(key: (typeof CONTATO_SECTION_KEYS)[number]): boolean {
                     </span>
                   </td>
                   <td class="text-right">
-                    <a class="row-btn" href={`/admin/editor/contato#section=${key}`} aria-label={`Editar ${key}`}>
+                    <a
+                      class="row-btn"
+                      href={`/admin/editor/contato#section=${key}`}
+                      aria-label={`Editar ${key}`}
+                    >
                       <Icon name="edit" size={16} />
                     </a>
                   </td>
@@ -478,7 +511,8 @@ function sectionIsCustom(key: (typeof CONTATO_SECTION_KEYS)[number]): boolean {
     const key = hexInput.dataset.hexInput;
     const colorInput = document.querySelector<HTMLInputElement>(`[data-color-input="${key}"]`);
     hexInput.addEventListener('input', () => {
-      if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value) && colorInput) colorInput.value = hexInput.value;
+      if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value) && colorInput)
+        colorInput.value = hexInput.value;
     });
   });
 

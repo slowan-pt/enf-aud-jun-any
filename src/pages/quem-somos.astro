@@ -77,7 +77,11 @@ const secStyle = (key: string, style: SectionStyle) =>
       <div data-reveal>
         <p class="eyebrow">Nossa atuação</p>
         <h2 class="title-md">Técnica, presente e orientada por evidência</h2>
-        <div class="stack" style="margin-top: var(--sp-5)" data-edit-list={ed('about.paragraphs')}>
+        <div
+          class="stack"
+          style="margin-top: var(--sp-5)"
+          data-edit-list={ed('about.paragraphs')}
+        >
           {
             about.paragraphs.map((paragraph, index) => (
               <p
@@ -102,7 +106,10 @@ const secStyle = (key: string, style: SectionStyle) =>
               </span>
               <div>
                 <h3 data-edit={`about.principles.${index}.title`}>{item.title}</h3>
-                <p data-edit={`about.principles.${index}.text`} data-edit-kind={ed('multiline')}>
+                <p
+                  data-edit={`about.principles.${index}.text`}
+                  data-edit-kind={ed('multiline')}
+                >
                   {item.text}
                 </p>
               </div>
@@ -163,8 +170,12 @@ const secStyle = (key: string, style: SectionStyle) =>
   >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="missionVisionValues.eyebrow">{missionVisionValues.eyebrow}</p>
-        <h2 class="title-lg" data-edit="missionVisionValues.title">{missionVisionValues.title}</h2>
+        <p class="eyebrow" data-edit="missionVisionValues.eyebrow">
+          {missionVisionValues.eyebrow}
+        </p>
+        <h2 class="title-lg" data-edit="missionVisionValues.title">
+          {missionVisionValues.title}
+        </h2>
       </div>
 
       <div class="mvv" data-reveal>
@@ -188,7 +199,11 @@ const secStyle = (key: string, style: SectionStyle) =>
         }
       </div>
 
-      <div class="grid grid--3" style="margin-top: var(--sp-8)" data-edit-list={ed('missionVisionValues.values')}>
+      <div
+        class="grid grid--3"
+        style="margin-top: var(--sp-8)"
+        data-edit-list={ed('missionVisionValues.values')}
+      >
         {
           missionVisionValues.values.map((value, index) => (
             <article class="card" data-reveal data-edit-item={ed(index)}>
