@@ -760,3 +760,125 @@ export async function updatePoliticaContent(
     .bind(POLITICA_SLUG, JSON.stringify(content), userId ?? null)
     .run();
 }
+
+// ================================================ Página de Conteúdos ====
+/**
+ * A grade de matérias (posts) em si já é dinâmica — vem da tabela `posts`
+ * e é gerida em Conteúdo → Matérias, exatamente como a lista de Serviços na
+ * página Serviços. Este documento cobre apenas o que é fixo em torno da
+ * grade: abertura (hero) e a chamada final (CTA), além da Aparência por
+ * seção — mesmo padrão de toda página migrada.
+ */
+export const CONTEUDOS_SECTION_KEYS = ['destaque', 'grade', 'cta'] as const;
+export type ConteudosSectionKey = (typeof CONTEUDOS_SECTION_KEYS)[number];
+
+export interface ConteudosContent {
+  hero: { eyebrow: string; title: string; lead: string };
+  cta: { eyebrow: string; title: string; text: string };
+  pageStyle: PageStyle;
+  sectionStyles: Record<ConteudosSectionKey, SectionStyle>;
+  sectionOrder: ConteudosSectionKey[];
+  hiddenSections: ConteudosSectionKey[];
+  layouts: Record<string, LayoutPair>;
+  overlays: Overlay[];
+}
+
+const DEFAULT_CONTEUDOS: ConteudosContent = {
+  hero: {
+    eyebrow: 'Conteúdos',
+    title: 'Conhecimento técnico sobre gestão e auditoria em saúde',
+    lead: 'Publicações da equipe da Essencial Saúde sobre auditoria, gestão hospitalar, jornada do paciente e segurança assistencial.',
+  },
+  cta: {
+    eyebrow: 'Fale com a Essencial',
+    title: 'Precisa discutir um cenário específico?',
+    text: 'Nossa equipe técnica pode avaliar o contexto da sua operação e apresentar caminhos possíveis.',
+  },
+  pageStyle: { ...EMPTY_PAGE_STYLE },
+  sectionStyles: {
+    destaque: { ...EMPTY_STYLE },
+    grade: { ...EMPTY_STYLE },
+    cta: { ...EMPTY_STYLE },
+  },
+  sectionOrder: [...CONTEUDOS_SECTION_KEYS],
+  hiddenSections: [],
+  layouts: {},
+  overlays: [],
+};
+
+function normalizeConteudosSectionKeys(
+  value: unknown,
+  fallback: ConteudosSectionKey[]
+): ConteudosSectionKey[] {
+  if (!Array.isArray(value)) return fallback;
+  const seen = new Set<ConteudosSectionKey>();
+  for (const item of value) {
+    if (
+      typeof item === 'string' &&
+      (CONTEUDOS_SECTION_KEYS as readonly string[]).includes(item)
+    ) {
+      seen.add(item as ConteudosSectionKey);
+    }
+  }
+  for (const key of CONTEUDOS_SECTION_KEYS) {
+    if (!seen.has(key) && fallback.includes(key)) seen.add(key);
+  }
+  return [...seen];
+}
+
+export const CONTEUDOS_SLUG = '/conteudos';
+
+export async function getConteudosContent(
+  db: D1Database
+): Promise<ConteudosContent & { updatedAt: string }> {
+  try {
+    const row = await db
+      .prepare('SELECT id, sections_json, updated_at FROM pages WHERE slug = ?1')
+      .bind(CONTEUDOS_SLUG)
+      .first<PageRow>();
+    if (!row) return { ...DEFAULT_CONTEUDOS, updatedAt: '' };
+
+    const stored = JSON.parse(row.sections_json) as Partial<ConteudosContent>;
+    return {
+      hero: { ...DEFAULT_CONTEUDOS.hero, ...stored.hero },
+      cta: { ...DEFAULT_CONTEUDOS.cta, ...stored.cta },
+      pageStyle: normalizePageStyle(stored.pageStyle),
+      sectionStyles: {
+        ...DEFAULT_CONTEUDOS.sectionStyles,
+        ...Object.fromEntries(
+          Object.entries(stored.sectionStyles ?? {}).map(([key, value]) => [
+            key,
+            { ...EMPTY_STYLE, ...value },
+          ])
+        ),
+      } as Record<ConteudosSectionKey, SectionStyle>,
+      sectionOrder: normalizeConteudosSectionKeys(stored.sectionOrder, [
+        ...CONTEUDOS_SECTION_KEYS,
+      ]),
+      hiddenSections: normalizeConteudosSectionKeys(stored.hiddenSections, []),
+      layouts: normalizeLayouts(stored.layouts),
+      overlays: normalizeOverlays(stored.overlays, CONTEUDOS_SECTION_KEYS),
+      updatedAt: row.updated_at,
+    };
+  } catch {
+    return { ...DEFAULT_CONTEUDOS, updatedAt: '' };
+  }
+}
+
+export async function updateConteudosContent(
+  db: D1Database,
+  content: ConteudosContent,
+  userId?: number
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO pages (slug, title, status, sections_json, updated_by, updated_at)
+       VALUES (?1, 'Conteúdos', 'published', ?2, ?3, datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         sections_json = excluded.sections_json,
+         updated_by = excluded.updated_by,
+         updated_at = datetime('now')`
+    )
+    .bind(CONTEUDOS_SLUG, JSON.stringify(content), userId ?? null)
+    .run();
+}

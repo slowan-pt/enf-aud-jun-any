@@ -4,9 +4,13 @@ import PageHero from '../../components/PageHero.astro';
 import PostCard from '../../components/PostCard.astro';
 import Icon from '../../components/Icon.astro';
 import CtaBand from '../../components/CtaBand.astro';
+import SectionOverlays from '../../components/SectionOverlays.astro';
 import { getDB } from '../../lib/db';
 import { publishedOnly } from '../../lib/posts';
 import { listCategories } from '../../lib/categories';
+import { getConteudosContent } from '../../lib/documents';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib/pages';
+import type { SectionStyle } from '../../lib/pages';
 
 const categories = await listCategories(getDB());
 const publishedPosts = publishedOnly(Astro.locals.posts);
@@ -16,35 +20,69 @@ const [featured, ...rest] = publishedPosts;
 const countByCategory = (slug: string) =>
   rest.filter((post) => post.categorySlug === slug).length;
 const usedCategories = categories.filter((category) => countByCategory(category.slug) > 0);
+
+const db = getDB();
+const { hero, cta, pageStyle, sectionStyles, sectionOrder, hiddenSections, layouts, overlays } =
+  await getConteudosContent(db);
+
+const layoutCss = layoutStylesheet(layouts, overlays);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+
+// A grade de matérias em si vem do banco (tabela `posts`, gerida em
+// Conteúdo → Matérias) — aqui só a abertura e a chamada final são
+// documento editável; "destaque"/"grade" continuam mostrando os posts
+// reais, só a ordem ENTRE as 3 seções muda no editor.
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: SectionStyle) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
 ---
 
 <BaseLayout
   title="Conteúdos"
   description="Artigos técnicos sobre auditoria em saúde, auditoria concorrente, contas hospitalares, gestão hospitalar e segurança do paciente."
   path="/conteudos"
+  colorOverride={pageStyleOverride(pageStyle)}
+  bodyClass="page-conteudos"
 >
-  <PageHero
-    eyebrow="Conteúdos"
-    title="Conhecimento técnico sobre gestão e auditoria em saúde"
-    lead="Publicações da equipe da Essencial Saúde sobre auditoria, gestão hospitalar, jornada do paciente e segurança assistencial."
-    crumbs={[{ label: 'Conteúdos' }]}
-    align="center"
-  />
+  <div style="order:-1">
+    <PageHero
+      eyebrow={hero.eyebrow}
+      title={hero.title}
+      lead={hero.lead}
+      crumbs={[{ label: 'Conteúdos' }]}
+      align="center"
+    />
+  </div>
 
   {
     featured && (
-      <section class="section section--tight" data-featured>
+      <section
+        class:list={['section section--tight', secClass('destaque')]}
+        data-section="destaque"
+        style={secStyle('destaque', sectionStyles.destaque)}
+        data-featured
+      >
         <div class="container">
           <p class="eyebrow" data-reveal>
             Em destaque
           </p>
           <PostCard post={featured} featured />
+          <SectionOverlays overlays={overlays} section="destaque" />
         </div>
       </section>
     )
   }
 
-  <section class="section section--tight">
+  <section
+    class:list={['section section--tight', secClass('grade')]}
+    data-section="grade"
+    style={secStyle('grade', sectionStyles.grade)}
+  >
     <div class="container">
       <div class="filters" data-reveal>
         <div class="filters__chips" role="group" aria-label="Filtrar por categoria">
@@ -92,15 +130,56 @@ const usedCategories = categories.filter((category) => countByCategory(category.
           Limpar filtros
         </button>
       </div>
+      <SectionOverlays overlays={overlays} section="grade" />
     </div>
   </section>
 
   <CtaBand
-    eyebrow="Fale com a Essencial"
-    title="Precisa discutir um cenário específico?"
-    text="Nossa equipe técnica pode avaliar o contexto da sua operação e apresentar caminhos possíveis."
-  />
+    eyebrow={cta.eyebrow}
+    title={cta.title}
+    text={cta.text}
+    editPath="cta"
+    sectionKey="cta"
+    sectionLabel="Chamada final"
+    sectionStyle={secStyle('cta', sectionStyles.cta)}
+    sectionClass={secClass('cta')}
+  >
+    <SectionOverlays overlays={overlays} section="cta" />
+  </CtaBand>
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  /* Mesma base da Home/Quem Somos: `container-type` faz o `cqw` dos
+     elementos livres/formas resolver contra a LARGURA DA SEÇÃO. */
+  body.page-conteudos main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-conteudos main > section {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+  }
+</style>
 
 <style>
   .filters {
