@@ -22,6 +22,13 @@ export interface ServiceBlock {
 }
 
 export interface Service {
+  /**
+   * Identidade estável para o Editor Visual (`editor_json`, ver
+   * src/lib/service-editor.ts) — nunca o slug. O slug pode mudar; o `id`
+   * não, então a Aparência/layout de um serviço nunca se perde por causa de
+   * uma alteração de URL.
+   */
+  id: number;
   slug: string;
   name: string;
   shortName: string;
@@ -55,6 +62,7 @@ interface ServiceContentJson {
 }
 
 interface ServiceRow {
+  id: number;
   slug: string;
   name: string;
   short_name: string;
@@ -75,6 +83,7 @@ interface ServiceRow {
 function rowToService(row: ServiceRow): Service {
   const content = JSON.parse(row.content_json) as ServiceContentJson;
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
     shortName: row.short_name,
@@ -105,6 +114,15 @@ export async function listServices(db: D1Database): Promise<Service[]> {
   return results.map(rowToService);
 }
 
+/** Consulta direta por id — usada pelas rotas do Editor Visual, que não dependem de `Astro.locals.services`. */
+export async function getServiceById(db: D1Database, id: number): Promise<Service | undefined> {
+  const row = await db
+    .prepare('SELECT * FROM services WHERE id = ?1 AND deleted_at IS NULL')
+    .bind(id)
+    .first<ServiceRow>();
+  return row ? rowToService(row) : undefined;
+}
+
 /** Helpers puros — operam sobre a lista já carregada (Astro.locals.services). */
 export function publishedOnly(services: Service[]): Service[] {
   return services.filter((s) => s.status === 'published');
@@ -112,6 +130,11 @@ export function publishedOnly(services: Service[]): Service[] {
 
 export function findBySlug(services: Service[], slug: string): Service | undefined {
   return services.find((s) => s.slug === slug);
+}
+
+/** Identidade estável usada pelo Editor Visual — ver comentário em `Service.id`. */
+export function findById(services: Service[], id: number): Service | undefined {
+  return services.find((s) => s.id === id);
 }
 
 export interface ServiceUpdate {
@@ -171,6 +194,55 @@ export async function updateService(
       JSON.stringify(content),
       patch.icon,
       slug
+    )
+    .run();
+}
+
+/**
+ * Igual a `updateService`, mas identifica o serviço pelo `id` — a rota que o
+ * Editor Visual usa (ver src/lib/service-editor.ts e o comentário em
+ * `Service.id`). Nunca toca em `editor_json`: a lista de colunas do UPDATE
+ * não o inclui, então a Aparência/layout gravados pelo Editor Visual
+ * sobrevivem intactos a qualquer edição de conteúdo por aqui.
+ */
+export async function updateServiceById(
+  db: D1Database,
+  id: number,
+  patch: ServiceUpdate,
+  existing: Service
+): Promise<void> {
+  const content: ServiceContentJson = {
+    image: patch.image,
+    imageAlt: patch.imageAlt,
+    intro: patch.intro,
+    highlights: existing.highlights,
+    blocks: existing.blocks,
+    deliverables: patch.deliverables,
+    audience: patch.audience,
+  };
+
+  await db
+    .prepare(
+      `UPDATE services SET
+         name = ?1, short_name = ?2, summary = ?3, hero_title = ?4, hero_lead = ?5,
+         whatsapp_message = ?6, seo_title = ?7, seo_description = ?8,
+         status = ?9, featured = ?10, content_json = ?11, icon = ?12, updated_at = datetime('now')
+       WHERE id = ?13`
+    )
+    .bind(
+      patch.name,
+      patch.shortName,
+      patch.summary,
+      patch.heroTitle,
+      patch.heroLead,
+      patch.whatsappMessage,
+      patch.seoTitle,
+      patch.seoDescription,
+      patch.status,
+      patch.featured ? 1 : 0,
+      JSON.stringify(content),
+      patch.icon,
+      id
     )
     .run();
 }

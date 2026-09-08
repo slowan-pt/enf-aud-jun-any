@@ -1,0 +1,12 @@
+-- Aparência/layout do Editor Visual por serviço individual (/servicos/[slug]).
+-- Coluna ANULÁVEL e aditiva: nenhuma linha existente é copiada, recriada ou
+-- migrada. Um serviço com editor_json = NULL nunca foi personalizado e
+-- continua se comportando exatamente como hoje — 100% herdado da moldura de
+-- Serviços e do padrão global (ver src/lib/service-editor.ts).
+--
+-- O conteúdo (nome, slug, resumo, hero, intro, blocks, deliverables,
+-- audience, imagem, SEO, status...) continua exclusivamente nas colunas já
+-- existentes / em `content_json` — este campo nunca duplica esses dados,
+-- só guarda versão do formato, pageStyle, sectionStyles, sectionOrder,
+-- hiddenSections, layouts e overlays.
+ALTER TABLE services ADD COLUMN editor_json TEXT;
