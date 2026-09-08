@@ -36,9 +36,21 @@ const {
 } = Astro.props;
 
 const isCommercial = variant === 'commercial';
+
+// Mesma regra do restante do editor: atributos de edição só vão para o HTML
+// quando a página está aberta em modo de edição (ver Astro.locals.editMode
+// nas páginas que usam este componente).
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 ---
 
-<div class="formwrap" data-form-wrap>
+<div
+  class="formwrap"
+  data-form-wrap
+  data-edit={ed('contactForm')}
+  data-edit-kind={ed('form')}
+  data-edit-label={ed('Formulário de contato')}
+>
   <div class="formwrap__head">
     <h2 class="title-sm">{title}</h2>
     {description && <p class="muted small">{description}</p>}
@@ -259,7 +271,13 @@ const isCommercial = variant === 'commercial';
     </div>
 
     <div class="form__foot">
-      <button type="submit" class="btn btn--lg" data-submit>
+      <button
+        type="submit"
+        class="btn btn--lg"
+        data-submit
+        aria-disabled={ed('true')}
+        title={ed('Envio desativado no modo de edição — teste no site publicado.')}
+      >
         <span data-submit-label>Enviar mensagem</span>
         <Icon name="arrow-right" size={18} class="icon--arrow" />
       </button>
@@ -267,6 +285,14 @@ const isCommercial = variant === 'commercial';
         Campos marcados com <span class="req">*</span> são obrigatórios. Responderemos em horário
         comercial.
       </p>
+      {
+        edit && (
+          <p class="form-note form-note--edit">
+            <Icon name="alert-circle" size={14} />
+            Envio desativado no modo de edição. Teste no site publicado.
+          </p>
+        )
+      }
     </div>
 
     <div class="form-alert form-alert--error" role="alert" data-form-error hidden>
@@ -356,6 +382,21 @@ const isCommercial = variant === 'commercial';
 
   .req {
     color: var(--c-danger-600);
+  }
+
+  /* Modo de edição: o clique já é bloqueado no runtime do editor (nunca
+     envia por acidente) — isto só deixa visualmente claro o motivo. */
+  [data-submit][aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .form-note--edit {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--c-accent-700);
+    flex-basis: 100%;
   }
 
   [data-form-error] {

@@ -1,0 +1,385 @@
+---
+/**
+ * Editar conteúdo da Contato por formulário — textos de abertura, textos do
+ * formulário/CTA/privacidade, e as sobrescritas sobre as configurações
+ * globais da empresa (telefone, WhatsApp, e-mail, horários, endereço).
+ *
+ * Cada dado global tem "Usar padrão global" / "Personalizar nesta página" /
+ * "Restaurar padrão" — nunca duplica o valor global silenciosamente (campo
+ * vazio = herda). Telefone e WhatsApp guardam dígitos com DDI porque o mesmo
+ * valor também é o link (tel:/wa.me) — ver o comentário em
+ * src/lib/documents.ts sobre por que não haver um campo de exibição solto.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import {
+  getContatoContent,
+  updateContatoContent,
+  normalizeContatoOverrides,
+  formatBrPhoneDisplay,
+} from '../../../lib/documents';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const current = await getContatoContent(db);
+  const form = await Astro.request.formData();
+  const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+
+  const overrideField = (key: string) => {
+    const mode = String(form.get(`${key}_mode`) ?? 'inherit');
+    return mode === 'custom' ? String(form.get(`${key}_value`) ?? '') : '';
+  };
+
+  const updated = {
+    ...current,
+    hero: {
+      eyebrow: text('hero_eyebrow', current.hero.eyebrow),
+      title: text('hero_title', current.hero.title),
+      lead: text('hero_lead', current.hero.lead),
+    },
+    formTitle: text('form_title', current.formTitle),
+    formDescription: text('form_description', current.formDescription),
+    asideCtaTitle: text('aside_title', current.asideCtaTitle),
+    asideCtaText: text('aside_text', current.asideCtaText),
+    privacyNote: text('privacy_note', current.privacyNote),
+    contactOverrides: normalizeContatoOverrides({
+      phone: overrideField('phone'),
+      whatsapp: overrideField('whatsapp'),
+      email: overrideField('email'),
+      hours: overrideField('hours'),
+      address: overrideField('address'),
+    }),
+  };
+
+  await updateContatoContent(db, updated, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'page.edit',
+    target: 'Contato (formulário de conteúdo)',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+
+  return Astro.redirect('/admin/paginas/contato?saved=1');
+}
+
+const content = await getContatoContent(db);
+const { hero, formTitle, formDescription, asideCtaTitle, asideCtaText, privacyNote, contactOverrides } =
+  content;
+const { company, whatsapp } = Astro.locals.settings;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+
+const globalAddress = [
+  company.address.line1,
+  company.address.line2,
+  company.address.district,
+  `${company.address.city} - ${company.address.state}`,
+  `CEP ${company.address.zip}`,
+].join('\n');
+---
+
+<AdminLayout
+  title="Contato — Conteúdo"
+  description="Textos da página e sobrescritas sobre os dados globais da empresa."
+  active="/admin/editor"
+>
+  <div slot="actions">
+    <a href="/admin/editor/contato" class="btn btn--sm">
+      <Icon name="pointer" size={16} />
+      Editor visual
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>Conteúdo salvo.</span>
+      </div>
+    )
+  }
+
+  <form method="post" class="stack-panels">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Abertura</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="hero_eyebrow">Selo</label>
+          <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_title">Título</label>
+          <input class="input" id="hero_title" name="hero_title" value={hero.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_lead">Texto de apoio</label>
+          <textarea class="textarea" id="hero_lead" name="hero_lead" rows="3">{hero.lead}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Formulário e chamadas</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="form_title">Título do formulário</label>
+          <input class="input" id="form_title" name="form_title" value={formTitle} />
+        </div>
+        <div class="field">
+          <label class="label" for="form_description">Descrição do formulário</label>
+          <input class="input" id="form_description" name="form_description" value={formDescription} />
+        </div>
+        <div class="field">
+          <label class="label" for="aside_title">Título "Prefere falar agora?"</label>
+          <input class="input" id="aside_title" name="aside_title" value={asideCtaTitle} />
+        </div>
+        <div class="field">
+          <label class="label" for="aside_text">Texto da chamada de WhatsApp</label>
+          <input class="input" id="aside_text" name="aside_text" value={asideCtaText} />
+        </div>
+        <div class="field">
+          <label class="label" for="privacy_note">Nota de privacidade</label>
+          <textarea class="textarea" id="privacy_note" name="privacy_note" rows="3">{privacyNote}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Dados de contato desta página</h2>
+      </div>
+      <div class="panel__body stack">
+        <p class="hint">
+          Cada dado abaixo usa o padrão global (Configurações → Empresa) ou um valor só para a
+          Contato. Alterar aqui nunca muda o padrão global nem outra página.
+        </p>
+
+        <div class="override-field" data-field="phone">
+          <div class="override-field__head">
+            <label class="label">Telefone</label>
+            <span class:list={['scope-badge', contactOverrides.phone ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.phone ? 'Personalizado' : 'Herdado do global'}
+            </span>
+          </div>
+          <span class="hint">Padrão global: {company.phoneDisplay}. Dígitos com DDI (ex.: 5561982444083) — usado no texto e no link de ligação.</span>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input type="radio" name="phone_mode" value="inherit" checked={!contactOverrides.phone} data-mode-radio="phone" />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="phone_mode" value="custom" checked={Boolean(contactOverrides.phone)} data-mode-radio="phone" />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="phone" hidden={!contactOverrides.phone}>
+            <input class="input" name="phone_value" placeholder="5561982444083" value={contactOverrides.phone} />
+            {contactOverrides.phone && <span class="hint">Exibirá: {formatBrPhoneDisplay(contactOverrides.phone)}</span>}
+          </div>
+        </div>
+
+        <div class="override-field" data-field="whatsapp">
+          <div class="override-field__head">
+            <label class="label">WhatsApp</label>
+            <span class:list={['scope-badge', contactOverrides.whatsapp ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.whatsapp ? 'Personalizado' : 'Herdado do global'}
+            </span>
+          </div>
+          <span class="hint">Padrão global: {whatsapp.number}. Dígitos com DDI — usado no texto e no link do WhatsApp.</span>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input type="radio" name="whatsapp_mode" value="inherit" checked={!contactOverrides.whatsapp} data-mode-radio="whatsapp" />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="whatsapp_mode" value="custom" checked={Boolean(contactOverrides.whatsapp)} data-mode-radio="whatsapp" />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="whatsapp" hidden={!contactOverrides.whatsapp}>
+            <input class="input" name="whatsapp_value" placeholder="5561982444083" value={contactOverrides.whatsapp} />
+          </div>
+        </div>
+
+        <div class="override-field" data-field="email">
+          <div class="override-field__head">
+            <label class="label">E-mail</label>
+            <span class:list={['scope-badge', contactOverrides.email ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.email ? 'Personalizado' : 'Herdado do global'}
+            </span>
+          </div>
+          <span class="hint">Padrão global: {company.email}.</span>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input type="radio" name="email_mode" value="inherit" checked={!contactOverrides.email} data-mode-radio="email" />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="email_mode" value="custom" checked={Boolean(contactOverrides.email)} data-mode-radio="email" />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="email" hidden={!contactOverrides.email}>
+            <input class="input" type="email" name="email_value" placeholder="contato@empresa.com.br" value={contactOverrides.email} />
+          </div>
+        </div>
+
+        <div class="override-field" data-field="hours">
+          <div class="override-field__head">
+            <label class="label">Horário de atendimento</label>
+            <span class:list={['scope-badge', contactOverrides.hours ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.hours ? 'Personalizado' : 'Herdado do global'}
+            </span>
+          </div>
+          <span class="hint">Padrão global: {company.hours}.</span>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input type="radio" name="hours_mode" value="inherit" checked={!contactOverrides.hours} data-mode-radio="hours" />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="hours_mode" value="custom" checked={Boolean(contactOverrides.hours)} data-mode-radio="hours" />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="hours" hidden={!contactOverrides.hours}>
+            <input class="input" name="hours_value" value={contactOverrides.hours} />
+          </div>
+        </div>
+
+        <div class="override-field" data-field="address">
+          <div class="override-field__head">
+            <label class="label">Endereço</label>
+            <span class:list={['scope-badge', contactOverrides.address ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.address ? 'Personalizado' : 'Herdado do global'}
+            </span>
+          </div>
+          <span class="hint">Padrão global (uma linha por campo):</span>
+          <pre class="override-field__preview">{globalAddress}</pre>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input type="radio" name="address_mode" value="inherit" checked={!contactOverrides.address} data-mode-radio="address" />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="address_mode" value="custom" checked={Boolean(contactOverrides.address)} data-mode-radio="address" />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="address" hidden={!contactOverrides.address}>
+            <textarea class="textarea" name="address_value" rows="4">{contactOverrides.address}</textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="pagina-config">
+      <div class="panel__head">
+        <h2 class="panel__title">Configurações da página</h2>
+      </div>
+      <div class="panel__body">
+        <p class="muted small">
+          Elementos livres e formas ficam no <a href="/admin/editor/contato">Editor Visual</a>.
+        </p>
+        <p class="muted small" style="margin-top: var(--sp-3)">
+          Cores e fundo desta página ficam em
+          <a href="/admin/editor/contato/aparencia">Editor Visual → Contato → Aparência</a>.
+        </p>
+      </div>
+    </section>
+
+    <div class="cluster standalone-foot">
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar conteúdo
+      </button>
+    </div>
+  </form>
+</AdminLayout>
+
+<style>
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  .override-field {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    padding: var(--sp-4);
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .override-field__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .override-field__modes {
+    display: flex;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .override-field__value {
+    margin-top: var(--sp-2);
+  }
+
+  .override-field__preview {
+    margin: 0;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--bg-muted);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    white-space: pre-line;
+  }
+
+  .radio-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+  }
+
+  .scope-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.55rem;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .scope-badge--page {
+    background: var(--c-accent-100);
+    color: var(--c-accent-700);
+  }
+
+  .scope-badge--inherited {
+    background: var(--bg-muted);
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLInputElement>('[data-mode-radio]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      const key = radio.dataset.modeRadio;
+      const row = document.querySelector<HTMLElement>(`[data-custom-row="${key}"]`);
+      if (row) row.hidden = radio.value !== 'custom';
+    });
+  });
+</script>

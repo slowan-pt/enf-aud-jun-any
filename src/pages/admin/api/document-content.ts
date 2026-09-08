@@ -21,6 +21,9 @@ import {
   getQuemSomosContent,
   updateQuemSomosContent,
   QUEM_SOMOS_SECTION_KEYS,
+  getContatoContent,
+  updateContatoContent,
+  CONTATO_SECTION_KEYS,
 } from '../../../lib/documents';
 import type { QuemSomosContent } from '../../../lib/documents';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
@@ -298,6 +301,12 @@ const ADAPTERS: Record<string, DocumentAdapter> = {
     getContent: getQuemSomosContent as unknown as DocumentAdapter['getContent'],
     updateContent: updateQuemSomosContent,
     label: 'Quem Somos',
+  },
+  contato: {
+    sectionKeys: CONTATO_SECTION_KEYS,
+    getContent: getContatoContent as unknown as DocumentAdapter['getContent'],
+    updateContent: updateContatoContent as unknown as DocumentAdapter['updateContent'],
+    label: 'Contato',
   },
 };
 

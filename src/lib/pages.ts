@@ -442,8 +442,18 @@ function axis(value: number, v: CoordSystem): string {
   return v === 2 ? `${value}cqw` : `${value}%`;
 }
 
-/** Declarações CSS de um layout. Vazio quando nada foi configurado. */
-function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] {
+/**
+ * Declarações CSS de um layout. Vazio quando nada foi configurado.
+ * `blockDisplay` é para um bloco funcional existente (ex.: o formulário de
+ * contato, chave "contactForm") — ele já é um container de verdade (div em
+ * grid/flex), então forçar `inline-block` ao mover encolheria a largura
+ * para o conteúdo e quebraria o layout ao redor.
+ */
+function layoutDeclarations(
+  layout: ElementLayout,
+  absolute: boolean,
+  blockDisplay?: boolean
+): string[] {
   const parts: string[] = [];
 
   if (layout.hidden) return ['display:none'];
@@ -477,8 +487,9 @@ function layoutDeclarations(layout: ElementLayout, absolute: boolean): string[] 
   if (layout.weight > 0) parts.push(`font-weight:${layout.weight}`);
 
   // `transform` e `width` não têm efeito em elemento inline (um <span>, por
-  // exemplo), então quem foi movido ou redimensionado vira inline-block.
-  if (!absolute && parts.length > 0) parts.push('display:inline-block');
+  // exemplo), então quem foi movido ou redimensionado vira inline-block —
+  // exceto o bloco funcional, que já é um container de verdade.
+  if (!absolute && !blockDisplay && parts.length > 0) parts.push('display:inline-block');
 
   return parts;
 }
@@ -548,16 +559,25 @@ export function layoutStylesheet(
   const desktop: string[] = [];
   const mobile: string[] = [];
 
-  const push = (selector: string, layout: ElementLayout, absolute: boolean, to: string[]) => {
-    const declarations = layoutDeclarations(layout, absolute);
+  const push = (
+    selector: string,
+    layout: ElementLayout,
+    absolute: boolean,
+    to: string[],
+    blockDisplay?: boolean
+  ) => {
+    const declarations = layoutDeclarations(layout, absolute, blockDisplay);
     if (declarations.length) to.push(`${selector}{${declarations.join(';')}}`);
   };
 
   for (const [path, pair] of Object.entries(layouts)) {
     if (!EDIT_PATH.test(path)) continue;
     const selector = `[data-edit="${path}"]`;
-    push(selector, pair.desktop, false, desktop);
-    if (pair.mobile) push(selector, pair.mobile, false, mobile);
+    // "contactForm" é um bloco funcional (o componente ContactForm), não um
+    // texto — ver o comentário em layoutDeclarations.
+    const blockDisplay = path === 'contactForm';
+    push(selector, pair.desktop, false, desktop, blockDisplay);
+    if (pair.mobile) push(selector, pair.mobile, false, mobile, blockDisplay);
   }
 
   for (const overlay of overlays) {

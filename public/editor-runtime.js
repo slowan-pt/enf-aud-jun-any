@@ -216,6 +216,11 @@
       keepRatio: false,
       throttleDrag: 0,
       throttleResize: 0,
+      // Bloco funcional (ex.: formulário de contato): sem isto, o próprio
+      // Moveable intercepta o mousedown num <input>/<textarea> como início
+      // de arrasto, e o campo nunca recebe foco. Não cobre <select> — esse
+      // caso é tratado à parte, num mousedown-capture no document (abaixo).
+      checkInput: kindOf(element) === 'form',
       elementGuidelines: guidelinesFor(element),
       horizontalGuidelines: sectionCenter ? [sectionCenter.top + sectionCenter.height / 2] : [],
       verticalGuidelines: sectionCenter ? [sectionCenter.left + sectionCenter.width / 2] : [],
@@ -679,6 +684,23 @@
     true
   );
 
+  // Bloco funcional (formulário): o `checkInput` do Moveable (acima) não
+  // cobre <select> — só input/textarea/contentEditable. Este guarda de
+  // mousedown roda em capture no document, ANTES de qualquer listener que o
+  // próprio Moveable tenha anexado, e corta a propagação antes que ele veja
+  // o evento — sem isso, abrir um <select> dentro do formulário podia virar
+  // início de arrasto do bloco inteiro.
+  document.addEventListener(
+    'mousedown',
+    function (event) {
+      var formBlock = event.target.closest && event.target.closest('[data-edit-kind="form"]');
+      if (!formBlock) return;
+      var control = event.target.closest('select, input, textarea, label');
+      if (control) event.stopPropagation();
+    },
+    true
+  );
+
   document.addEventListener(
     'click',
     function (event) {
@@ -709,7 +731,14 @@
       }
 
       clearSectionSelection();
-      if (target !== selected) {
+
+      // Campo de um bloco de formulário: seleciona o bloco (para poder
+      // movê-lo), mas nunca à custa do próprio campo — bloquear o clique
+      // aqui cancelaria o toggle nativo de uma checkbox/radio, por exemplo.
+      var formControl =
+        kindOf(target) === 'form' && event.target.closest('input, textarea, select, label');
+
+      if (target !== selected && !formControl) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -723,6 +752,14 @@
     function (event) {
       var target = event.target.closest(SELECTABLE);
       if (!target) return;
+
+      // Duplo clique num campo de um bloco de formulário é seleção nativa
+      // de palavra (input/textarea) ou abre o <select> — nunca "entrar em
+      // edição de texto do bloco".
+      if (kindOf(target) === 'form' && event.target.closest('input, textarea, select, label')) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       if (target !== selected) select(target);
@@ -1278,7 +1315,12 @@
           'translate(' + axis(layout.x, layout) + ',' + axis(layout.y, layout) + ')'
         );
       }
-      style.display = layout.x || layout.y || layout.w ? 'inline-block' : '';
+      // `inline-block` é o que faz width/transform funcionarem num <span> de
+      // texto (inline por padrão) — mas um bloco funcional (kind "form") já
+      // é um container de verdade (div em grid/flex); forçar inline-block
+      // nele encolheria a largura para o conteúdo e quebraria o layout.
+      style.display =
+        kindOf(element) === 'form' ? '' : layout.x || layout.y || layout.w ? 'inline-block' : '';
     }
 
     if (layout.r) transforms.push('rotate(' + layout.r + 'deg)');

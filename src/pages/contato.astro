@@ -3,13 +3,74 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon from '../components/Icon.astro';
 import ContactForm from '../components/ContactForm.astro';
+import SectionOverlays from '../components/SectionOverlays.astro';
 import { waLink, seo } from '../data/site';
+import { getDB } from '../lib/db';
+import { getContatoContent, formatBrPhoneDisplay } from '../lib/documents';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../lib/pages';
+import type { SectionStyle } from '../lib/pages';
 
 const { company, whatsapp } = Astro.locals.settings;
 
-const mapsQuery = encodeURIComponent(
-  `${company.address.line1}, ${company.address.line2}, ${company.address.district}, ${company.address.city} - ${company.address.state}, ${company.address.zip}`
-);
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
+const db = getDB();
+const {
+  hero,
+  formTitle,
+  formDescription,
+  asideCtaTitle,
+  asideCtaText,
+  privacyNote,
+  contactOverrides,
+  pageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+} = await getContatoContent(db);
+
+const layoutCss = layoutStylesheet(layouts, overlays);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: SectionStyle) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
+
+// Cada dado herda do global a menos que esta página tenha sobrescrita — nunca
+// duplicado silenciosamente (ver ContatoOverrides em src/lib/documents.ts).
+// Os links (tel:/wa.me) sempre usam a MESMA fonte do texto mostrado, nunca
+// uma mistura entre valor global e personalizado.
+const effectivePhoneRaw = contactOverrides.phone || company.phoneRaw;
+const effectivePhoneDisplay = contactOverrides.phone
+  ? formatBrPhoneDisplay(contactOverrides.phone)
+  : company.phoneDisplay;
+const effectiveWhatsappNumber = contactOverrides.whatsapp || whatsapp.number;
+// Texto e link do canal WhatsApp vêm da MESMA fonte (a sobrescrita de
+// WhatsApp, não a de telefone) — as duas são independentes: alguém pode
+// customizar só o telefone sem tocar no WhatsApp, ou vice-versa.
+const effectiveWhatsappDisplay = contactOverrides.whatsapp
+  ? formatBrPhoneDisplay(contactOverrides.whatsapp)
+  : company.phoneDisplay;
+const effectiveEmail = contactOverrides.email || company.email;
+const effectiveHours = contactOverrides.hours || company.hours;
+const effectiveAddressLines = contactOverrides.address
+  ? contactOverrides.address.split('\n').filter(Boolean)
+  : [
+      company.address.line1,
+      company.address.line2,
+      company.address.district,
+      `${company.address.city} - ${company.address.state}`,
+      `CEP ${company.address.zip}`,
+    ];
+
+const mapsQuery = encodeURIComponent(effectiveAddressLines.join(', '));
 
 const contactLd = {
   '@context': 'https://schema.org',
@@ -22,25 +83,25 @@ const channels = [
   {
     icon: 'whatsapp',
     title: 'WhatsApp',
-    text: company.phoneDisplay,
-    href: waLink(whatsapp.number, whatsapp.defaultMessage),
+    text: effectiveWhatsappDisplay,
+    href: waLink(effectiveWhatsappNumber, whatsapp.defaultMessage),
     hint: 'Resposta em horário comercial',
     external: true,
   },
   {
     icon: 'mail',
     title: 'E-mail',
-    text: company.email,
-    href: `mailto:${company.email}`,
+    text: effectiveEmail,
+    href: `mailto:${effectiveEmail}`,
     hint: 'Para propostas e documentos',
     external: false,
   },
   {
     icon: 'phone',
     title: 'Telefone',
-    text: company.phoneDisplay,
-    href: `tel:+${company.phoneRaw}`,
-    hint: company.hours,
+    text: effectivePhoneDisplay,
+    href: `tel:+${effectivePhoneRaw}`,
+    hint: effectiveHours,
     external: false,
   },
 ];
@@ -51,17 +112,26 @@ const channels = [
   description="Fale com a Essencial Saúde Auditoria: WhatsApp, e-mail, telefone e endereço em Brasília - DF. Solicite uma apresentação dos nossos serviços."
   path="/contato"
   jsonLd={[contactLd]}
+  colorOverride={pageStyleOverride(pageStyle)}
+  bodyClass="page-contato"
 >
-  <PageHero
-    eyebrow="Contato"
-    title="Fale com a Essencial Saúde"
-    lead="Conte o cenário da sua organização. Nossa equipe técnica retorna com os próximos passos para uma conversa objetiva."
-    crumbs={[{ label: 'Contato' }]}
-    image="/images/contato.svg"
-    imageAlt="Composição gráfica representando os canais de contato da Essencial Saúde"
-  />
+  <div style="order:-1">
+    <PageHero
+      eyebrow={hero.eyebrow}
+      title={hero.title}
+      lead={hero.lead}
+      crumbs={[{ label: 'Contato' }]}
+      image="/images/contato.svg"
+      imageAlt="Composição gráfica representando os canais de contato da Essencial Saúde"
+    />
+  </div>
 
-  <section class="section section--tight">
+  <section
+    class:list={['section', 'section--tight', secClass('channels')]}
+    style={secStyle('channels', sectionStyles.channels)}
+    data-section="channels"
+    data-section-label={ed('Canais de contato')}
+  >
     <div class="container">
       <div class="channels">
         {
@@ -86,17 +156,23 @@ const channels = [
           ))
         }
       </div>
+      <SectionOverlays section="channels" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section section--tight">
+  <section
+    class:list={['section', 'section--tight', secClass('form')]}
+    style={secStyle('form', sectionStyles.form)}
+    data-section="form"
+    data-section-label={ed('Formulário e informações')}
+  >
     <div class="container contact-layout">
       <div data-reveal>
         <ContactForm
           variant="full"
           id="form-contato"
-          title="Envie sua mensagem"
-          description="Todos os campos marcados são obrigatórios. Retornamos em horário comercial."
+          title={formTitle}
+          description={formDescription}
           origin="Página de contato"
         />
       </div>
@@ -108,12 +184,14 @@ const channels = [
             Endereço
           </h2>
           <address>
-            <strong>{company.name}</strong><br />
-            {company.address.line1}<br />
-            {company.address.line2}<br />
-            {company.address.district}<br />
-            {company.address.city} - {company.address.state}<br />
-            CEP {company.address.zip}
+            <strong>{company.name}</strong>
+            <br />
+            {effectiveAddressLines.map((line) => (
+              <>
+                {line}
+                <br />
+              </>
+            ))}
           </address>
           <a
             class="link-arrow"
@@ -131,23 +209,23 @@ const channels = [
             <Icon name="clock" size={18} />
             Atendimento
           </h2>
-          <p>{company.hours}</p>
+          <p>{effectiveHours}</p>
           <p class="muted small">
             Mensagens recebidas fora do horário são respondidas no próximo dia útil.
           </p>
         </div>
 
         <div class="aside-card aside-card--brand">
-          <h2 class="title-sm">Prefere falar agora?</h2>
-          <p>Fale com nossa equipe pelo WhatsApp e receba retorno direto.</p>
+          <h2 class="title-sm" data-edit="asideCtaTitle">{asideCtaTitle}</h2>
+          <p data-edit="asideCtaText" data-edit-kind={ed('multiline')}>{asideCtaText}</p>
           <a
-            href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+            href={waLink(effectiveWhatsappNumber, whatsapp.defaultMessage)}
             class="btn btn--accent btn--block"
             target="_blank"
             rel="noopener"
           >
             <Icon name="whatsapp" size={18} />
-            {company.phoneDisplay}
+            {effectiveWhatsappDisplay}
           </a>
         </div>
 
@@ -156,16 +234,48 @@ const channels = [
             <Icon name="lock" size={18} />
             Privacidade
           </h2>
-          <p class="muted small">
-            Os dados enviados serão utilizados apenas para responder ao contato, conforme a
-            <a href="/politica-de-privacidade"> Política de Privacidade</a> e a LGPD. Não solicitamos
-            e não devem ser enviados dados clínicos de pacientes por este canal.
+          <p class="muted small" data-edit="privacyNote" data-edit-kind={ed('multiline')}>
+            {privacyNote}
+            {' '}<a href="/politica-de-privacidade">Política de Privacidade</a>.
           </p>
         </div>
       </aside>
+      <SectionOverlays section="form" overlays={overlays} />
     </div>
   </section>
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  body.page-contato main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-contato main > section {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+</style>
 
 <style>
   .channels {
