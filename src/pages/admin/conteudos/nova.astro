@@ -5,19 +5,10 @@ import { getDB, writeAuditLog } from '../../../lib/db';
 import { listCategories } from '../../../lib/categories';
 import { listAuthors } from '../../../lib/authors';
 import { createPost, slugExists } from '../../../lib/posts';
+import { slugify } from '../../../lib/urls';
 
 const db = getDB();
 let slugError = '';
-
-function slugify(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();

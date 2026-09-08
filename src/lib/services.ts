@@ -142,12 +142,27 @@ export function findBySlug(services: Service[], slug: string): Service | undefin
   return services.find((s) => s.slug === slug);
 }
 
+export async function slugExists(db: D1Database, slug: string): Promise<boolean> {
+  const row = await db
+    .prepare(`SELECT id FROM services WHERE slug = ?1 AND deleted_at IS NULL`)
+    .bind(slug)
+    .first<{ id: number }>();
+  return Boolean(row);
+}
+
 /** Identidade estável usada pelo Editor Visual — ver comentário em `Service.id`. */
 export function findById(services: Service[], id: number): Service | undefined {
   return services.find((s) => s.id === id);
 }
 
 export interface ServiceUpdate {
+  /**
+   * Novo slug desejado — igual ao atual quando o usuário não mexeu no
+   * campo. O chamador valida unicidade e cria o redirecionamento 301 do
+   * slug antigo para o novo (ver src/lib/redirects.ts) antes de chamar
+   * esta função; ela só grava a coluna.
+   */
+  slug: string;
   name: string;
   icon: string;
   shortName: string;
@@ -193,12 +208,13 @@ export async function updateService(
   await db
     .prepare(
       `UPDATE services SET
-         name = ?1, short_name = ?2, summary = ?3, hero_title = ?4, hero_lead = ?5,
-         whatsapp_message = ?6, seo_title = ?7, seo_description = ?8,
-         status = ?9, featured = ?10, content_json = ?11, icon = ?12, updated_at = datetime('now')
-       WHERE slug = ?13`
+         slug = ?1, name = ?2, short_name = ?3, summary = ?4, hero_title = ?5, hero_lead = ?6,
+         whatsapp_message = ?7, seo_title = ?8, seo_description = ?9,
+         status = ?10, featured = ?11, content_json = ?12, icon = ?13, updated_at = datetime('now')
+       WHERE slug = ?14`
     )
     .bind(
+      patch.slug,
       patch.name,
       patch.shortName,
       patch.summary,

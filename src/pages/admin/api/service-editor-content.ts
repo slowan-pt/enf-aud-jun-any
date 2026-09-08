@@ -382,6 +382,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   if (docChanged) {
     const patch: ServiceUpdate = {
+      slug: existing.slug,
       name: existing.name,
       icon: String(doc.icon),
       shortName: existing.shortName,

@@ -5,12 +5,16 @@ import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { listCategories } from '../../../lib/categories';
 import { listAuthors } from '../../../lib/authors';
-import { getPost, updatePost, type BlockNode } from '../../../lib/posts';
+import { getPost, updatePost, slugExists, type BlockNode } from '../../../lib/posts';
+import { slugify } from '../../../lib/urls';
+import { createRedirect } from '../../../lib/redirects';
 
 const db = getDB();
 const slug = Astro.params.slug ?? '';
 const existing = await getPost(db, slug);
 if (!existing) return Astro.rewrite('/404');
+
+let slugError = '';
 
 const BLOCK_TYPES: BlockNode['type'][] = [
   'paragraph',
@@ -82,37 +86,61 @@ if (Astro.request.method === 'POST') {
   const status = String(form.get('status') ?? existing.status) as
     'draft' | 'published' | 'archived';
 
-  await updatePost(
-    db,
-    slug,
-    {
-      slug,
-      title,
-      excerpt: String(form.get('excerpt') ?? '').trim(),
-      categoryId,
-      authorId,
-      status,
-      featured: form.get('featured') === 'on',
-      coverUrl: String(form.get('cover_url') ?? '').trim(),
-      coverAlt: String(form.get('cover_alt') ?? '').trim(),
-      readingMinutes: Number(form.get('reading_minutes')) || existing.readingMinutes,
-      body: blocks,
-      seoTitle: String(form.get('seo_title') ?? '').trim(),
-      seoDescription: String(form.get('seo_description') ?? '').trim(),
-      publishedAt: String(form.get('published_at') ?? existing.publishedAt),
-    },
-    Astro.locals.user?.id
-  );
-
+  // O slug só muda de fato na ação "salvar" — em "adicionar/remover bloco"
+  // (recarrega o formulário sem sair da tela) ele fica como está, para não
+  // criar um redirecionamento por engano enquanto o campo ainda está sendo
+  // digitado.
+  let nextSlug = slug;
   if (action === 'save') {
-    await writeAuditLog(db, {
-      userId: Astro.locals.user?.id,
-      userName: Astro.locals.user?.name ?? '',
-      action: 'post.update',
-      target: `Matéria: ${title}`,
-      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
-    });
-    return Astro.redirect(`/admin/conteudos/${slug}?saved=1`);
+    const requested = slugify(String(form.get('slug') ?? slug).trim()) || slug;
+    if (requested !== slug && (await slugExists(db, requested))) {
+      slugError = 'Já existe uma matéria com esse slug.';
+    } else {
+      nextSlug = requested;
+    }
+  }
+
+  if (!slugError) {
+    await updatePost(
+      db,
+      slug,
+      {
+        slug: nextSlug,
+        title,
+        excerpt: String(form.get('excerpt') ?? '').trim(),
+        categoryId,
+        authorId,
+        status,
+        featured: form.get('featured') === 'on',
+        coverUrl: String(form.get('cover_url') ?? '').trim(),
+        coverAlt: String(form.get('cover_alt') ?? '').trim(),
+        readingMinutes: Number(form.get('reading_minutes')) || existing.readingMinutes,
+        body: blocks,
+        seoTitle: String(form.get('seo_title') ?? '').trim(),
+        seoDescription: String(form.get('seo_description') ?? '').trim(),
+        publishedAt: String(form.get('published_at') ?? existing.publishedAt),
+      },
+      Astro.locals.user?.id
+    );
+
+    if (nextSlug !== slug) {
+      await createRedirect(db, {
+        from: `/conteudos/${slug}`,
+        to: `/conteudos/${nextSlug}`,
+        code: 301,
+      });
+    }
+
+    if (action === 'save') {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'post.update',
+        target: `Matéria: ${title}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+      return Astro.redirect(`/admin/conteudos/${nextSlug}?saved=1`);
+    }
   }
 
   currentBlocks = blocks;
@@ -157,6 +185,14 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       </div>
     )
   }
+  {
+    slugError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{slugError}</span>
+      </div>
+    )
+  }
 
   <form class="editor-layout" method="post" id="form-post">
     {
@@ -181,11 +217,12 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
             </div>
             <div class="form-grid form-grid--2">
               <div class="field">
-                <label class="label" for="slug-ro">Slug</label>
-                <input class="input" id="slug-ro" value={fresh.slug} readonly />
-                <span class="hint"
-                  >Slug não é editável (evita quebrar links já publicados).</span
-                >
+                <label class="label" for="slug">Slug</label>
+                <input class="input" id="slug" name="slug" value={fresh.slug} />
+                <span class="hint">
+                  Mudar o slug cria automaticamente um redirecionamento 301 do endereço antigo
+                  para o novo — links já publicados continuam funcionando.
+                </span>
               </div>
               <div class="field">
                 <label class="label" for="category_id">Categoria</label>

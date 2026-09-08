@@ -25,6 +25,7 @@ if (Astro.request.method === 'POST') {
       db,
       slug,
       {
+        slug: existing.slug,
         name: existing.name,
         icon: existing.icon,
         shortName: existing.shortName,

@@ -76,6 +76,7 @@ describe('updateServiceById nunca toca em editor_json', () => {
     });
 
     const patch: ServiceUpdate = {
+      slug: existing.slug,
       name: 'Nome alterado pelo CRUD',
       icon: existing.icon,
       shortName: existing.shortName,
@@ -169,6 +170,7 @@ describe('updateServiceById nunca toca em editor_json', () => {
 
     // 2 e 3. "Abrir o CRUD tradicional, alterar o nome ou descrição" — 4. "Salvar".
     const patch: ServiceUpdate = {
+      slug: existing.slug,
       name: 'Novo nome via CRUD',
       icon: existing.icon,
       shortName: existing.shortName,

@@ -171,6 +171,13 @@ export async function createPost(
     .run();
 }
 
+/**
+ * `slug` é a chave de busca ATUAL (a da URL) — `input.slug` pode trazer um
+ * slug NOVO (renomear a matéria); nesse caso o chamador é responsável por
+ * validar unicidade antes e por criar o redirecionamento 301 do slug antigo
+ * para o novo (ver src/lib/redirects.ts), para não quebrar o link já
+ * publicado nem indexado.
+ */
 export async function updatePost(
   db: D1Database,
   slug: string,
@@ -180,13 +187,14 @@ export async function updatePost(
   await db
     .prepare(
       `UPDATE posts SET
-        title = ?1, excerpt = ?2, category_id = ?3, author_id = ?4, status = ?5,
-        featured = ?6, cover_url = ?7, cover_alt = ?8, reading_minutes = ?9,
-        body_json = ?10, seo_title = ?11, seo_description = ?12, published_at = ?13,
-        updated_by = ?14, updated_at = datetime('now')
-      WHERE slug = ?15`
+        slug = ?1, title = ?2, excerpt = ?3, category_id = ?4, author_id = ?5, status = ?6,
+        featured = ?7, cover_url = ?8, cover_alt = ?9, reading_minutes = ?10,
+        body_json = ?11, seo_title = ?12, seo_description = ?13, published_at = ?14,
+        updated_by = ?15, updated_at = datetime('now')
+      WHERE slug = ?16`
     )
     .bind(
+      input.slug,
       input.title,
       input.excerpt,
       input.categoryId,

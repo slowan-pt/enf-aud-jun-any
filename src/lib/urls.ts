@@ -20,6 +20,17 @@ export function safeMediaUrl(value: string): string {
   return '';
 }
 
+/** Slug de URL: minúsculas, sem acento, só letras/números separados por hífen. */
+export function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 /**
  * Destino de link. Aceita caminho interno, âncora, https, e-mail e telefone;
  * recusa `javascript:`, `data:` e qualquer outro esquema.

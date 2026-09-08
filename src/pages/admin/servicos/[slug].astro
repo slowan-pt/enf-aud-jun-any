@@ -4,10 +4,14 @@ import Icon from '../../../components/Icon.astro';
 import IconPicker from '../../../components/admin/IconPicker.astro';
 import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
-import { findBySlug, updateService, type Service } from '../../../lib/services';
+import { findBySlug, updateService, slugExists, type Service } from '../../../lib/services';
+import { slugify } from '../../../lib/urls';
+import { createRedirect } from '../../../lib/redirects';
 
 const slug = Astro.params.slug ?? '';
 const db = getDB();
+
+let slugError = '';
 
 if (Astro.request.method === 'POST') {
   const existing = findBySlug(Astro.locals.services, slug);
@@ -20,38 +24,53 @@ if (Astro.request.method === 'POST') {
         .map((l) => l.trim())
         .filter(Boolean);
 
-    await updateService(
-      db,
-      slug,
-      {
-        name: text('nome', existing.name),
-        icon: text('icone', existing.icon),
-        shortName: text('nome_curto', existing.shortName),
-        summary: text('resumo', existing.summary),
-        heroTitle: text('hero_titulo', existing.heroTitle),
-        heroLead: text('hero_lead', existing.heroLead),
-        image: text('imagem', existing.image),
-        imageAlt: text('alt', existing.imageAlt),
-        whatsappMessage: text('wa', existing.whatsappMessage),
-        seoTitle: text('seo_title', existing.seo.title),
-        seoDescription: text('seo_desc', existing.seo.description),
-        status: text('status', existing.status) as Service['status'],
-        featured: form.get('featured') === 'on',
-        intro: lines('intro', existing.intro),
-        deliverables: lines('entregaveis', existing.deliverables),
-        audience: lines('publico', existing.audience),
-      },
-      existing
-    );
-    await writeAuditLog(db, {
-      userId: Astro.locals.user?.id,
-      userName: Astro.locals.user?.name ?? '',
-      action: 'service.update',
-      target: `Serviço: ${existing.name}`,
-      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
-    });
+    const requestedSlug = slugify(text('slug', existing.slug)) || existing.slug;
+    if (requestedSlug !== existing.slug && (await slugExists(db, requestedSlug))) {
+      slugError = 'Já existe um serviço com esse slug.';
+    } else {
+      await updateService(
+        db,
+        slug,
+        {
+          slug: requestedSlug,
+          name: text('nome', existing.name),
+          icon: text('icone', existing.icon),
+          shortName: text('nome_curto', existing.shortName),
+          summary: text('resumo', existing.summary),
+          heroTitle: text('hero_titulo', existing.heroTitle),
+          heroLead: text('hero_lead', existing.heroLead),
+          image: text('imagem', existing.image),
+          imageAlt: text('alt', existing.imageAlt),
+          whatsappMessage: text('wa', existing.whatsappMessage),
+          seoTitle: text('seo_title', existing.seo.title),
+          seoDescription: text('seo_desc', existing.seo.description),
+          status: text('status', existing.status) as Service['status'],
+          featured: form.get('featured') === 'on',
+          intro: lines('intro', existing.intro),
+          deliverables: lines('entregaveis', existing.deliverables),
+          audience: lines('publico', existing.audience),
+        },
+        existing
+      );
+
+      if (requestedSlug !== existing.slug) {
+        await createRedirect(db, {
+          from: `/servicos/${existing.slug}`,
+          to: `/servicos/${requestedSlug}`,
+          code: 301,
+        });
+      }
+
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'service.update',
+        target: `Serviço: ${existing.name}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+      return Astro.redirect(`/admin/servicos/${requestedSlug}?saved=1`);
+    }
   }
-  return Astro.redirect(`/admin/servicos/${slug}?saved=1`);
 }
 
 const service = findBySlug(Astro.locals.services, slug);
@@ -98,6 +117,14 @@ function formatDate(iso: string): string {
       </div>
     )
   }
+  {
+    slugError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{slugError}</span>
+      </div>
+    )
+  }
 
   <form class="editor-layout" method="post" id="form-servico">
     <div class="panel">
@@ -134,10 +161,11 @@ function formatDate(iso: string): string {
           </div>
 
           <div class="field">
-            <label class="label" for="slug-disp">Slug</label>
-            <input class="input" id="slug-disp" value={service.slug} disabled />
+            <label class="label" for="slug">Slug</label>
+            <input class="input" id="slug" name="slug" value={service.slug} />
             <span class="hint">
-              Edição de slug com redirecionamento 301 automático ainda não disponível.
+              Mudar o slug cria automaticamente um redirecionamento 301 do endereço antigo para
+              o novo — links já publicados continuam funcionando.
             </span>
           </div>
 
