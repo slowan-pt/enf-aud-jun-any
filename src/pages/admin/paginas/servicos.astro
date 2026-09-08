@@ -1,0 +1,218 @@
+---
+/**
+ * Editar conteúdo de Serviços por formulário — textos de abertura (Hero),
+ * "Como atuamos", "Para quem atuamos" e a chamada final. A grade de
+ * cartões dos serviços continua sendo editada em /admin/servicos.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { getServicosContent, updateServicosContent } from '../../../lib/documents';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const current = await getServicosContent(db);
+  const form = await Astro.request.formData();
+  const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+
+  const updated = {
+    ...current,
+    hero: {
+      eyebrow: text('hero_eyebrow', current.hero.eyebrow),
+      title: text('hero_title', current.hero.title),
+      lead: text('hero_lead', current.hero.lead),
+    },
+    howWeWork: {
+      ...current.howWeWork,
+      eyebrow: text('how_eyebrow', current.howWeWork.eyebrow),
+      title: text('how_title', current.howWeWork.title),
+      text: text('how_text', current.howWeWork.text),
+    },
+    clientSegments: {
+      ...current.clientSegments,
+      eyebrow: text('segments_eyebrow', current.clientSegments.eyebrow),
+      title: text('segments_title', current.clientSegments.title),
+    },
+    cta: {
+      eyebrow: text('cta_eyebrow', current.cta.eyebrow),
+      title: text('cta_title', current.cta.title),
+      text: text('cta_text', current.cta.text),
+    },
+  };
+
+  await updateServicosContent(db, updated, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'page.edit',
+    target: 'Serviços (formulário de conteúdo)',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+
+  return Astro.redirect('/admin/paginas/servicos?saved=1');
+}
+
+const content = await getServicosContent(db);
+const { hero, howWeWork, clientSegments, cta } = content;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title="Serviços — Conteúdo"
+  description="Textos de abertura, chamadas e seções fixas da página de Serviços."
+  active="/admin/editor"
+>
+  <div slot="actions">
+    <a href="/admin/editor/servicos" class="btn btn--sm">
+      <Icon name="pointer" size={16} />
+      Editor visual
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Conteúdo salvo.</span>
+      </div>
+    )
+  }
+
+  <form method="post" class="stack-panels">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Abertura</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="hero_eyebrow">Selo</label>
+          <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_title">Título</label>
+          <input class="input" id="hero_title" name="hero_title" value={hero.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_lead">Texto de apoio</label>
+          <textarea class="textarea" id="hero_lead" name="hero_lead" rows="3"
+            >{hero.lead}</textarea
+          >
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Como atuamos</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="how_eyebrow">Selo</label>
+          <input class="input" id="how_eyebrow" name="how_eyebrow" value={howWeWork.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="how_title">Título</label>
+          <input class="input" id="how_title" name="how_title" value={howWeWork.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="how_text">Texto</label>
+          <textarea class="textarea" id="how_text" name="how_text" rows="3"
+            >{howWeWork.text}</textarea
+          >
+        </div>
+        <p class="muted small">
+          As etapas do processo (números, títulos e textos) ficam fixas — sem edição por aqui
+          ainda.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Para quem atuamos</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="segments_eyebrow">Selo</label>
+          <input
+            class="input"
+            id="segments_eyebrow"
+            name="segments_eyebrow"
+            value={clientSegments.eyebrow}
+          />
+        </div>
+        <div class="field">
+          <label class="label" for="segments_title">Título</label>
+          <input
+            class="input"
+            id="segments_title"
+            name="segments_title"
+            value={clientSegments.title}
+          />
+        </div>
+        <p class="muted small">
+          Os itens da lista (operadoras, pacientes particulares etc.) ficam fixos — sem edição
+          por aqui ainda.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Chamada final</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="cta_eyebrow">Selo</label>
+          <input class="input" id="cta_eyebrow" name="cta_eyebrow" value={cta.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="cta_title">Título</label>
+          <input class="input" id="cta_title" name="cta_title" value={cta.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="cta_text">Texto</label>
+          <textarea class="textarea" id="cta_text" name="cta_text" rows="3">{cta.text}</textarea
+          >
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="pagina-config">
+      <div class="panel__head">
+        <h2 class="panel__title">Configurações da página</h2>
+      </div>
+      <div class="panel__body">
+        <p class="muted small">
+          A lista de serviços é gerenciada em <a href="/admin/servicos">Conteúdo → Serviços</a>.
+        </p>
+        <p class="muted small" style="margin-top: var(--sp-3)">
+          Elementos livres e formas ficam no <a href="/admin/editor/servicos">Editor Visual</a>.
+        </p>
+        <p class="muted small" style="margin-top: var(--sp-3)">
+          Cores e fundo desta página ficam em
+          <a href="/admin/editor/servicos/aparencia">Editor Visual → Serviços → Aparência</a>.
+        </p>
+      </div>
+    </section>
+
+    <div class="cluster standalone-foot">
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar conteúdo
+      </button>
+    </div>
+  </form>
+</AdminLayout>
+
+<style>
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+  }
+</style>

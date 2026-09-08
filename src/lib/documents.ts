@@ -38,7 +38,13 @@ const EMPTY_STYLE: SectionStyle = {
   paddingY: '',
 };
 
-export const QUEM_SOMOS_SECTION_KEYS = ['about', 'elo', 'howWeWork', 'mvv', 'segments'] as const;
+export const QUEM_SOMOS_SECTION_KEYS = [
+  'about',
+  'elo',
+  'howWeWork',
+  'mvv',
+  'segments',
+] as const;
 export type QuemSomosSectionKey = (typeof QUEM_SOMOS_SECTION_KEYS)[number];
 
 export interface QuemSomosContent {
@@ -82,7 +88,10 @@ function normalizeSectionKeys(
   if (!Array.isArray(value)) return fallback;
   const seen = new Set<QuemSomosSectionKey>();
   for (const item of value) {
-    if (typeof item === 'string' && (QUEM_SOMOS_SECTION_KEYS as readonly string[]).includes(item)) {
+    if (
+      typeof item === 'string' &&
+      (QUEM_SOMOS_SECTION_KEYS as readonly string[]).includes(item)
+    ) {
       seen.add(item as QuemSomosSectionKey);
     }
   }
@@ -227,7 +236,8 @@ export function normalizeContatoOverrides(value: unknown): ContatoOverrides {
   return {
     phone: digits(raw.phone),
     whatsapp: digits(raw.whatsapp),
-    email: typeof raw.email === 'string' && EMAIL_RE.test(raw.email) ? raw.email.slice(0, 200) : '',
+    email:
+      typeof raw.email === 'string' && EMAIL_RE.test(raw.email) ? raw.email.slice(0, 200) : '',
     hours: typeof raw.hours === 'string' ? raw.hours.slice(0, 200) : '',
     address: typeof raw.address === 'string' ? raw.address.slice(0, 500) : '',
     // Só texto puro: tira espaço do início/fim (nunca do meio — quebras de
@@ -280,7 +290,8 @@ const DEFAULT_CONTATO: ContatoContent = {
     lead: 'Conte o cenário da sua organização. Nossa equipe técnica retorna com os próximos passos para uma conversa objetiva.',
   },
   formTitle: 'Envie sua mensagem',
-  formDescription: 'Todos os campos marcados são obrigatórios. Retornamos em horário comercial.',
+  formDescription:
+    'Todos os campos marcados são obrigatórios. Retornamos em horário comercial.',
   asideCtaTitle: 'Prefere falar agora?',
   asideCtaText: 'Fale com nossa equipe pelo WhatsApp e receba retorno direto.',
   privacyNote:
@@ -304,7 +315,10 @@ function normalizeContatoSectionKeys(
   if (!Array.isArray(value)) return fallback;
   const seen = new Set<ContatoSectionKey>();
   for (const item of value) {
-    if (typeof item === 'string' && (CONTATO_SECTION_KEYS as readonly string[]).includes(item)) {
+    if (
+      typeof item === 'string' &&
+      (CONTATO_SECTION_KEYS as readonly string[]).includes(item)
+    ) {
       seen.add(item as ContatoSectionKey);
     }
   }
@@ -329,17 +343,24 @@ export async function getContatoContent(
     const stored = JSON.parse(row.sections_json) as Partial<ContatoContent>;
     return {
       hero: { ...DEFAULT_CONTATO.hero, ...stored.hero },
-      formTitle: typeof stored.formTitle === 'string' ? stored.formTitle : DEFAULT_CONTATO.formTitle,
+      formTitle:
+        typeof stored.formTitle === 'string' ? stored.formTitle : DEFAULT_CONTATO.formTitle,
       formDescription:
         typeof stored.formDescription === 'string'
           ? stored.formDescription
           : DEFAULT_CONTATO.formDescription,
       asideCtaTitle:
-        typeof stored.asideCtaTitle === 'string' ? stored.asideCtaTitle : DEFAULT_CONTATO.asideCtaTitle,
+        typeof stored.asideCtaTitle === 'string'
+          ? stored.asideCtaTitle
+          : DEFAULT_CONTATO.asideCtaTitle,
       asideCtaText:
-        typeof stored.asideCtaText === 'string' ? stored.asideCtaText : DEFAULT_CONTATO.asideCtaText,
+        typeof stored.asideCtaText === 'string'
+          ? stored.asideCtaText
+          : DEFAULT_CONTATO.asideCtaText,
       privacyNote:
-        typeof stored.privacyNote === 'string' ? stored.privacyNote : DEFAULT_CONTATO.privacyNote,
+        typeof stored.privacyNote === 'string'
+          ? stored.privacyNote
+          : DEFAULT_CONTATO.privacyNote,
       contactOverrides: normalizeContatoOverrides(stored.contactOverrides),
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {
@@ -377,5 +398,137 @@ export async function updateContatoContent(
          updated_at = datetime('now')`
     )
     .bind(CONTATO_SLUG, JSON.stringify(content), userId ?? null)
+    .run();
+}
+
+// ============================================================ Serviços ====
+
+/**
+ * "hero" e "cta" alimentam o PageHero/CtaBand fixos (antes/depois, como em
+ * Quem Somos — ver comentário em src/pages/quem-somos.astro) e não entram
+ * na ordem de seções. As 3 seções abaixo são as que o Editor Visual pode
+ * reordenar/ocultar/estilizar. "list" é a grade de cartões vinda da tabela
+ * `services` (Astro.locals.services) — não é conteúdo deste documento, mas
+ * ocupa um lugar na ordem e pode ganhar fundo/cor próprios, igual às seções
+ * fixas da Home (ver HOME_EDITABLE_SLOTS): a lista em si continua gerenciada
+ * pelo CRUD em /admin/servicos, não pelo Editor Visual.
+ */
+export const SERVICOS_SECTION_KEYS = ['list', 'howWeWork', 'segments'] as const;
+export type ServicosSectionKey = (typeof SERVICOS_SECTION_KEYS)[number];
+
+export interface ServicosContent {
+  hero: { eyebrow: string; title: string; lead: string };
+  howWeWork: typeof defaultHowWeWork;
+  clientSegments: typeof defaultClientSegments;
+  cta: { eyebrow: string; title: string; text: string };
+  pageStyle: PageStyle;
+  sectionStyles: Record<ServicosSectionKey, SectionStyle>;
+  sectionOrder: ServicosSectionKey[];
+  hiddenSections: ServicosSectionKey[];
+  layouts: Record<string, LayoutPair>;
+  overlays: Overlay[];
+}
+
+const DEFAULT_SERVICOS: ServicosContent = {
+  hero: {
+    eyebrow: 'Serviços',
+    title: 'Soluções técnicas em gestão e auditoria em saúde',
+    lead: 'Seis frentes de atuação que compartilham a mesma base: avaliação com critério, evidência documental e acompanhamento até o desfecho.',
+  },
+  howWeWork: defaultHowWeWork,
+  clientSegments: defaultClientSegments,
+  cta: {
+    eyebrow: 'Fale com a Essencial',
+    title: 'Qual desses cenários é o seu?',
+    text: 'Apresentamos o escopo, o método e os indicadores de acompanhamento de acordo com o serviço de interesse.',
+  },
+  pageStyle: { ...EMPTY_PAGE_STYLE },
+  sectionStyles: {
+    list: { ...EMPTY_STYLE },
+    howWeWork: { ...EMPTY_STYLE },
+    segments: { ...EMPTY_STYLE },
+  },
+  sectionOrder: [...SERVICOS_SECTION_KEYS],
+  hiddenSections: [],
+  layouts: {},
+  overlays: [],
+};
+
+function normalizeServicosSectionKeys(
+  value: unknown,
+  fallback: ServicosSectionKey[]
+): ServicosSectionKey[] {
+  if (!Array.isArray(value)) return fallback;
+  const seen = new Set<ServicosSectionKey>();
+  for (const item of value) {
+    if (
+      typeof item === 'string' &&
+      (SERVICOS_SECTION_KEYS as readonly string[]).includes(item)
+    ) {
+      seen.add(item as ServicosSectionKey);
+    }
+  }
+  for (const key of SERVICOS_SECTION_KEYS) {
+    if (!seen.has(key) && fallback.includes(key)) seen.add(key);
+  }
+  return [...seen];
+}
+
+export const SERVICOS_SLUG = '/servicos';
+
+export async function getServicosContent(
+  db: D1Database
+): Promise<ServicosContent & { updatedAt: string }> {
+  try {
+    const row = await db
+      .prepare('SELECT id, sections_json, updated_at FROM pages WHERE slug = ?1')
+      .bind(SERVICOS_SLUG)
+      .first<PageRow>();
+    if (!row) return { ...DEFAULT_SERVICOS, updatedAt: '' };
+
+    const stored = JSON.parse(row.sections_json) as Partial<ServicosContent>;
+    return {
+      hero: { ...DEFAULT_SERVICOS.hero, ...stored.hero },
+      howWeWork: { ...DEFAULT_SERVICOS.howWeWork, ...stored.howWeWork },
+      clientSegments: { ...DEFAULT_SERVICOS.clientSegments, ...stored.clientSegments },
+      cta: { ...DEFAULT_SERVICOS.cta, ...stored.cta },
+      pageStyle: normalizePageStyle(stored.pageStyle),
+      sectionStyles: {
+        ...DEFAULT_SERVICOS.sectionStyles,
+        ...Object.fromEntries(
+          Object.entries(stored.sectionStyles ?? {}).map(([key, value]) => [
+            key,
+            { ...EMPTY_STYLE, ...value },
+          ])
+        ),
+      } as Record<ServicosSectionKey, SectionStyle>,
+      sectionOrder: normalizeServicosSectionKeys(stored.sectionOrder, [
+        ...SERVICOS_SECTION_KEYS,
+      ]),
+      hiddenSections: normalizeServicosSectionKeys(stored.hiddenSections, []),
+      layouts: normalizeLayouts(stored.layouts),
+      overlays: normalizeOverlays(stored.overlays, SERVICOS_SECTION_KEYS),
+      updatedAt: row.updated_at,
+    };
+  } catch {
+    return { ...DEFAULT_SERVICOS, updatedAt: '' };
+  }
+}
+
+export async function updateServicosContent(
+  db: D1Database,
+  content: ServicosContent,
+  userId?: number
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO pages (slug, title, status, sections_json, updated_by, updated_at)
+       VALUES (?1, 'Serviços', 'published', ?2, ?3, datetime('now'))
+       ON CONFLICT(slug) DO UPDATE SET
+         sections_json = excluded.sections_json,
+         updated_by = excluded.updated_by,
+         updated_at = datetime('now')`
+    )
+    .bind(SERVICOS_SLUG, JSON.stringify(content), userId ?? null)
     .run();
 }

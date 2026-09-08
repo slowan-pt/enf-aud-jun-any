@@ -5,9 +5,40 @@ import Icon from '../../components/Icon.astro';
 import ServiceCard from '../../components/ServiceCard.astro';
 import ProcessSteps from '../../components/ProcessSteps.astro';
 import CtaBand from '../../components/CtaBand.astro';
+import SectionOverlays from '../../components/SectionOverlays.astro';
 import { publishedOnly } from '../../lib/services';
-import { howWeWork, clientSegments } from '../../data/institutional';
 import { seo } from '../../data/site';
+import { getDB } from '../../lib/db';
+import { getServicosContent } from '../../lib/documents';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib/pages';
+
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
+const db = getDB();
+const {
+  hero,
+  howWeWork,
+  clientSegments,
+  cta,
+  pageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+} = await getServicosContent(db);
+
+const layoutCss = layoutStylesheet(layouts, overlays);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: (typeof sectionStyles)[keyof typeof sectionStyles]) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
 
 const publishedServices = publishedOnly(Astro.locals.services);
 
@@ -29,38 +60,61 @@ const itemListLd = {
   description="Auditoria concorrente, auditoria de contas hospitalares, gestão da jornada do paciente, gestão hospitalar, qualificação da rede prestadora e segurança assistencial."
   path="/servicos"
   jsonLd={[itemListLd]}
+  colorOverride={pageStyleOverride(pageStyle)}
+  bodyClass="page-servicos"
 >
-  <PageHero
-    eyebrow="Serviços"
-    title="Soluções técnicas em gestão e auditoria em saúde"
-    lead="Seis frentes de atuação que compartilham a mesma base: avaliação com critério, evidência documental e acompanhamento até o desfecho."
-    crumbs={[{ label: 'Serviços' }]}
-  />
+  <div style="order:-1">
+    <PageHero
+      eyebrow={hero.eyebrow}
+      title={hero.title}
+      lead={hero.lead}
+      crumbs={[{ label: 'Serviços' }]}
+    />
+  </div>
 
-  <section class="section">
+  <section
+    class:list={['section', secClass('list')]}
+    style={secStyle('list', sectionStyles.list)}
+    data-section="list"
+    data-section-label={ed('Lista de serviços')}
+  >
     <div class="container">
       <div class="grid grid--3">
         {publishedServices.map((service) => <ServiceCard service={service} />)}
       </div>
+      <SectionOverlays section="list" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section section--subtle">
+  <section
+    class:list={['section', 'section--subtle', secClass('howWeWork')]}
+    style={secStyle('howWeWork', sectionStyles.howWeWork)}
+    data-section="howWeWork"
+    data-section-label={ed('Como atuamos')}
+  >
     <div class="container">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">{howWeWork.eyebrow}</p>
-        <h2 class="title-lg">{howWeWork.title}</h2>
-        <p class="lead">{howWeWork.text}</p>
+        <p class="eyebrow" data-edit="howWeWork.eyebrow">{howWeWork.eyebrow}</p>
+        <h2 class="title-lg" data-edit="howWeWork.title">{howWeWork.title}</h2>
+        <p class="lead" data-edit="howWeWork.text" data-edit-kind={ed('multiline')}>
+          {howWeWork.text}
+        </p>
       </div>
       <ProcessSteps />
+      <SectionOverlays section="howWeWork" overlays={overlays} />
     </div>
   </section>
 
-  <section class="section">
+  <section
+    class:list={['section', secClass('segments')]}
+    style={secStyle('segments', sectionStyles.segments)}
+    data-section="segments"
+    data-section-label={ed('Para quem atuamos')}
+  >
     <div class="container">
       <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow">{clientSegments.eyebrow}</p>
-        <h2 class="title-md">{clientSegments.title}</h2>
+        <p class="eyebrow" data-edit="clientSegments.eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-md" data-edit="clientSegments.title">{clientSegments.title}</h2>
       </div>
       <ul class="audience" data-reveal>
         {
@@ -72,15 +126,46 @@ const itemListLd = {
           ))
         }
       </ul>
+      <SectionOverlays section="segments" overlays={overlays} />
     </div>
   </section>
 
-  <CtaBand
-    eyebrow="Fale com a Essencial"
-    title="Qual desses cenários é o seu?"
-    text="Apresentamos o escopo, o método e os indicadores de acompanhamento de acordo com o serviço de interesse."
-  />
+  <div style="order:99">
+    <CtaBand eyebrow={cta.eyebrow} title={cta.title} text={cta.text} />
+  </div>
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  body.page-servicos main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-servicos main > section {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+    filter: grayscale(0.6);
+  }
+</style>
 
 <style>
   .audience {

@@ -268,6 +268,15 @@ export const pages: AdminPage[] = [
     updatedAt: '12/08/2026',
     updatedBy: 'Administrador (demo)',
   },
+  {
+    id: 5,
+    title: 'Serviços',
+    slug: '/servicos',
+    status: 'published',
+    sections: 3,
+    updatedAt: '08/09/2026',
+    updatedBy: 'Administrador (demo)',
+  },
 ];
 
 export const homeSections = [

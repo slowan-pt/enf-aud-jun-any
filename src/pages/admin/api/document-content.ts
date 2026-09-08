@@ -24,6 +24,9 @@ import {
   getContatoContent,
   updateContatoContent,
   CONTATO_SECTION_KEYS,
+  getServicosContent,
+  updateServicosContent,
+  SERVICOS_SECTION_KEYS,
 } from '../../../lib/documents';
 import type { QuemSomosContent } from '../../../lib/documents';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
@@ -132,7 +135,8 @@ function isDevice(value: unknown): value is 'desktop' | 'mobile' {
 
 function isSectionKeyList(value: unknown, sectionKeys: readonly string[]): value is string[] {
   return (
-    Array.isArray(value) && value.every((item) => typeof item === 'string' && sectionKeys.includes(item))
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'string' && sectionKeys.includes(item))
   );
 }
 
@@ -146,7 +150,8 @@ function applyOp(
 
   switch (operation.op) {
     case 'set':
-      if (typeof operation.path !== 'string' || typeof operation.value !== 'string') return false;
+      if (typeof operation.path !== 'string' || typeof operation.value !== 'string')
+        return false;
       if (operation.value.length > 20_000) return false;
       return setByPath(content, operation.path, operation.value);
 
@@ -178,7 +183,10 @@ function applyOp(
 
     case 'layout': {
       if (!EDIT_PATH.test(operation.path) || !isDevice(operation.device)) return false;
-      const layouts = content.layouts as Record<string, import('../../../lib/pages').LayoutPair>;
+      const layouts = content.layouts as Record<
+        string,
+        import('../../../lib/pages').LayoutPair
+      >;
 
       if (operation.clear) {
         if (operation.device === 'mobile') {
@@ -229,7 +237,8 @@ function applyOp(
       if (!OVERLAY_ID.test(operation.id)) return false;
       const overlay = overlays.find((item) => item.id === operation.id);
       if (!overlay) return false;
-      if (typeof operation.content === 'string') overlay.content = operation.content.slice(0, 2000);
+      if (typeof operation.content === 'string')
+        overlay.content = operation.content.slice(0, 2000);
       if (typeof operation.alt === 'string') overlay.alt = operation.alt.slice(0, 300);
       return true;
     }
@@ -307,6 +316,12 @@ const ADAPTERS: Record<string, DocumentAdapter> = {
     getContent: getContatoContent as unknown as DocumentAdapter['getContent'],
     updateContent: updateContatoContent as unknown as DocumentAdapter['updateContent'],
     label: 'Contato',
+  },
+  servicos: {
+    sectionKeys: SERVICOS_SECTION_KEYS,
+    getContent: getServicosContent as unknown as DocumentAdapter['getContent'],
+    updateContent: updateServicosContent as unknown as DocumentAdapter['updateContent'],
+    label: 'Serviços',
   },
 };
 
