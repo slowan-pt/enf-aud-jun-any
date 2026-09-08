@@ -167,4 +167,10 @@ export const iconPaths: Record<string, string> = {
   dna: '<path d="M6 3c0 4 12 4 12 8s-12 4-12 8"/><path d="M18 3c0 4-12 4-12 8s12 4 12 8"/><path d="M7.5 7h9"/><path d="M7.5 17h9"/>',
   ambulance:
     '<rect x="2.5" y="9" width="14" height="8" rx="1.5"/><path d="M16.5 12h3.3L21.5 15v2h-5"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/><path d="M7 11v3"/><path d="M5.5 12.5h3"/>',
+  nurse:
+    '<path d="M4 14a8 8 0 0 1 16 0"/><path d="M4 14h16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M12 10v4"/><path d="M10 12h4"/>',
+  icu: '<path d="M3 19V7"/><path d="M3 11h13a4 4 0 0 1 4 4v4"/><path d="M3 16h17"/><circle cx="7.5" cy="8.5" r="1.8"/><path d="M11 5.5h1.5l1-2 1.5 4 1-2H18"/>',
+  telemedicine:
+    '<rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8.5 20.5h7"/><path d="M12 16.5v4"/><path d="M12 8v4"/><path d="M9.5 10h5"/>',
+  exam: '<path d="M9 3v7.5L5 18a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-4-7.5V3"/><path d="M7.5 3h9"/><path d="M8 14h8"/>',
 };
