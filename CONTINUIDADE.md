@@ -5,16 +5,24 @@ desenvolvimento autônomo pedido pelo usuário. Nunca commitado à `main`.
 
 ## Estado em 2026-09-08 (fim desta sessão)
 
-Último commit: `f19bb0d` — "Permite renomear o slug de serviços e matérias
-com redirecionamento 301" (branch `feature/editor-visual`, já enviado para
-`origin/feature/editor-visual`).
+Último commit: `72ac85c` — "Torna o submenu de Serviços do cabeçalho
+dinâmico + thumbnail na listagem" (branch `feature/editor-visual`, já
+enviado para `origin/feature/editor-visual`).
 
 `npm run qa` passa integralmente (lint + typecheck + testes + build), 0
-erros/0 avisos, 249 testes. Banco real local (porta 4321) recebeu apenas
+erros/0 avisos, 259 testes. Banco real local (porta 4321) recebeu apenas
 migrações de schema (colunas novas, sempre `NULL`/anuláveis) — nenhuma
 gravação de dado real feita pelo agente. Banco isolado (porta 4322) usado
 para todo teste manual/destrutivo, sempre descartado ao final
 (`npm run test:ui:isolated:discard`).
+
+**Commits desta rodada, além dos já listados abaixo:** `f19bb0d` (slug
+editável + redirect 301 em serviços/matérias), `32a90f9` (este arquivo),
+`e91b50d` (criar/duplicar serviços e matérias — "Novo serviço" antes era
+um placeholder "liberado na Etapa 2", agora cria de verdade), `72ac85c`
+(submenu de Serviços no cabeçalho deixou de ser uma lista estática
+desatualizável e passou a vir de `Astro.locals.services`; thumbnail real
+na listagem de serviços).
 
 ## Concluído nesta sessão (em ordem)
 
@@ -63,17 +71,23 @@ Páginas. **Item 4 do escopo original está concluído.**
 
 ## Pendente — próxima tarefa exata
 
-Continuar o **item 5** (gerenciamento completo de páginas). O que falta,
-em ordem de prioridade sugerida:
+Continuar o **item 5** (gerenciamento completo de páginas). Já feito nesta
+rodada: renomear slug com redirect 301, criar/duplicar serviço e matéria,
+thumbnail nas duas listagens, submenu de Serviços no cabeçalho tornado
+dinâmico. O que falta, em ordem de prioridade sugerida:
 
-- **Duplicar** um serviço/matéria existente (ainda não implementado).
 - **Excluir com confirmação forte** — hoje só existe "arquivar"
   (soft delete via status), o que já é seguro; avaliar se "excluir de
   verdade" é realmente necessário ou se arquivar já satisfaz o pedido.
-- **Ordem no menu** — a navegação principal (Home/Quem Somos/Serviços/
-  Conteúdos/Contato) hoje é uma lista fixa em `src/data/admin.ts`
-  (`adminNav`)/`BaseLayout`, não editável pelo painel.
-- **Thumbnails** na listagem de páginas/matérias/serviços (hoje só texto).
+- **Ordem no menu** — os 5 itens fixos do cabeçalho (Início/Quem Somos/
+  Serviços/Conteúdos/Contato) continuam em ordem fixa em
+  `src/data/site.ts` (`mainNav`); só o SUBMENU de Serviços já é dinâmico
+  (ordem = `display_order`, editável ao arrastar em `/admin/servicos`).
+  Reordenar os 5 itens fixos do topo não foi implementado — avaliar se
+  vale a pena (são só 5 itens, mudam raramente).
+- **Thumbnails** — já adicionado em `/admin/servicos` e já existia em
+  `/admin/conteudos`; ainda falta nos hubs `/admin/editor/servicos` e
+  `/admin/editor/materias` (listas secundárias, menor prioridade).
 - **"Adicionar página" genérica (em branco ou por modelo)** — **decisão
   de arquitetura pendente, não uma tarefa mecânica**: hoje cada página
   institucional fixa é uma rota `.astro` própria (`src/pages/*.astro`)
