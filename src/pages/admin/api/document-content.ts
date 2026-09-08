@@ -27,6 +27,9 @@ import {
   getServicosContent,
   updateServicosContent,
   SERVICOS_SECTION_KEYS,
+  getPoliticaContent,
+  updatePoliticaContent,
+  POLITICA_SECTION_KEYS,
 } from '../../../lib/documents';
 import type { QuemSomosContent } from '../../../lib/documents';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
@@ -322,6 +325,12 @@ const ADAPTERS: Record<string, DocumentAdapter> = {
     getContent: getServicosContent as unknown as DocumentAdapter['getContent'],
     updateContent: updateServicosContent as unknown as DocumentAdapter['updateContent'],
     label: 'Serviços',
+  },
+  politica: {
+    sectionKeys: POLITICA_SECTION_KEYS,
+    getContent: getPoliticaContent as unknown as DocumentAdapter['getContent'],
+    updateContent: updatePoliticaContent as unknown as DocumentAdapter['updateContent'],
+    label: 'Política de Privacidade',
   },
 };
 

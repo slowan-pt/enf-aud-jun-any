@@ -1,0 +1,147 @@
+---
+/**
+ * Editar conteúdo da Política de Privacidade por formulário — abertura,
+ * aviso e data de atualização. As seções numeradas do corpo jurídico
+ * (título/texto/ordem) ficam editáveis no Editor Visual, como qualquer
+ * outra lista do site (about.paragraphs, benefits.items etc.).
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { getPoliticaContent, updatePoliticaContent } from '../../../lib/documents';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const current = await getPoliticaContent(db);
+  const form = await Astro.request.formData();
+  const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
+
+  const updated = {
+    ...current,
+    hero: {
+      eyebrow: text('hero_eyebrow', current.hero.eyebrow),
+      title: text('hero_title', current.hero.title),
+      lead: text('hero_lead', current.hero.lead),
+    },
+    noteText: text('note_text', current.noteText),
+    updatedAt: text('updated_at', current.updatedAt),
+  };
+
+  await updatePoliticaContent(db, updated, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'page.edit',
+    target: 'Política de Privacidade (formulário de conteúdo)',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+
+  return Astro.redirect('/admin/paginas/politica?saved=1');
+}
+
+const content = await getPoliticaContent(db);
+const { hero, noteText, updatedAt, sections } = content;
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title="Política de Privacidade — Conteúdo"
+  description="Abertura, aviso e data de atualização. As seções numeradas ficam no Editor Visual."
+  active="/admin/editor"
+>
+  <div slot="actions">
+    <a href="/admin/editor/politica" class="btn btn--sm">
+      <Icon name="pointer" size={16} />
+      Editor visual
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div
+        class="form-alert form-alert--success"
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name="check-circle" size={18} />
+        <span>Conteúdo salvo.</span>
+      </div>
+    )
+  }
+
+  <form method="post" class="stack-panels">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Abertura</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="hero_eyebrow">Selo</label>
+          <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_title">Título</label>
+          <input class="input" id="hero_title" name="hero_title" value={hero.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="hero_lead">Texto de apoio</label>
+          <textarea class="textarea" id="hero_lead" name="hero_lead" rows="3"
+            >{hero.lead}</textarea
+          >
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Aviso e revisão</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="note_text">Texto do aviso</label>
+          <textarea class="textarea" id="note_text" name="note_text" rows="3"
+            >{noteText}</textarea
+          >
+        </div>
+        <div class="field">
+          <label class="label" for="updated_at">Data da última atualização</label>
+          <input class="input" id="updated_at" name="updated_at" value={updatedAt} />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="pagina-config">
+      <div class="panel__head">
+        <h2 class="panel__title">Configurações da página</h2>
+      </div>
+      <div class="panel__body">
+        <p class="muted small">
+          As {sections.length} seções numeradas (título, texto e ordem) ficam no{' '}
+          <a href="/admin/editor/politica">Editor Visual</a> — selecione, edite, reordene, duplique
+          ou exclua como qualquer outra lista do site.
+        </p>
+        <p class="muted small" style="margin-top: var(--sp-3)">
+          Cores e fundo desta página ficam em{' '}
+          <a href="/admin/editor/politica/aparencia"
+            >Editor Visual → Política de Privacidade → Aparência</a
+          >.
+        </p>
+      </div>
+    </section>
+
+    <div class="cluster standalone-foot">
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} />
+        Salvar conteúdo
+      </button>
+    </div>
+  </form>
+</AdminLayout>
+
+<style>
+  .stack-panels {
+    display: grid;
+    gap: var(--sp-5);
+  }
+</style>
