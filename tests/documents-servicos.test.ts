@@ -334,6 +334,7 @@ describe('moldura de Serviços grava só na tabela pages, nunca em services', ()
 
 describe('a grade de serviços continua vindo da tabela `services`', () => {
   const base: Service = {
+    id: 1,
     slug: 'exemplo',
     name: 'Serviço de exemplo',
     shortName: 'Exemplo',
