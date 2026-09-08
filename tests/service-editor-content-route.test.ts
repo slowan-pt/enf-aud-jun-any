@@ -314,3 +314,158 @@ describe('duplicar/excluir destaques via a rota real', () => {
     expect(highlights[0].id).toBe('h2');
   });
 });
+
+describe('elemento livre: inserir, mover entre seções, camadas', () => {
+  it('overlay-add insere na seção pedida', async () => {
+    await postOps([
+      {
+        op: 'overlay-add',
+        overlay: { id: 'ov-1', section: 'highlights', kind: 'shape', content: 'rect' },
+      },
+    ]);
+    const overlays = JSON.parse(row.editor_json!).overlays;
+    expect(overlays).toHaveLength(1);
+    expect(overlays[0].section).toBe('highlights');
+  });
+
+  it('overlay-move-section transfere para outra seção, preservando o elemento (não duplica, não perde dados)', async () => {
+    row.editor_json = JSON.stringify({
+      v: 1,
+      pageStyle: { brandColor: '', accentColor: '', backgroundColor: '', headingColor: '' },
+      sectionStyles: {
+        highlights: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        content: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        form: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        others: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+      },
+      sectionOrder: ['highlights', 'content', 'form', 'others'],
+      hiddenSections: [],
+      layouts: {},
+      overlays: [
+        {
+          id: 'ov-1',
+          section: 'highlights',
+          kind: 'shape',
+          content: 'rect',
+          alt: '',
+          desktop: {
+            v: 2,
+            x: 5,
+            y: 5,
+            w: 10,
+            h: 10,
+            z: 0,
+            fontSize: 0,
+            color: '',
+            align: '',
+            weight: 0,
+            r: 0,
+            locked: false,
+            hidden: false,
+            label: '',
+            opacity: 100,
+          },
+          mobile: null,
+          text: '',
+          fill: '',
+          stroke: '',
+          strokeWidth: 0,
+          href: '',
+          linkTarget: '_self',
+        },
+      ],
+    });
+
+    await postOps([
+      {
+        op: 'overlay-move-section',
+        id: 'ov-1',
+        to: 'form',
+        device: 'desktop',
+        layout: {
+          v: 2,
+          x: 40,
+          y: 40,
+          w: 10,
+          h: 10,
+          z: 0,
+          fontSize: 0,
+          color: '',
+          align: '',
+          weight: 0,
+          r: 0,
+          locked: false,
+          hidden: false,
+          label: '',
+          opacity: 100,
+        },
+      },
+    ]);
+
+    const overlays = JSON.parse(row.editor_json!).overlays;
+    expect(overlays).toHaveLength(1); // não duplicou
+    expect(overlays[0].section).toBe('form'); // transferido
+    expect(overlays[0].desktop.x).toBe(40); // nova posição na seção de destino
+    expect(overlays[0].kind).toBe('shape'); // conteúdo preservado
+  });
+
+  it('overlay-move-section para uma seção que não existe neste serviço é rejeitado', async () => {
+    row.editor_json = JSON.stringify({
+      v: 1,
+      pageStyle: { brandColor: '', accentColor: '', backgroundColor: '', headingColor: '' },
+      sectionStyles: {
+        highlights: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        content: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        form: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+        others: { bg: '', text: '', image: '', overlay: '', minHeight: '', paddingY: '' },
+      },
+      sectionOrder: ['highlights', 'content', 'form', 'others'],
+      hiddenSections: [],
+      layouts: {},
+      overlays: [
+        {
+          id: 'ov-1',
+          section: 'highlights',
+          kind: 'shape',
+          content: 'rect',
+          alt: '',
+          desktop: {
+            v: 2,
+            x: 5,
+            y: 5,
+            w: 10,
+            h: 10,
+            z: 0,
+            fontSize: 0,
+            color: '',
+            align: '',
+            weight: 0,
+            r: 0,
+            locked: false,
+            hidden: false,
+            label: '',
+            opacity: 100,
+          },
+          mobile: null,
+          text: '',
+          fill: '',
+          stroke: '',
+          strokeWidth: 0,
+          href: '',
+          linkTarget: '_self',
+        },
+      ],
+    });
+    const res = await postOps([
+      {
+        op: 'overlay-move-section',
+        id: 'ov-1',
+        to: 'list', // seção da MOLDURA de Serviços, não deste serviço individual
+        device: 'desktop',
+        layout: { v: 2, x: 0, y: 0, w: 0, h: 0, z: 0, fontSize: 0, color: '', align: '', weight: 0, r: 0, locked: false, hidden: false, label: '', opacity: 100 },
+      },
+    ]);
+    expect(res.status).toBe(422);
+    expect(JSON.parse(row.editor_json!).overlays[0].section).toBe('highlights'); // não mudou
+  });
+});
