@@ -150,6 +150,134 @@ export async function slugExists(db: D1Database, slug: string): Promise<boolean>
   return Boolean(row);
 }
 
+export interface ServiceCreateInput {
+  slug: string;
+  name: string;
+  shortName: string;
+  icon: string;
+  summary: string;
+  heroTitle: string;
+  heroLead: string;
+  image: string;
+  imageAlt: string;
+  intro: string[];
+  highlights: ServiceHighlight[];
+  blocks: ServiceBlock[];
+  deliverables: string[];
+  audience: string[];
+  whatsappMessage: string;
+  seoTitle: string;
+  seoDescription: string;
+  /** Sempre 'draft' na criação em branco — só uma duplicata explícita decide isso; nunca publica sozinho. */
+  status: 'draft' | 'published' | 'archived';
+  featured: boolean;
+}
+
+/** Sempre entra no fim da lista (maior `display_order` + 1) — nunca reordena os demais. */
+export async function createService(
+  db: D1Database,
+  input: ServiceCreateInput,
+  userId?: number
+): Promise<number> {
+  const maxOrderRow = await db
+    .prepare(`SELECT COALESCE(MAX(display_order), -1) AS maxOrder FROM services`)
+    .first<{ maxOrder: number }>();
+  const nextOrder = (maxOrderRow?.maxOrder ?? -1) + 1;
+
+  const content: ServiceContentJson = {
+    image: input.image,
+    imageAlt: input.imageAlt,
+    intro: input.intro,
+    highlights: input.highlights,
+    blocks: input.blocks,
+    deliverables: input.deliverables,
+    audience: input.audience,
+  };
+
+  const result = await db
+    .prepare(
+      `INSERT INTO services (
+        slug, name, short_name, display_order, featured, status, icon, summary,
+        hero_title, hero_lead, content_json, whatsapp_message, seo_title,
+        seo_description, created_by, updated_by
+      ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?15)`
+    )
+    .bind(
+      input.slug,
+      input.name,
+      input.shortName,
+      nextOrder,
+      input.featured ? 1 : 0,
+      input.status,
+      input.icon,
+      input.summary,
+      input.heroTitle,
+      input.heroLead,
+      JSON.stringify(content),
+      input.whatsappMessage,
+      input.seoTitle,
+      input.seoDescription,
+      userId ?? null
+    )
+    .run();
+
+  return Number(result.meta.last_row_id);
+}
+
+/**
+ * Duplica um serviço: cria uma cópia independente sempre como rascunho —
+ * nunca publica uma cópia automaticamente. O slug da cópia nunca colide com
+ * o original nem com nenhum outro serviço; `editor_json` (Aparência) nunca é
+ * copiado, a cópia começa 100% herdada, como qualquer serviço novo.
+ */
+export async function duplicateService(
+  db: D1Database,
+  slug: string,
+  userId?: number
+): Promise<string | null> {
+  const original = await db
+    .prepare('SELECT * FROM services WHERE slug = ?1 AND deleted_at IS NULL')
+    .bind(slug)
+    .first<ServiceRow>();
+  if (!original) return null;
+  const existing = rowToService(original);
+
+  let candidate = `${existing.slug}-copia`;
+  let suffix = 2;
+  while (await slugExists(db, candidate)) {
+    candidate = `${existing.slug}-copia-${suffix}`;
+    suffix += 1;
+  }
+
+  await createService(
+    db,
+    {
+      slug: candidate,
+      name: `${existing.name} (cópia)`,
+      shortName: existing.shortName,
+      icon: existing.icon,
+      summary: existing.summary,
+      heroTitle: existing.heroTitle,
+      heroLead: existing.heroLead,
+      image: existing.image,
+      imageAlt: existing.imageAlt,
+      intro: existing.intro,
+      highlights: existing.highlights,
+      blocks: existing.blocks,
+      deliverables: existing.deliverables,
+      audience: existing.audience,
+      whatsappMessage: existing.whatsappMessage,
+      seoTitle: existing.seo.title,
+      seoDescription: existing.seo.description,
+      status: 'draft',
+      featured: false,
+    },
+    userId
+  );
+
+  return candidate;
+}
+
 /** Identidade estável usada pelo Editor Visual — ver comentário em `Service.id`. */
 export function findById(services: Service[], id: number): Service | undefined {
   return services.find((s) => s.id === id);

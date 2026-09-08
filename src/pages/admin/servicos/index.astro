@@ -2,7 +2,12 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
-import { findBySlug, updateService, type Service } from '../../../lib/services';
+import {
+  findBySlug,
+  updateService,
+  duplicateService,
+  type Service,
+} from '../../../lib/services';
 
 const statusLabel: Record<Service['status'], string> = {
   published: 'Publicado',
@@ -18,7 +23,24 @@ const statusTone: Record<Service['status'], string> = {
 if (Astro.request.method === 'POST') {
   const db = getDB();
   const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? 'archive');
   const slug = String(form.get('slug'));
+
+  if (action === 'duplicate') {
+    const newSlug = await duplicateService(db, slug, Astro.locals.user?.id);
+    if (newSlug) {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'service.duplicate',
+        target: `Serviço: ${slug} → ${newSlug}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+      return Astro.redirect(`/admin/servicos/${newSlug}`);
+    }
+    return Astro.redirect('/admin/servicos');
+  }
+
   const existing = findBySlug(Astro.locals.services, slug);
   if (existing) {
     await updateService(
@@ -71,14 +93,10 @@ function formatDate(iso: string): string {
   active="/admin/servicos"
 >
   <div slot="actions">
-    <button
-      type="button"
-      class="btn btn--sm"
-      data-toast-trigger="Criação de serviço será liberada na Etapa 2."
-    >
+    <a href="/admin/servicos/nova" class="btn btn--sm">
       <Icon name="plus" size={16} />
       Novo serviço
-    </button>
+    </a>
   </div>
 
   <section class="panel">
@@ -173,9 +191,17 @@ function formatDate(iso: string): string {
                     >
                       <Icon name="eye" size={16} />
                     </a>
+                    <form method="post" style="display:contents">
+                      <input type="hidden" name="slug" value={service.slug} />
+                      <input type="hidden" name="_action" value="duplicate" />
+                      <button type="submit" class="row-btn" aria-label="Duplicar">
+                        <Icon name="copy" size={16} />
+                      </button>
+                    </form>
                     {service.status !== 'archived' && (
                       <form method="post" style="display:contents">
                         <input type="hidden" name="slug" value={service.slug} />
+                        <input type="hidden" name="_action" value="archive" />
                         <button
                           type="submit"
                           class="row-btn row-btn--danger"

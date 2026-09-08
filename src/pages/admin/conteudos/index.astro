@@ -2,15 +2,23 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
-import { listPosts, archivePost, formatDateShort, type Post } from '../../../lib/posts';
+import {
+  listPosts,
+  archivePost,
+  duplicatePost,
+  formatDateShort,
+  type Post,
+} from '../../../lib/posts';
 import { listCategories } from '../../../lib/categories';
 
 const db = getDB();
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? 'archive');
   const slug = String(form.get('slug') ?? '');
-  if (slug) {
+
+  if (slug && action === 'archive') {
     await archivePost(db, slug);
     await writeAuditLog(db, {
       userId: Astro.locals.user?.id,
@@ -19,7 +27,23 @@ if (Astro.request.method === 'POST') {
       target: `Matéria: ${slug}`,
       ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
     });
+    return Astro.redirect('/admin/conteudos');
   }
+
+  if (slug && action === 'duplicate') {
+    const newSlug = await duplicatePost(db, slug, Astro.locals.user?.id);
+    if (newSlug) {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'post.duplicate',
+        target: `Matéria: ${slug} → ${newSlug}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+      return Astro.redirect(`/admin/conteudos/${newSlug}`);
+    }
+  }
+
   return Astro.redirect('/admin/conteudos');
 }
 
@@ -138,9 +162,17 @@ const statusTone: Record<Post['status'], string> = {
                     >
                       <Icon name="eye" size={16} />
                     </a>
+                    <form method="post" style="display:contents">
+                      <input type="hidden" name="slug" value={post.slug} />
+                      <input type="hidden" name="_action" value="duplicate" />
+                      <button type="submit" class="row-btn" aria-label="Duplicar">
+                        <Icon name="copy" size={16} />
+                      </button>
+                    </form>
                     {post.status !== 'archived' && (
                       <form method="post" style="display:contents">
                         <input type="hidden" name="slug" value={post.slug} />
+                        <input type="hidden" name="_action" value="archive" />
                         <button
                           type="submit"
                           class="row-btn row-btn--danger"

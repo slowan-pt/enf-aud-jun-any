@@ -231,6 +231,52 @@ export async function archivePost(db: D1Database, slug: string): Promise<void> {
     .run();
 }
 
+/**
+ * Duplica uma matéria: cria uma cópia independente (mesmo título, resumo,
+ * corpo, capa, categoria, autor) sempre como rascunho — nunca publica uma
+ * cópia automaticamente. O slug da cópia nunca colide com o original nem
+ * com nenhuma outra matéria; `editor_json` (Aparência) nunca é copiado, a
+ * cópia começa 100% herdada, como qualquer matéria nova.
+ */
+export async function duplicatePost(
+  db: D1Database,
+  slug: string,
+  userId?: number
+): Promise<string | null> {
+  const original = await getPost(db, slug);
+  if (!original) return null;
+
+  let candidate = `${original.slug}-copia`;
+  let suffix = 2;
+  while (await slugExists(db, candidate)) {
+    candidate = `${original.slug}-copia-${suffix}`;
+    suffix += 1;
+  }
+
+  await createPost(
+    db,
+    {
+      slug: candidate,
+      title: `${original.title} (cópia)`,
+      excerpt: original.excerpt,
+      categoryId: original.categoryId,
+      authorId: original.authorId,
+      status: 'draft',
+      featured: false,
+      coverUrl: original.cover,
+      coverAlt: original.coverAlt,
+      readingMinutes: original.readingMinutes,
+      body: original.body,
+      seoTitle: original.seo.title,
+      seoDescription: original.seo.description,
+      publishedAt: '',
+    },
+    userId
+  );
+
+  return candidate;
+}
+
 export function formatDate(iso: string): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-').map(Number);

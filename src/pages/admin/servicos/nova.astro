@@ -1,0 +1,128 @@
+---
+/**
+ * Criação de um novo serviço — informações básicas. Blocos, destaques,
+ * mídia e SEO completo são editados na tela seguinte (/admin/servicos/
+ * [slug]), o mesmo formulário usado para editar qualquer serviço existente.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import IconPicker from '../../../components/admin/IconPicker.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { createService, slugExists } from '../../../lib/services';
+import { slugify } from '../../../lib/urls';
+
+const db = getDB();
+let slugError = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const name = String(form.get('nome') ?? '').trim();
+  const slugInput = String(form.get('slug') ?? '').trim();
+  const slug = slugify(slugInput || name);
+  const summary = String(form.get('resumo') ?? '').trim();
+  const icon = String(form.get('icone') ?? 'stethoscope');
+
+  if (!name || !slug) {
+    slugError = 'Informe um nome válido.';
+  } else if (await slugExists(db, slug)) {
+    slugError = 'Já existe um serviço com esse slug.';
+  } else {
+    await createService(
+      db,
+      {
+        slug,
+        name,
+        shortName: name,
+        icon,
+        summary,
+        heroTitle: name,
+        heroLead: summary,
+        image: '',
+        imageAlt: '',
+        intro: summary ? [summary] : [],
+        highlights: [],
+        blocks: [],
+        deliverables: [],
+        audience: [],
+        whatsappMessage: '',
+        seoTitle: name,
+        seoDescription: summary,
+        status: 'draft',
+        featured: false,
+      },
+      Astro.locals.user?.id
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'service.create',
+      target: `Serviço: ${name}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect(`/admin/servicos/${slug}`);
+  }
+}
+---
+
+<AdminLayout
+  title="Novo serviço"
+  description="Crie o serviço com as informações básicas. Destaques, blocos e demais campos são editados na tela seguinte."
+  active="/admin/servicos"
+>
+  <div slot="actions">
+    <a href="/admin/servicos" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Voltar
+    </a>
+  </div>
+
+  {
+    slugError && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>{slugError}</span>
+      </div>
+    )
+  }
+
+  <section class="panel" style="max-width:640px">
+    <div class="panel__head">
+      <h2 class="panel__title">Novo serviço</h2>
+    </div>
+    <form class="panel__body stack" method="post">
+      <div class="field">
+        <label class="label" for="nome">Nome do serviço</label>
+        <input
+          class="input input--title"
+          id="nome"
+          name="nome"
+          placeholder="Ex.: Auditoria Concorrente"
+          required
+        />
+      </div>
+      <div class="field">
+        <label class="label" for="slug">Slug</label>
+        <input class="input" id="slug" name="slug" placeholder="gerado a partir do nome" />
+        <span class="hint">Deixe em branco para gerar a partir do nome.</span>
+      </div>
+      <div class="field">
+        <label class="label" for="resumo">Resumo (card e listagens)</label>
+        <textarea class="textarea" id="resumo" name="resumo" style="min-height:88px"></textarea>
+      </div>
+      <IconPicker name="icone" value="stethoscope" label="Ícone do serviço" />
+      <button type="submit" class="btn">
+        <Icon name="plus" size={16} />
+        Criar e continuar editando
+      </button>
+    </form>
+  </section>
+</AdminLayout>
+
+<style>
+  .input--title {
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    min-height: 52px;
+  }
+</style>
