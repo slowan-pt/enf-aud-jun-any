@@ -6,6 +6,13 @@ import cloudflare from '@astrojs/cloudflare';
 // ETAPA 2: output "server" no adapter Cloudflare. As páginas públicas continuam
 // pré-renderizadas (export const prerender = true em cada uma) — só /admin/* e
 // as rotas de API rodam no Worker, com D1/R2/Turnstile.
+//
+// ISOLATED_TEST_DB_DIR (só definida por `npm run dev:isolated`, nunca por
+// `npm run dev` normal): aponta o D1/R2/KV local para uma cópia separada em
+// vez de `.wrangler/state` — ver scripts/isolated-test-db.mjs. Sem essa
+// variável, o comportamento é exatamente o de sempre.
+const isolatedDbDir = process.env.ISOLATED_TEST_DB_DIR;
+
 export default defineConfig({
   site: 'https://essencialsaudeauditoria.com.br',
   output: 'server',
@@ -15,6 +22,7 @@ export default defineConfig({
   session: false,
   adapter: cloudflare({
     imageService: 'compile',
+    persistState: isolatedDbDir ? { path: isolatedDbDir } : undefined,
   }),
   trailingSlash: 'ignore',
   integrations: [

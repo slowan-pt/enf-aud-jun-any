@@ -20,8 +20,12 @@
     "test:watch": "vitest",
     "test:ui:snapshot": "node scripts/ui-test-db.mjs snapshot",
     "test:ui:restore": "node scripts/ui-test-db.mjs restore --last",
+    "dev:isolated": "node scripts/dev-isolated.mjs",
+    "test:ui:isolated:init": "node scripts/isolated-test-db.mjs init",
+    "test:ui:isolated:discard": "node scripts/isolated-test-db.mjs discard",
     "vendor": "node scripts/vendor-assets.mjs",
     "predev": "npm run vendor",
+    "predev:isolated": "npm run vendor",
     "prebuild": "npm run vendor",
     "pretest": "npm run vendor"
   },
