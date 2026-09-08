@@ -194,6 +194,13 @@ export interface ContatoOverrides {
   email: string;
   hours: string;
   address: string;
+  /**
+   * Mensagem pré-preenchida dos links de WhatsApp DESTA página — nunca a
+   * mensagem que o visitante digita no formulário de contato (isso não é
+   * salvo, é só o link `wa.me?text=...`). Vazio = herda
+   * `settings.whatsapp.defaultMessage`.
+   */
+  whatsappMessage: string;
 }
 
 export const EMPTY_CONTATO_OVERRIDES: ContatoOverrides = {
@@ -202,12 +209,14 @@ export const EMPTY_CONTATO_OVERRIDES: ContatoOverrides = {
   email: '',
   hours: '',
   address: '',
+  whatsappMessage: '',
 };
 
 // Exige o DDI 55: sem ele, o link tel:/wa.me (que sempre prefixa "+") sairia
 // com o código de país errado (ex.: "+61..." é a Austrália, não o DDD 61).
 const PHONE_DIGITS = /^55\d{10,11}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+const WHATSAPP_MESSAGE_MAX = 500;
 
 export function normalizeContatoOverrides(value: unknown): ContatoOverrides {
   const raw = (value ?? {}) as Record<string, unknown>;
@@ -221,6 +230,14 @@ export function normalizeContatoOverrides(value: unknown): ContatoOverrides {
     email: typeof raw.email === 'string' && EMAIL_RE.test(raw.email) ? raw.email.slice(0, 200) : '',
     hours: typeof raw.hours === 'string' ? raw.hours.slice(0, 200) : '',
     address: typeof raw.address === 'string' ? raw.address.slice(0, 500) : '',
+    // Só texto puro: tira espaço do início/fim (nunca do meio — quebras de
+    // linha internas fazem parte da mensagem) e corta num tamanho razoável.
+    // Nunca passa por HTML — vai direto para encodeURIComponent no link, e
+    // como texto simples em qualquer pré-visualização.
+    whatsappMessage:
+      typeof raw.whatsappMessage === 'string'
+        ? raw.whatsappMessage.trim().slice(0, WHATSAPP_MESSAGE_MAX)
+        : '',
   };
 }
 

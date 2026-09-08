@@ -59,6 +59,9 @@ const effectiveWhatsappDisplay = contactOverrides.whatsapp
   ? formatBrPhoneDisplay(contactOverrides.whatsapp)
   : company.phoneDisplay;
 const effectiveEmail = contactOverrides.email || company.email;
+// Mensagem pré-preenchida dos links de WhatsApp DESTA página — nunca a
+// mensagem que o visitante escreve no formulário (são dados diferentes).
+const effectiveWhatsappMessage = contactOverrides.whatsappMessage || whatsapp.defaultMessage;
 const effectiveHours = contactOverrides.hours || company.hours;
 const effectiveAddressLines = contactOverrides.address
   ? contactOverrides.address.split('\n').filter(Boolean)
@@ -84,7 +87,7 @@ const channels = [
     icon: 'whatsapp',
     title: 'WhatsApp',
     text: effectiveWhatsappDisplay,
-    href: waLink(effectiveWhatsappNumber, whatsapp.defaultMessage),
+    href: waLink(effectiveWhatsappNumber, effectiveWhatsappMessage),
     hint: 'Resposta em horário comercial',
     external: true,
   },
@@ -114,6 +117,7 @@ const channels = [
   jsonLd={[contactLd]}
   colorOverride={pageStyleOverride(pageStyle)}
   bodyClass="page-contato"
+  whatsappMessage={effectiveWhatsappMessage}
 >
   <div style="order:-1">
     <PageHero
@@ -219,7 +223,7 @@ const channels = [
           <h2 class="title-sm" data-edit="asideCtaTitle">{asideCtaTitle}</h2>
           <p data-edit="asideCtaText" data-edit-kind={ed('multiline')}>{asideCtaText}</p>
           <a
-            href={waLink(effectiveWhatsappNumber, whatsapp.defaultMessage)}
+            href={waLink(effectiveWhatsappNumber, effectiveWhatsappMessage)}
             class="btn btn--accent btn--block"
             target="_blank"
             rel="noopener"

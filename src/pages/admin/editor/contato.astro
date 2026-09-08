@@ -2603,7 +2603,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     );
 
     batch.forEach((operation) => {
-      queue.push(operation);
+      // Cópia ANTES de qualquer mutação: o que muda para virar o inverso
+      // (abaixo, só para 'layout'/'overlay-layout') é só para a pilha
+      // oposta — o que foi de fato aplicado agora é o que precisa ser salvo.
+      queue.push({ ...operation });
       if (operation.op === 'set') {
         const kind = operation.path.endsWith('.icon') ? 'icon' : 'text';
         const extra =
@@ -2644,6 +2647,32 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
         } else {
           layouts['overlay:' + operation.id].desktop = operation.layout as ElementLayout;
         }
+      }
+      // Desfazer/refazer mover, redimensionar ou girar (elemento existente ou
+      // livre) — sem isto, o dado fica certo (o próximo reload mostraria a
+      // posição desfeita), mas a pré-visualização ao vivo não muda nada, o
+      // que parece um desfazer que "não fez nada".
+      if (operation.op === 'layout' || operation.op === 'overlay-layout') {
+        const key = operation.op === 'layout' ? operation.path : 'overlay:' + operation.id;
+        layouts[key] = layouts[key] ?? { desktop: emptyLayout(), mobile: null };
+        const previous = operation.device === 'mobile' ? layouts[key].mobile : layouts[key].desktop;
+
+        if (operation.clear && operation.device === 'mobile') {
+          layouts[key].mobile = null;
+        } else if (operation.device === 'mobile') {
+          layouts[key].mobile = operation.layout as ElementLayout;
+        } else {
+          layouts[key].desktop = operation.layout as ElementLayout;
+        }
+        toFrame({ type: 'editor:layouts', layouts });
+
+        // O valor que esta operação acabou de substituir é exatamente o que
+        // a pilha OPOSTA precisa (ver `to.push(batch)` no fim da função) —
+        // sem isto, desfazer duas vezes ou refazer só reaplicava o mesmo
+        // estado (a pilha de refazer recebia uma cópia do que já tinha sido
+        // desfeito, em vez do estado seguinte).
+        operation.layout = previous ?? emptyLayout();
+        operation.clear = false;
       }
     });
     to.push(batch);

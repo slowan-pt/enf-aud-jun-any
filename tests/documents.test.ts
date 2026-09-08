@@ -15,6 +15,7 @@ describe('normalizeContatoOverrides', () => {
       email: '',
       hours: '',
       address: '',
+      whatsappMessage: '',
     });
   });
 
@@ -46,6 +47,27 @@ describe('normalizeContatoOverrides', () => {
     expect(normalizeContatoOverrides({ hours: 'Sáb, 9h-12h' }).hours).toBe('Sáb, 9h-12h');
     const longo = 'x'.repeat(1000);
     expect(normalizeContatoOverrides({ address: longo }).address.length).toBe(500);
+  });
+
+  it('mensagem do WhatsApp: vazia herda; texto tira só espaço das pontas', () => {
+    expect(normalizeContatoOverrides({}).whatsappMessage).toBe('');
+    expect(normalizeContatoOverrides({ whatsappMessage: '  Olá!  ' }).whatsappMessage).toBe(
+      'Olá!'
+    );
+  });
+
+  it('mensagem do WhatsApp preserva acentos, emoji e quebra de linha internas', () => {
+    const texto = 'Olá! 👋\nGostaria de saber mais sobre auditoria em saúde.';
+    expect(normalizeContatoOverrides({ whatsappMessage: texto }).whatsappMessage).toBe(texto);
+  });
+
+  it('mensagem do WhatsApp tem limite de tamanho e recusa tipo diferente de string', () => {
+    const longa = 'x'.repeat(1000);
+    expect(normalizeContatoOverrides({ whatsappMessage: longa }).whatsappMessage.length).toBe(
+      500
+    );
+    expect(normalizeContatoOverrides({ whatsappMessage: 12345 }).whatsappMessage).toBe('');
+    expect(normalizeContatoOverrides({ whatsappMessage: { a: 1 } }).whatsappMessage).toBe('');
   });
 });
 

@@ -50,6 +50,7 @@ if (Astro.request.method === 'POST') {
       email: overrideField('email'),
       hours: overrideField('hours'),
       address: overrideField('address'),
+      whatsappMessage: overrideField('whatsappMessage'),
     }),
   };
 
@@ -71,6 +72,7 @@ const { hero, formTitle, formDescription, asideCtaTitle, asideCtaText, privacyNo
 const { company, whatsapp } = Astro.locals.settings;
 const justSaved = Astro.url.searchParams.get('saved') === '1';
 
+const WHATSAPP_MESSAGE_MAX = 500;
 const globalAddress = [
   company.address.line1,
   company.address.line2,
@@ -276,6 +278,65 @@ const globalAddress = [
             <textarea class="textarea" name="address_value" rows="4">{contactOverrides.address}</textarea>
           </div>
         </div>
+
+        <div class="override-field" data-field="whatsappMessage">
+          <div class="override-field__head">
+            <label class="label" for="whatsappMessage_value">Mensagem padrão do WhatsApp</label>
+            <span class:list={['scope-badge', contactOverrides.whatsappMessage ? 'scope-badge--page' : 'scope-badge--inherited']}>
+              {contactOverrides.whatsappMessage ? 'Personalizada' : 'Herdada do global'}
+            </span>
+          </div>
+          <span class="hint">
+            Esse texto chega pré-preenchido quando alguém abre o WhatsApp por um link desta
+            página (cartão de WhatsApp, botão "Fale agora" e o CTA lateral). Padrão global:
+          </span>
+          <pre class="override-field__preview">{whatsapp.defaultMessage}</pre>
+          <div class="override-field__modes">
+            <label class="radio-pill">
+              <input
+                type="radio"
+                name="whatsappMessage_mode"
+                value="inherit"
+                checked={!contactOverrides.whatsappMessage}
+                data-mode-radio="whatsappMessage"
+              />
+              Usar padrão global
+            </label>
+            <label class="radio-pill">
+              <input
+                type="radio"
+                name="whatsappMessage_mode"
+                value="custom"
+                checked={Boolean(contactOverrides.whatsappMessage)}
+                data-mode-radio="whatsappMessage"
+              />
+              Personalizar nesta página
+            </label>
+          </div>
+          <div class="override-field__value" data-custom-row="whatsappMessage" hidden={!contactOverrides.whatsappMessage}>
+            <textarea
+              class="textarea"
+              id="whatsappMessage_value"
+              name="whatsappMessage_value"
+              rows="3"
+              maxlength={WHATSAPP_MESSAGE_MAX}
+              data-wa-message-input
+            >{contactOverrides.whatsappMessage}</textarea>
+            <div class="override-field__row">
+              <span class="hint" data-wa-message-counter>
+                {contactOverrides.whatsappMessage.length} / {WHATSAPP_MESSAGE_MAX}
+              </span>
+              <button type="button" class="btn btn--secondary btn--sm" data-wa-message-restore>
+                <Icon name="refresh" size={14} />
+                Restaurar mensagem padrão
+              </button>
+            </div>
+            <div class="override-field__preview-live">
+              <span class="hint">Pré-visualização:</span>
+              <p data-wa-message-preview>{contactOverrides.whatsappMessage || whatsapp.defaultMessage}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -344,6 +405,28 @@ const globalAddress = [
     white-space: pre-line;
   }
 
+  .override-field__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+  }
+
+  .override-field__preview-live {
+    margin-top: var(--sp-3);
+  }
+
+  .override-field__preview-live p {
+    margin: 0.25rem 0 0;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--c-accent-50);
+    border: 1px dashed var(--c-accent-300);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    white-space: pre-line;
+  }
+
   .radio-pill {
     display: inline-flex;
     align-items: center;
@@ -382,4 +465,34 @@ const globalAddress = [
       if (row) row.hidden = radio.value !== 'custom';
     });
   });
+
+  // Mensagem do WhatsApp: contador de caracteres, pré-visualização ao vivo
+  // e "Restaurar" — que só troca para "Usar padrão global" (o efeito de
+  // restaurar já é herdar; não existe um valor "padrão" gravado à parte).
+  const waField = document.querySelector<HTMLElement>('[data-field="whatsappMessage"]');
+  if (waField) {
+    const textarea = waField.querySelector<HTMLTextAreaElement>('[data-wa-message-input]');
+    const counter = waField.querySelector<HTMLElement>('[data-wa-message-counter]');
+    const preview = waField.querySelector<HTMLElement>('[data-wa-message-preview]');
+    const globalDefault = waField.querySelector<HTMLElement>('.override-field__preview')?.textContent ?? '';
+    const maxLen = textarea ? Number(textarea.maxLength) : 500;
+
+    const refresh = () => {
+      const value = textarea?.value ?? '';
+      if (counter) counter.textContent = `${value.length} / ${maxLen}`;
+      if (preview) preview.textContent = value || globalDefault;
+    };
+    textarea?.addEventListener('input', refresh);
+
+    waField.querySelector('[data-wa-message-restore]')?.addEventListener('click', () => {
+      const inheritRadio = waField.querySelector<HTMLInputElement>(
+        'input[name="whatsappMessage_mode"][value="inherit"]'
+      );
+      const row = waField.querySelector<HTMLElement>('[data-custom-row="whatsappMessage"]');
+      if (textarea) textarea.value = '';
+      if (inheritRadio) inheritRadio.checked = true;
+      if (row) row.hidden = true;
+      refresh();
+    });
+  }
 </script>

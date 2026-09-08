@@ -51,6 +51,14 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
   data-edit-kind={ed('form')}
   data-edit-label={ed('Formulário de contato')}
 >
+  {
+    edit && (
+      <div class="form-drag-handle" data-form-handle title="Arrastar para mover o formulário">
+        <Icon name="pointer" size={14} />
+        Mover formulário
+      </div>
+    )
+  }
   <div class="formwrap__head">
     <h2 class="title-sm">{title}</h2>
     {description && <p class="muted small">{description}</p>}
@@ -320,11 +328,37 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
 <style>
   .formwrap {
+    position: relative;
     background: var(--c-white);
     border: 1px solid var(--line);
     border-radius: var(--r-lg);
     padding: clamp(1.25rem, 3vw, 2.25rem);
     box-shadow: var(--shadow-sm);
+  }
+
+  /* Só existe em modo de edição (ver `edit` em ContactForm.astro) — nunca
+     no site público. Único ponto de onde o Editor Visual arrasta o bloco
+     inteiro; o resto do formulário continua reservado aos próprios campos. */
+  .form-drag-handle {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: var(--r-pill);
+    background: var(--c-brand-600);
+    color: #fff;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    cursor: move;
+    touch-action: none;
+    z-index: 5;
+    box-shadow: var(--shadow-sm);
+    user-select: none;
   }
 
   .formwrap__head {

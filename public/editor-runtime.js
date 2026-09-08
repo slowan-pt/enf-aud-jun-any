@@ -205,8 +205,18 @@
     var section = sectionOf(element);
     var sectionCenter = section ? section.getBoundingClientRect() : null;
 
+    // Bloco funcional (ex.: formulário de contato): arrasta só pela alça
+    // própria (`data-form-handle`, visível apenas no editor — ver
+    // ContactForm.astro), nunca pelo conteúdo. `dragTarget` é a opção do
+    // próprio Moveable para isso: o gesto de arraste é ouvido na alça, mas
+    // quem se move continua sendo `target`. Isso resolve de raiz o problema
+    // de arrastar por "espaço vazio" dentro de um bloco cheio de campos —
+    // não depende de adivinhar quais áreas são "realmente vazias".
+    var formHandle = kindOf(element) === 'form' ? element.querySelector('[data-form-handle]') : null;
+
     moveable = new window.Moveable(document.body, {
       target: element,
+      dragTarget: formHandle || undefined,
       draggable: true,
       resizable: true,
       rotatable: true,
@@ -216,10 +226,10 @@
       keepRatio: false,
       throttleDrag: 0,
       throttleResize: 0,
-      // Bloco funcional (ex.: formulário de contato): sem isto, o próprio
-      // Moveable intercepta o mousedown num <input>/<textarea> como início
-      // de arrasto, e o campo nunca recebe foco. Não cobre <select> — esse
-      // caso é tratado à parte, num mousedown-capture no document (abaixo).
+      // Ainda útil como defesa complementar (ex.: se o alvo do arrasto cair
+      // de volta no padrão por algum motivo) — não intercepta mousedown num
+      // <input>/<textarea>/contentEditable. Não cobre <select>; esse caso
+      // já tem a guarda própria de mousedown-capture no document, abaixo.
       checkInput: kindOf(element) === 'form',
       elementGuidelines: guidelinesFor(element),
       horizontalGuidelines: sectionCenter ? [sectionCenter.top + sectionCenter.height / 2] : [],
@@ -695,7 +705,13 @@
     function (event) {
       var formBlock = event.target.closest && event.target.closest('[data-edit-kind="form"]');
       if (!formBlock) return;
-      var control = event.target.closest('select, input, textarea, label');
+      // `label:has(input)` — não qualquer `<label>`. Um rótulo comum (ex.:
+      // "Nome completo" acima de um campo) só tem `for`, não ENVOLVE o
+      // input; bloquear nele também apagaria a maior parte da área visível
+      // do formulário como superfície de arrasto, que era exatamente o
+      // defeito relatado ("não arrasta pelo espaço vazio"). Só a label da
+      // caixa de consentimento (que envolve o checkbox) precisa da guarda.
+      var control = event.target.closest('select, input, textarea, label:has(input)');
       if (control) event.stopPropagation();
     },
     true
@@ -736,7 +752,8 @@
       // movê-lo), mas nunca à custa do próprio campo — bloquear o clique
       // aqui cancelaria o toggle nativo de uma checkbox/radio, por exemplo.
       var formControl =
-        kindOf(target) === 'form' && event.target.closest('input, textarea, select, label');
+        kindOf(target) === 'form' &&
+        event.target.closest('input, textarea, select, label:has(input)');
 
       if (target !== selected && !formControl) {
         event.preventDefault();
@@ -756,7 +773,10 @@
       // Duplo clique num campo de um bloco de formulário é seleção nativa
       // de palavra (input/textarea) ou abre o <select> — nunca "entrar em
       // edição de texto do bloco".
-      if (kindOf(target) === 'form' && event.target.closest('input, textarea, select, label')) {
+      if (
+        kindOf(target) === 'form' &&
+        event.target.closest('input, textarea, select, label:has(input)')
+      ) {
         return;
       }
 
