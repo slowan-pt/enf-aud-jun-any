@@ -72,33 +72,16 @@ export const social: SocialLink[] = [
   { label: 'Instagram', href: '#', icon: 'instagram', enabled: false },
 ];
 
+/**
+ * O item "Serviços" aqui não leva `children` — o submenu real é montado em
+ * Header.astro a partir da tabela `services` (Astro.locals.services), nunca
+ * de uma lista estática: um serviço criado, renomeado ou arquivado pelo
+ * painel precisa aparecer/sumir do menu sem editar código.
+ */
 export const mainNav: NavItem[] = [
   { label: 'Início', href: '/' },
   { label: 'Quem Somos', href: '/quem-somos' },
-  {
-    label: 'Serviços',
-    href: '/servicos',
-    children: [
-      { label: 'Auditoria Concorrente', href: '/servicos/auditoria-concorrente' },
-      {
-        label: 'Auditoria de Contas Hospitalares',
-        href: '/servicos/auditoria-de-contas-hospitalares',
-      },
-      {
-        label: 'Gestão da Jornada do Paciente',
-        href: '/servicos/gestao-da-jornada-do-paciente',
-      },
-      { label: 'Gestão Hospitalar', href: '/servicos/gestao-hospitalar' },
-      {
-        label: 'Qualificação da Rede Prestadora',
-        href: '/servicos/qualificacao-da-rede-prestadora',
-      },
-      {
-        label: 'Segurança e Qualidade Assistencial',
-        href: '/servicos/seguranca-e-qualidade-assistencial',
-      },
-    ],
-  },
+  { label: 'Serviços', href: '/servicos' },
   { label: 'Conteúdos', href: '/conteudos' },
   { label: 'Contato', href: '/contato' },
 ];

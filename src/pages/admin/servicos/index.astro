@@ -146,9 +146,13 @@ function formatDate(iso: string): string {
                 </td>
                 <td>
                   <div class="cell-service">
-                    <span class="icon-badge icon-badge--sm">
-                      <Icon name={service.icon} size={16} />
-                    </span>
+                    {service.image ? (
+                      <img src={service.image} alt="" width="56" height="42" loading="lazy" />
+                    ) : (
+                      <span class="icon-badge icon-badge--sm">
+                        <Icon name={service.icon} size={16} />
+                      </span>
+                    )}
                     <div>
                       <a class="table__main" href={`/admin/servicos/${service.slug}`}>
                         {service.name}
@@ -242,6 +246,15 @@ function formatDate(iso: string): string {
     align-items: center;
     gap: var(--sp-3);
     min-width: 260px;
+  }
+
+  .cell-service img {
+    width: 56px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: var(--r-xs);
+    border: 1px solid var(--line);
+    flex: none;
   }
 
   .order {

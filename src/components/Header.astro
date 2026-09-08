@@ -2,6 +2,7 @@
 import Logo from './Logo.astro';
 import Icon from './Icon.astro';
 import { mainNav, headerCta, waLink } from '../data/site';
+import { publishedOnly } from '../lib/services';
 
 const { company, whatsapp } = Astro.locals.settings;
 const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
@@ -10,6 +11,22 @@ function isActive(href: string): boolean {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+// O submenu de Serviços vem da tabela `services` (nunca da lista estática de
+// src/data/site.ts) — um serviço criado, renomeado ou arquivado pelo painel
+// aparece/some aqui automaticamente, sem editar código.
+const publishedServices = publishedOnly(Astro.locals.services);
+const nav = mainNav.map((item) =>
+  item.label === 'Serviços'
+    ? {
+        ...item,
+        children: publishedServices.map((service) => ({
+          label: service.shortName || service.name,
+          href: `/servicos/${service.slug}`,
+        })),
+      }
+    : item
+);
 ---
 
 <header class="site-header" id="site-header" data-header>
@@ -46,7 +63,7 @@ function isActive(href: string): boolean {
       <nav class="nav" aria-label="Navegação principal">
         <ul class="nav__list">
           {
-            mainNav.map((item) =>
+            nav.map((item) =>
               item.children ? (
                 <li class="nav__item nav__item--has-menu">
                   <button
@@ -138,7 +155,7 @@ function isActive(href: string): boolean {
     <nav class="drawer__nav" aria-label="Navegação principal (mobile)">
       <ul class="drawer__list">
         {
-          mainNav.map((item) =>
+          nav.map((item) =>
             item.children ? (
               <li class="drawer__group">
                 <button
