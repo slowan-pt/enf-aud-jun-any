@@ -4,18 +4,28 @@ import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Icon from '../../components/Icon.astro';
 import PostCard from '../../components/PostCard.astro';
 import CtaBand from '../../components/CtaBand.astro';
+import SectionOverlays from '../../components/SectionOverlays.astro';
 import { getDB } from '../../lib/db';
 import { publishedOnly, formatDate } from '../../lib/posts';
 import { getAuthor } from '../../lib/authors';
+import { getPostEditorContent } from '../../lib/post-editor';
+import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib/pages';
+import type { SectionStyle } from '../../lib/pages';
 import { seo } from '../../data/site';
 
 const { company } = Astro.locals.settings;
 const post = Astro.locals.posts.find((p) => p.slug === Astro.params.slug);
 if (!post || post.status !== 'published') return Astro.rewrite('/404');
+
+// Atributos usados só pelo editor não vão para o HTML de quem visita o site
+// — mesma regra da Home (ver src/pages/index.astro).
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 const category = post.categoryName
   ? { name: post.categoryName, slug: post.categorySlug }
   : null;
-const author = post.authorId ? await getAuthor(getDB(), post.authorId) : null;
+const db = getDB();
+const author = post.authorId ? await getAuthor(db, post.authorId) : null;
 const related = publishedOnly(Astro.locals.posts)
   .filter((item) => item.slug !== post.slug)
   .sort((a, b) => {
@@ -24,6 +34,30 @@ const related = publishedOnly(Astro.locals.posts)
     return aScore - bScore;
   })
   .slice(0, 3);
+
+const {
+  pageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+  imageStyle,
+} = await getPostEditorContent(db, post.id);
+
+const layoutCss = layoutStylesheet(layouts, overlays);
+const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
+
+const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
+const secClass = (key: string) =>
+  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
+
+const slotOf = new Map<string, number>();
+sectionOrder.forEach((key, index) => slotOf.set(key, index));
+const secStyle = (key: string, style: SectionStyle) =>
+  [sectionStyleAttr(style), `order:${slotOf.get(key) ?? 0}`].filter(Boolean).join(';');
+
+const coverStyle = `object-fit:${imageStyle.fit};object-position:${imageStyle.posX}% ${imageStyle.posY}%`;
 
 const url = new URL(`/conteudos/${post.slug}`, seo.siteUrl).href;
 
@@ -55,8 +89,10 @@ const headings = post.body.filter((block) => block.type === 'h2');
   modifiedTime={post.updatedAt}
   jsonLd={[articleLd]}
   whatsappMessage={`Olá! Vim pelo conteúdo "${post.title}" no site da Essencial Saúde e gostaria de saber mais.`}
+  colorOverride={pageStyleOverride(pageStyle)}
+  bodyClass="page-materia"
 >
-  <article class="article">
+  <div style="order:-1">
     <header class="article__head">
       <div class="container container--narrow">
         <Breadcrumbs
@@ -87,10 +123,15 @@ const headings = post.body.filter((block) => block.type === 'h2');
           height="900"
           loading="eager"
           decoding="async"
+          data-edit="cover"
+          data-edit-kind={ed('image')}
+          style={coverStyle}
         />
       </figure>
     </div>
+  </div>
 
+  <article class="article" data-section="body" style={secStyle('body', sectionStyles.body)}>
     <div class="container article__layout">
       <aside class="article__aside">
         {
@@ -206,9 +247,14 @@ const headings = post.body.filter((block) => block.type === 'h2');
         }
       </div>
     </div>
+    <SectionOverlays overlays={overlays} section="body" />
   </article>
 
-  <section class="section section--subtle">
+  <section
+    class:list={['section section--subtle', secClass('related')]}
+    data-section="related"
+    style={secStyle('related', sectionStyles.related)}
+  >
     <div class="container">
       <div class="section-head" data-reveal>
         <p class="eyebrow">Continue lendo</p>
@@ -217,6 +263,7 @@ const headings = post.body.filter((block) => block.type === 'h2');
       <div class="grid grid--3">
         {related.map((item) => <PostCard post={item} />)}
       </div>
+      <SectionOverlays overlays={overlays} section="related" />
     </div>
   </section>
 
@@ -225,7 +272,40 @@ const headings = post.body.filter((block) => block.type === 'h2');
     title="Quer aplicar isso na sua operação?"
     text="Converse com nossa equipe técnica sobre auditoria, gestão hospitalar e segurança assistencial."
   />
+
+  {layoutCss && <style is:inline set:html={layoutCss} />}
+
+  {
+    editMode && (
+      <>
+        <script is:inline src="/vendor/moveable.min.js" />
+        <script is:inline src="/editor-runtime.js" />
+      </>
+    )
+  }
 </BaseLayout>
+
+<style is:global>
+  /* Mesma base da Home/Quem Somos: `container-type` faz o `cqw` dos
+     elementos livres/formas resolver contra a LARGURA DA SEÇÃO. */
+  body.page-materia main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.page-materia main > * {
+    position: relative;
+    container-type: inline-size;
+  }
+
+  .is-section-off {
+    display: none;
+  }
+
+  .is-section-off-preview {
+    opacity: 0.35;
+  }
+</style>
 
 <style>
   .article__head {

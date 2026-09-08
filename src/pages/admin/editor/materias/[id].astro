@@ -1,79 +1,47 @@
 ---
 /**
- * Editor visual de UM serviço individual (/servicos/[slug]).
+ * Editor visual de UMA matéria individual (/conteudos/[slug]).
  *
  * Mesma moldura de sempre (ver src/pages/admin/editor/home.astro) — o
- * runtime de edição (`public/editor-runtime.js`) é genérico. Diferença
- * central: as operações de TEXTO (`set`/`reorder`/`duplicate`/`remove`)
- * gravam nas colunas reais de `services` (mesma função do CRUD
- * tradicional); só posição/cores/elementos livres vão para
- * `services.editor_json`. Ver src/pages/admin/api/service-editor-content.ts.
+ * runtime de edição já é genérico. Diferente de Serviços: uma matéria não
+ * tem lista de conteúdo editável por canvas (título, resumo, corpo e SEO
+ * continuam só no formulário de Conteúdo → Matérias) — aqui só existem
+ * operações de APARÊNCIA/LAYOUT, sempre em `posts.editor_json`. Ver
+ * src/pages/admin/api/post-editor-content.ts.
  *
- * Identidade pelo `id` (nunca o slug) — ver comentário em `Service.id`: o
- * slug pode mudar sem quebrar o link com a Aparência já configurada.
+ * Identidade pelo `id` (nunca o slug) — o slug pode mudar sem quebrar o
+ * link com a Aparência já configurada.
  */
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import Icon from '../../../../components/Icon.astro';
 import { getDB } from '../../../../lib/db';
-import { getServiceById, updateServiceContentAndEditorJson } from '../../../../lib/services';
-import { getServiceEditorContent, SERVICE_SECTION_KEYS } from '../../../../lib/service-editor';
-import { migrateServiceItemIds } from '../../../../lib/service-item-ids';
+import { getPostById } from '../../../../lib/posts';
+import { getPostEditorContent, POST_SECTION_KEYS } from '../../../../lib/post-editor';
 import { iconPaths } from '../../../../data/icons';
 
-const serviceId = Number(Astro.params.id);
-if (!Number.isInteger(serviceId) || serviceId <= 0) return Astro.rewrite('/404');
+const postId = Number(Astro.params.id);
+if (!Number.isInteger(postId) || postId <= 0) return Astro.rewrite('/404');
 
 const db = getDB();
-const service = await getServiceById(db, serviceId);
-if (!service) return Astro.rewrite('/404');
+const post = await getPostById(db, postId);
+if (!post) return Astro.rewrite('/404');
 
-let content = await getServiceEditorContent(db, serviceId);
-
-/**
- * Abrir o Editor Visual é a "operação segura de edição" em que ids de
- * destaques/blocos antigos (salvos por índice) são materializados e as
- * chaves de layout correspondentes migradas — nunca ao abrir a página
- * PÚBLICA (/servicos/[slug], que só lê). Idempotente: se nada precisa
- * mudar, não grava nada (não gera id novo a cada carregamento). Quando
- * precisa, grava content_json + editor_json juntos, na mesma instrução SQL.
- */
-const migration = migrateServiceItemIds(service.highlights, service.blocks, content);
-if (migration.changed) {
-  service.highlights = migration.highlights;
-  service.blocks = migration.blocks;
-  content = { ...content, layouts: migration.layouts };
-  await updateServiceContentAndEditorJson(
-    db,
-    serviceId,
-    {
-      image: service.image,
-      imageAlt: service.imageAlt,
-      intro: service.intro,
-      highlights: service.highlights,
-      blocks: service.blocks,
-      deliverables: service.deliverables,
-      audience: service.audience,
-    },
-    JSON.stringify(content)
-  );
-}
+const content = await getPostEditorContent(db, postId);
 
 const SECTION_LABELS: Record<string, string> = {
-  highlights: 'Destaques',
-  content: 'Conteúdo e barra lateral',
-  form: 'Formulário',
-  others: 'Outros serviços',
+  body: 'Corpo do texto',
+  related: 'Conteúdos relacionados',
 };
 
 const bootstrap = {
-  serviceId,
+  postId,
   sectionOrder: content.sectionOrder,
   hiddenSections: content.hiddenSections,
   layouts: content.layouts,
   overlays: content.overlays,
   sectionStyles: content.sectionStyles,
   labels: SECTION_LABELS,
-  keys: SERVICE_SECTION_KEYS,
+  keys: POST_SECTION_KEYS,
   icons: iconPaths,
   imageStyle: content.imageStyle,
 };
@@ -83,23 +51,20 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
 ---
 
 <AdminLayout
-  title={`Editor visual — ${service.name}`}
+  title={`Editor visual — ${post.title}`}
   description="Clique em qualquer elemento da página para editar no lugar."
   active="/admin/editor"
 >
   <div slot="actions">
-    <a href="/admin/editor/servicos" class="btn btn--ghost btn--sm">
+    <a href="/admin/editor/materias" class="btn btn--ghost btn--sm">
       <Icon name="arrow-left" size={16} />
-      Serviços
+      Matérias
     </a>
-    <a
-      href={`/admin/editor/servicos/${service.id}/aparencia`}
-      class="btn btn--secondary btn--sm"
-    >
+    <a href={`/admin/editor/materias/${post.id}/aparencia`} class="btn btn--secondary btn--sm">
       <Icon name="palette" size={16} />
       Aparência
     </a>
-    <a href={`/admin/servicos/${service.slug}`} class="btn btn--secondary btn--sm">
+    <a href={`/admin/conteudos/${post.slug}`} class="btn btn--secondary btn--sm">
       <Icon name="edit" size={16} />
       Editar por formulário
     </a>
@@ -206,13 +171,22 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
                 <video data-media-video controls hidden></video>
                 <span class="media-box__empty" data-media-empty>Sem arquivo</span>
               </div>
-              <label class="btn btn--secondary btn--sm ed-upload">
+              <label class="btn btn--secondary btn--sm ed-upload" data-media-upload-row>
                 <Icon name="upload" size={16} />
                 <span data-media-btn-label>Enviar arquivo</span>
                 <input type="file" data-media-file hidden />
               </label>
-              <input class="input" data-media-url placeholder="/media/arquivo.jpg" />
+              <input
+                class="input"
+                data-media-url
+                data-media-upload-row
+                placeholder="/media/arquivo.jpg"
+              />
               <p class="panel-hint" data-media-status></p>
+              <p class="panel-hint" data-media-locked-hint hidden>
+                A imagem de capa é gerida em <a href="/admin/conteudos">Conteúdo → Matérias</a> —
+                aqui só o ajuste visual (abaixo).
+              </p>
 
               <div class="icon-controls" data-image-controls hidden>
                 <span class="label">Ajuste da imagem</span>
@@ -236,7 +210,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
                 <p class="panel-hint">
                   Preserva a proporção original — a imagem nunca é distorcida, só recortada
                   (Preencher) ou reduzida para caber inteira (Conter). Texto alternativo
-                  continua em Conteúdo → Serviços.
+                  continua em Conteúdo → Matérias.
                 </p>
               </div>
             </div>
@@ -261,39 +235,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
                 />
               </label>
               <p class="panel-hint" data-icon-status></p>
-
-              <div class="icon-controls">
-                <div class="prop-row">
-                  <span>Cor</span>
-                  <input type="color" data-icon-color-swatch />
-                  <input type="text" data-icon-color placeholder="herda" />
-                </div>
-                <div class="prop-row">
-                  <span>Tamanho</span>
-                  <input type="number" step="1" min="0" max="100" data-icon-size />
-                  <span class="bg-field__readout">%</span>
-                </div>
-                <div class="prop-row">
-                  <span>Opacidade</span>
-                  <input type="range" min="0" max="100" step="1" data-icon-opacity />
-                  <span class="bg-field__readout" data-icon-opacity-readout>100%</span>
-                </div>
-                <div class="prop-row">
-                  <label class="prop-check">
-                    <input type="checkbox" data-icon-lock />
-                    Bloquear
-                  </label>
-                  <label class="prop-check">
-                    <input type="checkbox" data-icon-hide />
-                    Ocultar
-                  </label>
-                  <button type="button" class="ed-btn" data-icon-restore>Restaurar</button>
-                </div>
-                <p class="panel-hint">
-                  Desfazer/refazer (Ctrl+Z / Ctrl+Shift+Z) valem para qualquer alteração feita
-                  aqui.
-                </p>
-              </div>
             </div>
 
             <!-- posição, tamanho e estilo -->
@@ -574,7 +515,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
           <h2 class="panel-title">Cores por seção</h2>
           <p class="panel-hint">
             Deixe em branco para herdar a paleta desta página ou o padrão global, definidos em
-            <a href="/admin/editor/servicos/aparencia">Aparência</a>.
+            <a href="/admin/editor/conteudos/aparencia">Aparência</a>.
           </p>
           <div class="color-list" data-color-list></div>
         </div>
@@ -584,8 +525,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       <div class="editor__canvas">
         <div class="editor__frame" data-frame>
           <iframe
-            src={`/servicos/${service.slug}?__edit=1`}
-            title={`Pré-visualização de ${service.name}`}
+            src={`/conteudos/${post.slug}?__edit=1`}
+            title={`Pré-visualização de ${post.title}`}
             data-preview
             loading="eager"></iframe>
         </div>
@@ -1359,8 +1300,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     hidden: boolean;
     /** Nome dado no painel de camadas. */
     label: string;
-    /** Opacidade, 0 a 100. Neutro é 100 (ver src/lib/pages.ts). */
-    opacity: number;
   }
 
   interface LayoutPair {
@@ -1383,7 +1322,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   }
 
   interface Bootstrap {
-    serviceId: number;
+    postId: number;
     sectionOrder: string[];
     hiddenSections: string[];
     layouts: Record<string, LayoutPair>;
@@ -1484,7 +1423,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       locked: false,
       hidden: false,
       label: '',
-      opacity: 100,
     };
   }
 
@@ -1494,21 +1432,14 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     return (forDevice === 'mobile' ? pair.mobile : pair.desktop) ?? emptyLayout();
   }
 
-  /**
-   * Elemento existente e elemento livre gravam por operações diferentes.
-   * A chave GRAVADA é `key` (não `path`): para a maioria dos elementos as
-   * duas coincidem, mas um item de lista com identidade estável (destaque/
-   * bloco de um serviço — ver data-layout-key/keyOf em editor-runtime.js)
-   * tem `key` por id e `path` por índice — o layout precisa ir pela chave
-   * estável, senão reordenar troca a posição de item.
-   */
+  /** Elemento existente e elemento livre gravam por operações diferentes. */
   function layoutOp(
-    target: { overlay: string | null; path: string | null; key?: string; device: string },
+    target: { overlay: string | null; path: string | null; device: string },
     layout: ElementLayout
   ): Op {
     return target.overlay
       ? { op: 'overlay-layout', id: target.overlay, device: target.device, layout }
-      : { op: 'layout', path: target.key ?? target.path!, device: target.device, layout };
+      : { op: 'layout', path: target.path!, device: target.device, layout };
   }
 
   // ------------------------------------------------------------ estado
@@ -1546,10 +1477,10 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     const batch = queue.splice(0, queue.length);
     setStatus('saving', 'Salvando…');
     try {
-      const response = await fetch('/admin/api/service-editor-content', {
+      const response = await fetch('/admin/api/post-editor-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId: data.serviceId, ops: batch }),
+        body: JSON.stringify({ postId: data.postId, ops: batch }),
       });
       if (!response.ok) throw new Error(String(response.status));
       setStatus('idle', 'Tudo salvo');
@@ -1819,8 +1750,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const textField = document.querySelector<HTMLElement>('[data-props-text]')!;
   const textArea = document.querySelector<HTMLTextAreaElement>('#prop-text')!;
   const mediaField = document.querySelector<HTMLElement>('[data-props-media]')!;
-  const iconField = document.querySelector<HTMLElement>('[data-props-icon]')!;
   const imageControlsField = document.querySelector<HTMLElement>('[data-image-controls]')!;
+  const iconField = document.querySelector<HTMLElement>('[data-props-icon]')!;
   const itemField = document.querySelector<HTMLElement>('[data-props-item]')!;
   const shapeField = document.querySelector<HTMLElement>('[data-props-shape]')!;
   const layoutField = document.querySelector<HTMLElement>('[data-props-layout]')!;
@@ -1839,17 +1770,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     hideBox.checked = layout.hidden;
     rotateRange.value = String(layout.r ?? 0);
     rotateReadout.textContent = `${layout.r ?? 0}°`;
-
-    // Espelha os mesmos valores nos controles próprios do ícone (seção
-    // separada, mas o dado é o mesmo layout do elemento selecionado).
-    iconColorSwatch.value = layout.color || '#000000';
-    iconColorHex.value = layout.color || '';
-    iconSize.value = String(layout.w || 0);
-    const opacityValue = typeof layout.opacity === 'number' ? layout.opacity : 100;
-    iconOpacity.value = String(opacityValue);
-    iconOpacityReadout.textContent = `${opacityValue}%`;
-    iconLock.checked = layout.locked;
-    iconHide.checked = layout.hidden;
     actionsHint.textContent = selection?.overlay
       ? 'Elemento livre: excluir remove de vez.'
       : 'Elemento da estrutura: duplicar cria uma cópia livre e excluir apenas oculta no site.';
@@ -2002,45 +1922,6 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   });
   rotateRange.addEventListener('change', () => setLayoutProp('r', Number(rotateRange.value)));
 
-  // ---------------------------------------- controles próprios do ícone
-  // Seção dedicada, visível só quando o elemento selecionado é um ícone
-  // (ver showProps/data-props-icon) — cor, tamanho, opacidade, bloquear,
-  // ocultar e restaurar, tudo pelo mesmo setLayoutProp/editor:layout-reset
-  // já usados pelo painel genérico, então desfazer/refazer valem igual.
-  const iconColorSwatch = document.querySelector<HTMLInputElement>('[data-icon-color-swatch]')!;
-  const iconColorHex = document.querySelector<HTMLInputElement>('[data-icon-color]')!;
-  const iconSize = document.querySelector<HTMLInputElement>('[data-icon-size]')!;
-  const iconOpacity = document.querySelector<HTMLInputElement>('[data-icon-opacity]')!;
-  const iconOpacityReadout = document.querySelector<HTMLElement>(
-    '[data-icon-opacity-readout]'
-  )!;
-  const iconLock = document.querySelector<HTMLInputElement>('[data-icon-lock]')!;
-  const iconHide = document.querySelector<HTMLInputElement>('[data-icon-hide]')!;
-
-  iconColorSwatch.addEventListener('input', () => {
-    iconColorHex.value = iconColorSwatch.value;
-    setLayoutProp('color', iconColorSwatch.value);
-  });
-  iconColorHex.addEventListener('change', () => {
-    if (/^#[0-9a-fA-F]{6}$/.test(iconColorHex.value)) {
-      iconColorSwatch.value = iconColorHex.value;
-      setLayoutProp('color', iconColorHex.value);
-    }
-  });
-  iconSize.addEventListener('change', () => setLayoutProp('w', Number(iconSize.value)));
-  iconOpacity.addEventListener('input', () => {
-    iconOpacityReadout.textContent = `${iconOpacity.value}%`;
-  });
-  iconOpacity.addEventListener('change', () =>
-    setLayoutProp('opacity', Number(iconOpacity.value))
-  );
-  iconLock.addEventListener('change', () => setLayoutProp('locked', iconLock.checked));
-  iconHide.addEventListener('change', () => setLayoutProp('hidden', iconHide.checked));
-  document.querySelector('[data-icon-restore]')!.addEventListener('click', () => {
-    if (!selection) return;
-    toFrame({ type: 'editor:layout-reset' });
-  });
-
   // ------------------------------------------- duplicar / excluir elemento
   const actionsHint = document.querySelector<HTMLElement>('[data-el-actions-hint]')!;
 
@@ -2130,7 +2011,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     iconField.hidden = current.kind !== 'icon';
     shapeField.hidden = current.kind !== 'shape';
     // Ajuste de imagem só faz sentido para imagem (não vídeo) — e só para a
-    // imagem do hero (path "image"), a única imagem editável nesta página.
+    // imagem de capa (path "cover"), a única imagem editável nesta página.
     imageControlsField.hidden = !(isMedia && current.kind === 'image');
 
     if (isText) textArea.value = current.value;
@@ -2184,14 +2065,24 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
   const mediaStatus = document.querySelector<HTMLElement>('[data-media-status]')!;
   const mediaLabel = document.querySelector<HTMLElement>('[data-media-label]')!;
   const mediaBtnLabel = document.querySelector<HTMLElement>('[data-media-btn-label]')!;
+  const mediaUploadRows = document.querySelectorAll<HTMLElement>('[data-media-upload-row]');
+  const mediaLockedHint = document.querySelector<HTMLElement>('[data-media-locked-hint]')!;
 
   function showMedia(current: Selection) {
     const isVideo = current.kind === 'video';
+    // A capa é gerida só em Conteúdo → Matérias — aqui o arquivo é
+    // só exibido, nunca trocado (evita mandar uma operação de conteúdo que
+    // esta página não sabe gravar; ver post-editor-content.ts).
+    const locked = current.path === 'cover';
     mediaLabel.textContent = isVideo ? 'Vídeo' : 'Imagem';
     mediaBtnLabel.textContent = isVideo ? 'Enviar vídeo' : 'Enviar imagem';
     mediaFile.accept = isVideo ? 'video/mp4,video/webm' : 'image/*';
     mediaUrl.value = current.value;
     mediaStatus.textContent = '';
+    mediaUploadRows.forEach((row) => {
+      row.hidden = locked;
+    });
+    mediaLockedHint.hidden = !locked;
 
     mediaPreview.hidden = isVideo || !current.value;
     mediaVideo.hidden = !isVideo || !current.value;
@@ -3159,7 +3050,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (device === 'mobile') layouts[item.key].mobile = next;
     else layouts[item.key].desktop = next;
 
-    const target = { overlay: item.overlay, path: item.path, key: item.key, device };
+    const target = { overlay: item.overlay, path: item.path, device };
     push(layoutOp(target, next), layoutOp(target, previous));
     toFrame({ type: 'editor:layouts', layouts });
     toFrame({ type: 'editor:inventory-request' });

@@ -110,6 +110,11 @@ export async function getPost(db: D1Database, slug: string): Promise<Post | null
   return row ? rowToPost(row) : null;
 }
 
+export async function getPostById(db: D1Database, id: number): Promise<Post | null> {
+  const row = await db.prepare(`${SELECT} AND p.id = ?1`).bind(id).first<PostRow>();
+  return row ? rowToPost(row) : null;
+}
+
 export function publishedOnly(posts: Post[]): Post[] {
   return posts
     .filter((p) => p.status === 'published')

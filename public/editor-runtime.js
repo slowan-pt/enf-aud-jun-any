@@ -223,7 +223,8 @@
     // quem se move continua sendo `target`. Isso resolve de raiz o problema
     // de arrastar por "espaço vazio" dentro de um bloco cheio de campos —
     // não depende de adivinhar quais áreas são "realmente vazias".
-    var formHandle = kindOf(element) === 'form' ? element.querySelector('[data-form-handle]') : null;
+    var formHandle =
+      kindOf(element) === 'form' ? element.querySelector('[data-form-handle]') : null;
 
     moveable = new window.Moveable(document.body, {
       target: element,
@@ -1260,10 +1261,15 @@
         break;
       }
 
-      // Ajuste de cover/contain/posição da imagem do hero (data-edit="image")
-      // — aplicado ao vivo, sem recarregar, igual às outras mudanças de estilo.
+      // Ajuste de cover/contain/posição de uma imagem (hero de Serviço em
+      // data-edit="image", capa de Matéria em data-edit="cover") — aplicado
+      // ao vivo, sem recarregar, igual às outras mudanças de estilo. `path`
+      // identifica qual imagem desta página; sem ele, cai no comportamento
+      // antigo (sempre "image", único caso antes de existir mais de uma
+      // imagem com ajuste nesta mesma página).
       case 'editor:image-style': {
-        var imageNode = document.querySelector('[data-edit="image"]');
+        var imagePath = typeof data.path === 'string' ? data.path : 'image';
+        var imageNode = document.querySelector('[data-edit="' + imagePath + '"]');
         if (!imageNode) break;
         var fit = data.value.fit === 'contain' ? 'contain' : 'cover';
         var posX = typeof data.value.posX === 'number' ? data.value.posX : 50;
@@ -1371,7 +1377,11 @@
       // é um container de verdade (div em grid/flex); forçar inline-block
       // nele encolheria a largura para o conteúdo e quebraria o layout.
       style.display =
-        kindOf(element) === 'form' ? '' : layout.x || layout.y || layout.w ? 'inline-block' : '';
+        kindOf(element) === 'form'
+          ? ''
+          : layout.x || layout.y || layout.w
+            ? 'inline-block'
+            : '';
     }
 
     if (layout.r) transforms.push('rotate(' + layout.r + 'deg)');
@@ -1388,7 +1398,9 @@
     style.textAlign = layout.align || '';
     style.fontWeight = layout.weight > 0 ? String(layout.weight) : '';
     style.opacity =
-      typeof layout.opacity === 'number' && layout.opacity < 100 ? String(layout.opacity / 100) : '';
+      typeof layout.opacity === 'number' && layout.opacity < 100
+        ? String(layout.opacity / 100)
+        : '';
     element.classList.toggle('is-edit-locked', layout.locked === true);
   }
 

@@ -1,0 +1,12 @@
+-- Aparência/layout do Editor Visual por matéria individual (/conteudos/[slug]).
+-- Coluna ANULÁVEL e aditiva: nenhuma linha existente é copiada, recriada ou
+-- migrada. Uma matéria com editor_json = NULL nunca foi personalizada e
+-- continua se comportando exatamente como hoje — 100% herdada do padrão
+-- global (ver src/lib/post-editor.ts).
+--
+-- O conteúdo (título, resumo, corpo, capa, autor, categoria, SEO, status...)
+-- continua exclusivamente nas colunas já existentes / em `body_json` — este
+-- campo nunca duplica esses dados, só guarda versão do formato, pageStyle,
+-- sectionStyles, sectionOrder, hiddenSections, layouts, overlays e o ajuste
+-- visual (cover/contain/posição) da imagem de capa.
+ALTER TABLE posts ADD COLUMN editor_json TEXT;

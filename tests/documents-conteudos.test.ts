@@ -16,7 +16,7 @@ import type { D1Database } from '../src/lib/cf-types';
 
 function fakeDb(rows: Record<string, string | null> = {}) {
   const db = {
-    prepare(sql: string) {
+    prepare(_sql: string) {
       return {
         bind(...params: unknown[]) {
           return {

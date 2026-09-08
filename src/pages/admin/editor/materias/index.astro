@@ -1,0 +1,236 @@
+---
+/**
+ * Detalhe de "Conteúdos" dentro do fluxo Editor Visual → Páginas: a
+ * listagem (abertura + chamada final, ver ../conteudos.astro) e, abaixo, a
+ * lista automática das matérias individuais — direto da tabela `posts`,
+ * nunca escrita à mão. Uma matéria nova aparece aqui assim que é criada;
+ * uma matéria removida (soft delete) some junto — como a Aparência de cada
+ * matéria vive na PRÓPRIA linha (`editor_json`), não existe configuração
+ * órfã para limpar.
+ */
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../components/Icon.astro';
+import { getDB } from '../../../../lib/db';
+import { listPosts } from '../../../../lib/posts';
+
+const STATUS_LABEL: Record<string, string> = {
+  published: 'Publicado',
+  draft: 'Rascunho',
+  archived: 'Arquivado',
+};
+
+const posts = await listPosts(getDB());
+---
+
+<AdminLayout
+  title="Conteúdos — Editor Visual"
+  description="Página principal de Conteúdos e a lista automática das matérias individuais."
+  active="/admin/editor"
+>
+  <nav class="breadcrumb" aria-label="Caminho">
+    <a href="/admin/editor">Editor Visual</a>
+    <Icon name="chevron-right" size={14} />
+    <a href="/admin/paginas">Páginas</a>
+    <Icon name="chevron-right" size={14} />
+    <span class="breadcrumb__current">Conteúdos</span>
+  </nav>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Página principal (listagem)</h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Abertura e chamada final de <code>/conteudos</code>. A grade de matérias abaixo é a
+        lista de conteúdos — o texto de cada um continua gerenciado individualmente.
+      </p>
+      <div class="page-card__actions">
+        <a class="page-action" href="/admin/paginas/conteudos">
+          <Icon name="edit" size={16} />
+          <span>
+            <strong>Editar conteúdo</strong>
+            <small>Abertura e chamada final.</small>
+          </span>
+        </a>
+        <a class="page-action" href="/admin/editor/conteudos">
+          <Icon name="pointer" size={16} />
+          <span>
+            <strong>Editor visual</strong>
+            <small>Arraste, redimensione e posicione elementos na página real.</small>
+          </span>
+        </a>
+        <a class="page-action" href="/admin/editor/conteudos/aparencia">
+          <Icon name="palette" size={16} />
+          <span>
+            <strong>Aparência</strong>
+            <small>Cores globais, desta página e de cada seção.</small>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">Matérias individuais ({posts.length})</h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Lista automática da tabela <code>posts</code>. O conteúdo oficial (título, resumo,
+        corpo, capa, autor, categoria, SEO) continua editado em <a href="/admin/conteudos"
+          >Conteúdo → Matérias</a
+        >
+        — aqui só a posição, o layout livre e a Aparência de cada página são geridos.
+      </p>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Matéria</th>
+              <th>Slug</th>
+              <th>Status</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              posts.map((post) => (
+                <tr>
+                  <td>
+                    <span class="table__main">{post.title}</span>
+                  </td>
+                  <td>
+                    <span class="kbd">/conteudos/{post.slug}</span>
+                  </td>
+                  <td>
+                    <span
+                      class:list={[
+                        'badge',
+                        post.status === 'published'
+                          ? 'badge--success'
+                          : post.status === 'draft'
+                            ? 'badge--warning'
+                            : 'badge--neutral',
+                      ]}
+                    >
+                      {STATUS_LABEL[post.status] ?? post.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/conteudos/${post.slug}`}
+                        aria-label={`Editar conteúdo de ${post.title}`}
+                        title="Editar conteúdo"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/admin/editor/materias/${post.id}`}
+                        aria-label={`Editor visual de ${post.title}`}
+                        title="Editor visual"
+                      >
+                        <Icon name="pointer" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/admin/editor/materias/${post.id}/aparencia`}
+                        aria-label={`Aparência de ${post.title}`}
+                        title="Aparência"
+                      >
+                        <Icon name="palette" size={16} />
+                      </a>
+                      <a
+                        class="row-btn"
+                        href={`/conteudos/${post.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        aria-label="Ver no site"
+                        title="Ver no site"
+                      >
+                        <Icon name="eye" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {
+        posts.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="search" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhuma matéria cadastrada</h2>
+            <p>Crie uma matéria em Conteúdo → Matérias para ela aparecer aqui.</p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--sp-5);
+  }
+
+  .breadcrumb a {
+    color: inherit;
+  }
+
+  .breadcrumb__current {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .page-card__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--sp-3);
+  }
+
+  .page-action {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .page-action:hover {
+    border-color: var(--c-accent-500);
+  }
+
+  .page-action strong {
+    display: block;
+    font-size: var(--fs-sm);
+  }
+
+  .page-action small {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    margin-top: 0.15rem;
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+</style>
