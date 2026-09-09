@@ -1,0 +1,747 @@
+---
+/**
+ * Editor de UM organograma/fluxograma (item 8 do escopo) — área livre de
+ * canvas com Fabric.js, deliberadamente separada do Editor Visual das
+ * páginas semânticas (Home, Quem Somos, Serviços, Conteúdos etc.): nunca
+ * grava nelas, nunca é carregado por elas.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB } from '../../../lib/db';
+import { getDiagram } from '../../../lib/diagrams';
+
+const diagramId = Number(Astro.params.id);
+if (!Number.isInteger(diagramId) || diagramId <= 0) return Astro.rewrite('/404');
+
+const db = getDB();
+const diagram = await getDiagram(db, diagramId);
+if (!diagram) return Astro.rewrite('/404');
+
+const bootstrap = { diagramId, canvasJson: diagram.canvasJson };
+const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
+---
+
+<AdminLayout
+  title={`Organograma — ${diagram.title}`}
+  description="Arraste, conecte e monte o diagrama. Não afeta nenhuma página do site."
+  active="/admin/editor"
+>
+  <div slot="actions">
+    <a href="/admin/organogramas" class="btn btn--ghost btn--sm">
+      <Icon name="arrow-left" size={16} />
+      Organogramas
+    </a>
+    <form method="post" action="/admin/organogramas" style="display:contents">
+      <input type="hidden" name="id" value={diagramId} />
+      <input type="hidden" name="_action" value="rename" />
+      <input
+        class="input input--title-inline"
+        name="title"
+        value={diagram.title}
+        aria-label="Título do organograma"
+      />
+      <button type="submit" class="btn btn--secondary btn--sm">
+        <Icon name="edit" size={16} />
+        Renomear
+      </button>
+    </form>
+  </div>
+
+  <script type="application/json" id="diagram-bootstrap" set:html={bootstrapJson} />
+
+  <div class="editor">
+    <div class="editor__topbar">
+      <div class="editor__group">
+        <button type="button" class="ed-btn" data-add="box">
+          <Icon name="square" size={16} />
+          Caixa
+        </button>
+        <button type="button" class="ed-btn" data-add="text">
+          <Icon name="edit" size={16} />
+          Texto
+        </button>
+        <button type="button" class="ed-btn" data-tool="connect">
+          <Icon name="git-branch" size={16} />
+          Conector
+        </button>
+      </div>
+
+      <div class="editor__group">
+        <button type="button" class="ed-btn" data-action="duplicate">
+          <Icon name="copy" size={16} />
+          Duplicar
+        </button>
+        <button type="button" class="ed-btn" data-action="front">Trazer à frente</button>
+        <button type="button" class="ed-btn" data-action="back">Enviar p/ trás</button>
+        <button type="button" class="ed-btn ed-btn--danger" data-action="delete">
+          <Icon name="trash" size={16} />
+          Excluir
+        </button>
+      </div>
+
+      <div class="editor__group editor__group--end">
+        <span class="ed-status" data-status data-state="idle">Tudo salvo</span>
+      </div>
+    </div>
+
+    <div class="editor__body">
+      <aside class="editor__panel">
+        <h2 class="panel-title">Modelos iniciais</h2>
+        <p class="panel-hint">Insere no canvas — não substitui o que já existe.</p>
+        <div class="template-list">
+          <button type="button" class="ed-btn" data-template="fluxo"
+            >Fluxo simples (3 etapas)</button
+          >
+          <button type="button" class="ed-btn" data-template="hierarquia">
+            Hierarquia (1 + 3 níveis)
+          </button>
+        </div>
+
+        <h2 class="panel-title" style="margin-top: var(--sp-5)">Elemento selecionado</h2>
+        <div class="panel-empty" data-props-empty>
+          <p>Clique numa caixa ou texto para editar cor e borda.</p>
+        </div>
+        <div class="panel-form" data-props-form hidden>
+          <div class="prop-row">
+            <span>Preenche</span>
+            <input type="color" data-prop-fill value="#e8f2ff" />
+          </div>
+          <div class="prop-row">
+            <span>Borda</span>
+            <input type="color" data-prop-stroke value="#2563eb" />
+          </div>
+          <div class="prop-row">
+            <span>Texto</span>
+            <input type="color" data-prop-text-color value="#0f172a" />
+          </div>
+        </div>
+
+        <p class="panel-hint" style="margin-top: var(--sp-5)">
+          Para usar este organograma numa página, exporte como imagem PNG e envie pela
+          Biblioteca de mídia — o Editor Visual das páginas continua sem canvas livre.
+        </p>
+        <button type="button" class="ed-btn" data-action="export" style="width:100%">
+          <Icon name="image" size={16} />
+          Exportar como PNG
+        </button>
+      </aside>
+
+      <div class="editor__canvas">
+        <canvas id="diagram-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .input--title-inline {
+    width: 220px;
+  }
+
+  .editor [hidden] {
+    display: none !important;
+  }
+
+  .editor {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 132px);
+    min-height: 520px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--c-white);
+  }
+
+  .editor__topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    flex-wrap: wrap;
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--line);
+    background: var(--c-ink-50);
+  }
+
+  .editor__group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .editor__group--end {
+    margin-left: auto;
+  }
+
+  .ed-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+    color: var(--text-strong);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+  }
+
+  .ed-btn:hover {
+    border-color: var(--c-brand-400);
+    color: var(--c-brand-700);
+  }
+
+  .ed-btn.is-active {
+    background: var(--c-brand-600);
+    border-color: var(--c-brand-600);
+    color: #fff;
+  }
+
+  .ed-btn--danger:hover {
+    border-color: var(--c-danger-500, #dc2626);
+    color: var(--c-danger-600, #b91c1c);
+  }
+
+  .ed-status {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--r-pill);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+  }
+
+  .ed-status[data-state='saving'] {
+    color: var(--c-accent-700);
+    border-color: var(--c-accent-300);
+  }
+
+  .ed-status[data-state='error'] {
+    color: #b91c1c;
+    border-color: #fca5a5;
+  }
+
+  .editor__body {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .editor__panel {
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: var(--sp-4);
+  }
+
+  .panel-title {
+    font-size: var(--fs-sm);
+    margin-bottom: 0.35rem;
+  }
+
+  .panel-hint {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    line-height: var(--lh-relaxed);
+    margin-bottom: var(--sp-3);
+  }
+
+  .panel-empty {
+    padding: var(--sp-4) 0;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+
+  .template-list {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .prop-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .prop-row > span {
+    flex: none;
+    width: 60px;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+  }
+
+  .prop-row input[type='color'] {
+    width: 32px;
+    height: 28px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: none;
+    cursor: pointer;
+  }
+
+  .editor__canvas {
+    overflow: auto;
+    background: repeating-conic-gradient(var(--c-ink-100) 0% 25%, transparent 0% 50%) 50% / 18px
+      18px;
+    display: grid;
+    place-items: center;
+  }
+
+  #diagram-canvas {
+    background: #fff;
+    box-shadow: var(--shadow-lg);
+  }
+</style>
+
+<script is:inline src="/vendor/fabric.min.js"></script>
+
+<script>
+  // `fabric` é um global carregado pelo <script> acima (build UMD,
+  // window.fabric) — mesmo padrão de /vendor/moveable.min.js, nunca um
+  // pacote empacotado no build do site (só quem abre esta tela baixa isto).
+  declare const fabric: typeof import('fabric');
+  const { Canvas, Rect, Textbox, Line, Triangle, Group } = fabric;
+
+  interface Bootstrap {
+    diagramId: number;
+    canvasJson: string;
+  }
+
+  /**
+   * Propriedades extras que anexamos aos objetos do Fabric para modelar nós
+   * e conectores — não fazem parte do tipo real da biblioteca, por isso a
+   * interseção em vez de `any`. `canvas.toObject(CUSTOM_PROPS)` é o que faz
+   * essas chaves sobreviverem ao salvar/recarregar.
+   */
+  interface CustomProps {
+    nodeId?: string;
+    connectorId?: string;
+    fromId?: string;
+    toId?: string;
+    isConnector?: boolean;
+    isArrowhead?: boolean;
+  }
+  type FabricObj = InstanceType<typeof fabric.FabricObject> & CustomProps;
+  type NodeGroup = InstanceType<typeof Group> & CustomProps;
+  type ConnectorLine = InstanceType<typeof Line> & CustomProps;
+  type ConnectorHead = InstanceType<typeof Triangle> & CustomProps;
+
+  const dataEl = document.getElementById('diagram-bootstrap');
+  if (!dataEl) throw new Error('bootstrap do organograma ausente');
+  const data = JSON.parse(dataEl.textContent || '{}') as Bootstrap;
+
+  const CUSTOM_PROPS = [
+    'nodeId',
+    'connectorId',
+    'fromId',
+    'toId',
+    'isConnector',
+    'isArrowhead',
+  ];
+  const NODE_FILL = '#e8f2ff';
+  const NODE_STROKE = '#2563eb';
+  const NODE_TEXT = '#0f172a';
+
+  const canvasEl = document.getElementById('diagram-canvas') as HTMLCanvasElement;
+  const wrap = canvasEl.parentElement!;
+  const canvas = new Canvas(canvasEl, {
+    width: Math.max(900, wrap.clientWidth - 32),
+    height: Math.max(600, wrap.clientHeight - 32),
+    selection: true,
+  });
+
+  let nextId = 1;
+  function genId(prefix: string) {
+    nextId += 1;
+    return `${prefix}-${Date.now().toString(36)}-${nextId}`;
+  }
+
+  // ------------------------------------------------------------- conectores
+  // Cada conector é uma Line + um Triangle (ponta da seta) marcados com o
+  // mesmo `connectorId`. Ao mover uma caixa, reposiciona todo conector cujo
+  // `fromId`/`toId` aponte para ela — é isso que preserva as conexões.
+  function findNodeById(id: string): NodeGroup | undefined {
+    return canvas.getObjects().find((o: FabricObj) => o.nodeId === id) as NodeGroup | undefined;
+  }
+
+  function connectorParts(connectorId: string): {
+    line?: ConnectorLine;
+    head?: ConnectorHead;
+  } {
+    const parts = canvas
+      .getObjects()
+      .filter((o: FabricObj) => o.connectorId === connectorId) as FabricObj[];
+    const line = parts.find((o) => !o.isArrowhead) as ConnectorLine | undefined;
+    const head = parts.find((o) => o.isArrowhead) as ConnectorHead | undefined;
+    return { line, head };
+  }
+
+  function repositionConnector(connectorId: string) {
+    const { line, head } = connectorParts(connectorId);
+    if (!line || !head) return;
+    const from = line.fromId ? findNodeById(line.fromId) : undefined;
+    const to = line.toId ? findNodeById(line.toId) : undefined;
+    if (!from || !to) return;
+    const fc = from.getCenterPoint();
+    const tc = to.getCenterPoint();
+    const angle = Math.atan2(tc.y - fc.y, tc.x - fc.x);
+    const arrowLen = 12;
+    const ex = tc.x - Math.cos(angle) * arrowLen;
+    const ey = tc.y - Math.sin(angle) * arrowLen;
+    line.set({ x1: fc.x, y1: fc.y, x2: ex, y2: ey });
+    head.set({ left: tc.x, top: tc.y, angle: (angle * 180) / Math.PI + 90 });
+    line.setCoords();
+    head.setCoords();
+  }
+
+  function repositionConnectorsFor(nodeId: string) {
+    const ids = new Set(
+      canvas
+        .getObjects()
+        .filter((o: FabricObj) => o.isConnector && (o.fromId === nodeId || o.toId === nodeId))
+        .map((o: FabricObj) => o.connectorId)
+    );
+    ids.forEach((id) => id && repositionConnector(id));
+    canvas.requestRenderAll();
+  }
+
+  canvas.on('object:moving', (event: { target?: FabricObj }) => {
+    const target = event.target;
+    if (target?.nodeId) repositionConnectorsFor(target.nodeId);
+  });
+
+  function addConnector(fromId: string, toId: string) {
+    const connectorId = genId('conn');
+    const line: ConnectorLine = new Line([0, 0, 0, 0], {
+      stroke: '#64748b',
+      strokeWidth: 2,
+      selectable: true,
+      hasControls: false,
+    });
+    line.connectorId = connectorId;
+    line.fromId = fromId;
+    line.toId = toId;
+    line.isConnector = true;
+
+    const head: ConnectorHead = new Triangle({
+      width: 12,
+      height: 14,
+      fill: '#64748b',
+      originX: 'center',
+      originY: 'center',
+      selectable: false,
+      evented: false,
+    });
+    head.connectorId = connectorId;
+    head.isConnector = true;
+    head.isArrowhead = true;
+
+    canvas.add(line);
+    canvas.add(head);
+    canvas.sendObjectToBack(line);
+    canvas.sendObjectToBack(head);
+    repositionConnector(connectorId);
+    canvas.requestRenderAll();
+    scheduleSave();
+  }
+
+  // ------------------------------------------------------------------ nós
+  function addBox(left = 120, top = 120, label = 'Novo nó') {
+    const rect = new Rect({
+      width: 170,
+      height: 72,
+      rx: 10,
+      ry: 10,
+      fill: NODE_FILL,
+      stroke: NODE_STROKE,
+      strokeWidth: 2,
+      originX: 'center',
+      originY: 'center',
+    });
+    const text = new Textbox(label, {
+      width: 150,
+      fontSize: 14,
+      fontFamily: 'inherit',
+      textAlign: 'center',
+      fill: NODE_TEXT,
+      originX: 'center',
+      originY: 'center',
+    });
+    const group: NodeGroup = new Group([rect, text], { left, top });
+    group.nodeId = genId('node');
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    canvas.requestRenderAll();
+    scheduleSave();
+  }
+
+  function addText(left = 120, top = 120, label = 'Texto') {
+    const text = new Textbox(label, {
+      left,
+      top,
+      width: 180,
+      fontSize: 16,
+      fontFamily: 'inherit',
+      fill: NODE_TEXT,
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.requestRenderAll();
+    scheduleSave();
+  }
+
+  // ---------------------------------------------------------------- ferramentas
+  const connectBtn = document.querySelector<HTMLButtonElement>('[data-tool="connect"]')!;
+  let connectMode = false;
+  let connectFrom: string | null = null;
+
+  connectBtn.addEventListener('click', () => {
+    connectMode = !connectMode;
+    connectFrom = null;
+    connectBtn.classList.toggle('is-active', connectMode);
+  });
+
+  canvas.on('mouse:down', (event: { target?: FabricObj }) => {
+    if (!connectMode) return;
+    const target = event.target;
+    if (!target?.nodeId) return;
+    if (!connectFrom) {
+      connectFrom = target.nodeId;
+    } else if (connectFrom !== target.nodeId) {
+      addConnector(connectFrom, target.nodeId);
+      connectFrom = null;
+      connectMode = false;
+      connectBtn.classList.remove('is-active');
+    }
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const kind = button.dataset.add;
+      const left = 120 + Math.random() * 120;
+      const top = 120 + Math.random() * 120;
+      if (kind === 'box') addBox(left, top);
+      if (kind === 'text') addText(left, top);
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('[data-template]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const kind = button.dataset.template;
+      if (kind === 'fluxo') {
+        addBox(120, 140, 'Etapa 1');
+        addBox(360, 140, 'Etapa 2');
+        addBox(600, 140, 'Etapa 3');
+        window.setTimeout(() => {
+          const nodes = canvas.getObjects().filter((o: FabricObj) => o.nodeId) as NodeGroup[];
+          const last3 = nodes.slice(-3);
+          if (last3.length === 3 && last3[0]?.nodeId && last3[1]?.nodeId && last3[2]?.nodeId) {
+            addConnector(last3[0].nodeId, last3[1].nodeId);
+            addConnector(last3[1].nodeId, last3[2].nodeId);
+          }
+        }, 0);
+      } else if (kind === 'hierarquia') {
+        addBox(360, 100, 'Raiz');
+        addBox(160, 260, 'Nível 2 — A');
+        addBox(360, 260, 'Nível 2 — B');
+        addBox(560, 260, 'Nível 2 — C');
+        window.setTimeout(() => {
+          const nodes = canvas.getObjects().filter((o: FabricObj) => o.nodeId) as NodeGroup[];
+          const last4 = nodes.slice(-4);
+          if (
+            last4.length === 4 &&
+            last4[0]?.nodeId &&
+            last4[1]?.nodeId &&
+            last4[2]?.nodeId &&
+            last4[3]?.nodeId
+          ) {
+            addConnector(last4[0].nodeId, last4[1].nodeId);
+            addConnector(last4[0].nodeId, last4[2].nodeId);
+            addConnector(last4[0].nodeId, last4[3].nodeId);
+          }
+        }, 0);
+      }
+    });
+  });
+
+  document.querySelector('[data-action="duplicate"]')!.addEventListener('click', async () => {
+    const active = canvas.getActiveObject() as FabricObj | undefined;
+    if (!active) return;
+    const clone = (await active.clone(CUSTOM_PROPS)) as FabricObj;
+    clone.set({ left: (active.left ?? 0) + 24, top: (active.top ?? 0) + 24 });
+    if (clone.nodeId) clone.nodeId = genId('node');
+    canvas.add(clone);
+    canvas.setActiveObject(clone);
+    canvas.requestRenderAll();
+    scheduleSave();
+  });
+
+  document.querySelector('[data-action="delete"]')!.addEventListener('click', () => {
+    const active = canvas.getActiveObject() as FabricObj | undefined;
+    if (!active) return;
+    if (active.nodeId) {
+      canvas
+        .getObjects()
+        .filter(
+          (o: FabricObj) =>
+            o.isConnector && (o.fromId === active.nodeId || o.toId === active.nodeId)
+        )
+        .forEach((o) => canvas.remove(o));
+    }
+    canvas.remove(active);
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+    scheduleSave();
+  });
+
+  document.querySelector('[data-action="front"]')!.addEventListener('click', () => {
+    const active = canvas.getActiveObject();
+    if (active) canvas.bringObjectToFront(active);
+    canvas.requestRenderAll();
+    scheduleSave();
+  });
+
+  document.querySelector('[data-action="back"]')!.addEventListener('click', () => {
+    const active = canvas.getActiveObject();
+    if (active) canvas.sendObjectToBack(active);
+    canvas.requestRenderAll();
+    scheduleSave();
+  });
+
+  document.querySelector('[data-action="export"]')!.addEventListener('click', () => {
+    const url = canvas.toDataURL({ format: 'png', multiplier: 2 });
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(
+        `<title>Organograma (PNG)</title><img src="${url}" alt="" style="max-width:100%">`
+      );
+    }
+  });
+
+  // ------------------------------------------------------- painel de cores
+  const propsEmpty = document.querySelector<HTMLElement>('[data-props-empty]')!;
+  const propsForm = document.querySelector<HTMLElement>('[data-props-form]')!;
+  const fillInput = document.querySelector<HTMLInputElement>('[data-prop-fill]')!;
+  const strokeInput = document.querySelector<HTMLInputElement>('[data-prop-stroke]')!;
+  const textColorInput = document.querySelector<HTMLInputElement>('[data-prop-text-color]')!;
+
+  type RectInstance = InstanceType<typeof Rect>;
+  type TextboxInstance = InstanceType<typeof Textbox>;
+
+  function nodeChildren(group: NodeGroup | undefined): {
+    rect?: RectInstance;
+    text?: TextboxInstance;
+  } {
+    if (!group) return {};
+    const objects = group.getObjects();
+    return {
+      rect: objects.find((o) => o.type === 'rect') as RectInstance | undefined,
+      text: objects.find((o) => o.type === 'textbox') as TextboxInstance | undefined,
+    };
+  }
+
+  function showProps() {
+    const active = canvas.getActiveObject() as NodeGroup | undefined;
+    const isNode = Boolean(active?.nodeId);
+    propsEmpty.hidden = isNode;
+    propsForm.hidden = !isNode;
+    if (!isNode) return;
+    const { rect, text } = nodeChildren(active);
+    fillInput.value = (rect?.fill as string) || NODE_FILL;
+    strokeInput.value = (rect?.stroke as string) || NODE_STROKE;
+    textColorInput.value = (text?.fill as string) || NODE_TEXT;
+  }
+
+  canvas.on('selection:created', showProps);
+  canvas.on('selection:updated', showProps);
+  canvas.on('selection:cleared', showProps);
+
+  fillInput.addEventListener('input', () => {
+    const active = canvas.getActiveObject() as NodeGroup | undefined;
+    const { rect } = nodeChildren(active);
+    if (rect) {
+      rect.set({ fill: fillInput.value });
+      canvas.requestRenderAll();
+      scheduleSave();
+    }
+  });
+  strokeInput.addEventListener('input', () => {
+    const active = canvas.getActiveObject() as NodeGroup | undefined;
+    const { rect } = nodeChildren(active);
+    if (rect) {
+      rect.set({ stroke: strokeInput.value });
+      canvas.requestRenderAll();
+      scheduleSave();
+    }
+  });
+  textColorInput.addEventListener('input', () => {
+    const active = canvas.getActiveObject() as NodeGroup | undefined;
+    const { text } = nodeChildren(active);
+    if (text) {
+      text.set({ fill: textColorInput.value });
+      canvas.requestRenderAll();
+      scheduleSave();
+    }
+  });
+
+  // ---------------------------------------------------------------- salvar
+  const statusEl = document.querySelector<HTMLElement>('[data-status]')!;
+  let saveTimer: number | undefined;
+
+  function setStatus(state: 'idle' | 'dirty' | 'saving' | 'error', label: string) {
+    statusEl.dataset.state = state;
+    statusEl.textContent = label;
+  }
+
+  function scheduleSave() {
+    setStatus('dirty', 'Alterações pendentes');
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(flush, 900);
+  }
+
+  async function flush() {
+    setStatus('saving', 'Salvando…');
+    const canvasJson = JSON.stringify(canvas.toObject(CUSTOM_PROPS));
+    try {
+      const response = await fetch('/admin/api/diagram-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diagramId: data.diagramId, canvasJson }),
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      setStatus('idle', 'Tudo salvo');
+    } catch {
+      setStatus('error', 'Erro ao salvar — tentando de novo');
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(flush, 4000);
+    }
+  }
+
+  window.addEventListener('beforeunload', (event) => {
+    if (statusEl.dataset.state === 'dirty' || statusEl.dataset.state === 'saving') {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
+  // Movimentar/redimensionar/girar qualquer objeto também agenda gravação.
+  canvas.on('object:modified', scheduleSave);
+  canvas.on('text:changed', scheduleSave);
+
+  // -------------------------------------------------------------- carregar
+  (async () => {
+    if (data.canvasJson) {
+      try {
+        await canvas.loadFromJSON(data.canvasJson);
+        canvas.requestRenderAll();
+      } catch {
+        // canvas vazio/corrompido: segue com um canvas em branco em vez de travar a tela.
+      }
+    }
+  })();
+</script>

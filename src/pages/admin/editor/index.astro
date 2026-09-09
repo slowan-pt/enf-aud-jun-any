@@ -242,6 +242,29 @@ const MIGRATED_PAGES: Record<string, PageAction[]> = {
       }
     </div>
   </section>
+
+  <section class="panel" style="margin-top: var(--sp-5)">
+    <div class="panel__head">
+      <h2 class="panel__title">Ferramentas livres</h2>
+    </div>
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Área de canvas livre, separada das páginas do site — nada aqui altera Home, Quem Somos,
+        Serviços ou Conteúdos.
+      </p>
+      <div class="page-card__actions">
+        <a class="page-action" href="/admin/organogramas">
+          <Icon name="git-branch" size={16} />
+          <span>
+            <strong>Organogramas e fluxogramas</strong>
+            <small
+              >Caixas, conectores e hierarquias — exporte como imagem para usar numa página.</small
+            >
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
 </AdminLayout>
 
 <style>

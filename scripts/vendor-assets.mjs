@@ -19,6 +19,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const assets = [
   ['node_modules/moveable/dist/moveable.min.js', 'public/vendor/moveable.min.js'],
+  // Só carregado por /admin/organogramas/[id] (editor de organogramas/
+  // fluxogramas, item 8 do escopo) — nunca pelo site público nem pelo
+  // restante do painel.
+  ['node_modules/fabric/dist/index.min.js', 'public/vendor/fabric.min.js'],
 ];
 
 for (const [from, to] of assets) {

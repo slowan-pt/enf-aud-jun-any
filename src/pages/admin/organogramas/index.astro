@@ -1,0 +1,225 @@
+---
+/**
+ * Organogramas e fluxogramas (item 8 do escopo) — lista + criar/duplicar/
+ * renomear/excluir. Área livre de canvas (Fabric.js), sem relação com o
+ * conteúdo das páginas semânticas.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import {
+  listDiagrams,
+  createDiagram,
+  duplicateDiagram,
+  deleteDiagram,
+  renameDiagram,
+} from '../../../lib/diagrams';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+  const userId = Astro.locals.user?.id;
+  const userName = Astro.locals.user?.name ?? '';
+  const ip = Astro.request.headers.get('cf-connecting-ip') ?? '';
+
+  if (action === 'create') {
+    const title = String(form.get('title') ?? '').trim() || 'Novo organograma';
+    const id = await createDiagram(db, title, userId);
+    await writeAuditLog(db, {
+      userId,
+      userName,
+      action: 'diagram.create',
+      target: `Organograma: ${title}`,
+      ip,
+    });
+    return Astro.redirect(`/admin/organogramas/${id}`);
+  }
+
+  const id = Number(form.get('id'));
+  if (Number.isInteger(id) && id > 0) {
+    if (action === 'duplicate') {
+      const newId = await duplicateDiagram(db, id, userId);
+      if (newId) {
+        await writeAuditLog(db, {
+          userId,
+          userName,
+          action: 'diagram.duplicate',
+          target: `Organograma #${id} → #${newId}`,
+          ip,
+        });
+        return Astro.redirect(`/admin/organogramas/${newId}`);
+      }
+    } else if (action === 'rename') {
+      const title = String(form.get('title') ?? '').trim();
+      if (title) {
+        await renameDiagram(db, id, title, userId);
+        await writeAuditLog(db, {
+          userId,
+          userName,
+          action: 'diagram.rename',
+          target: `Organograma #${id}: ${title}`,
+          ip,
+        });
+      }
+    } else if (action === 'delete') {
+      await deleteDiagram(db, id);
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'diagram.delete',
+        target: `Organograma #${id}`,
+        ip,
+      });
+    }
+  }
+  return Astro.redirect('/admin/organogramas');
+}
+
+const diagrams = await listDiagrams(db);
+
+function formatDate(iso: string): string {
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+---
+
+<AdminLayout
+  title="Organogramas"
+  description="Área livre de organogramas e fluxogramas — arraste, conecte e monte diagramas sem afetar as páginas do site."
+  active="/admin/editor"
+>
+  <nav class="breadcrumb" aria-label="Caminho">
+    <a href="/admin/editor">Editor Visual</a>
+    <Icon name="chevron-right" size={14} />
+    <span class="breadcrumb__current">Organogramas</span>
+  </nav>
+
+  <div slot="actions">
+    <form method="post" style="display:contents">
+      <input type="hidden" name="_action" value="create" />
+      <button type="submit" class="btn btn--sm">
+        <Icon name="plus" size={16} />
+        Novo organograma
+      </button>
+    </form>
+  </div>
+
+  <section class="panel">
+    <div class="panel__body">
+      <p class="hint" style="margin-bottom: var(--sp-4)">
+        Cada organograma é independente — nenhum deles altera Home, Quem Somos, Serviços ou
+        Conteúdos. Para usar um organograma em alguma página, exporte como imagem e envie pela
+        Biblioteca de mídia.
+      </p>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Atualizado</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              diagrams.map((diagram) => (
+                <tr>
+                  <td>
+                    <a class="table__main" href={`/admin/organogramas/${diagram.id}`}>
+                      {diagram.title}
+                    </a>
+                  </td>
+                  <td class="muted small">{formatDate(diagram.updatedAt)}</td>
+                  <td>
+                    <div class="table__actions">
+                      <a
+                        class="row-btn"
+                        href={`/admin/organogramas/${diagram.id}`}
+                        aria-label="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <form method="post" style="display:contents">
+                        <input type="hidden" name="id" value={diagram.id} />
+                        <input type="hidden" name="_action" value="duplicate" />
+                        <button type="submit" class="row-btn" aria-label="Duplicar">
+                          <Icon name="copy" size={16} />
+                        </button>
+                      </form>
+                      <form
+                        method="post"
+                        style="display:contents"
+                        data-confirm-submit={`Excluir "${diagram.title}"? Esta ação não pode ser desfeita.`}
+                      >
+                        <input type="hidden" name="id" value={diagram.id} />
+                        <input type="hidden" name="_action" value="delete" />
+                        <button
+                          type="submit"
+                          class="row-btn row-btn--danger"
+                          aria-label="Excluir"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      {
+        diagrams.length === 0 && (
+          <div class="empty-state">
+            <span class="empty-state__icon">
+              <Icon name="git-branch" size={22} />
+            </span>
+            <h2 class="title-sm">Nenhum organograma criado</h2>
+            <p>Crie o primeiro organograma para montar fluxos e hierarquias.</p>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--sp-5);
+  }
+
+  .breadcrumb a {
+    color: inherit;
+  }
+
+  .breadcrumb__current {
+    color: var(--text-strong);
+    font-weight: 600;
+  }
+
+  .text-right {
+    text-align: right !important;
+  }
+</style>
+
+<script>
+  // Confirmação forte antes de excluir — o soft delete some da listagem
+  // imediatamente, sem uma etapa de "lixeira" nesta tela.
+  document.querySelectorAll<HTMLFormElement>('[data-confirm-submit]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      const message = form.dataset.confirmSubmit;
+      if (message && !window.confirm(message)) event.preventDefault();
+    });
+  });
+</script>
