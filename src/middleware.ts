@@ -5,11 +5,26 @@ import { listServices } from './lib/services';
 import { listPosts } from './lib/posts';
 import { findRedirect, recordHit } from './lib/redirects';
 import { SESSION_COOKIE } from './lib/auth';
+import { listNavigation } from './lib/navigation';
 
 const PUBLIC_ADMIN_PATHS = new Set(['/admin/login']);
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
+
+  // Defesa central contra CSRF em todas as mutacoes do painel, inclusive APIs
+  // JSON. Navegadores modernos enviam Origin em POST; Sec-Fetch-Site cobre a
+  // navegacao quando extensoes de privacidade removem esse cabecalho.
+  if (pathname.startsWith('/admin') && context.request.method !== 'GET') {
+    const origin = context.request.headers.get('origin');
+    const fetchSite = context.request.headers.get('sec-fetch-site');
+    if (
+      (origin !== null && origin !== context.url.origin) ||
+      (origin === null && fetchSite !== 'same-origin' && fetchSite !== 'none')
+    ) {
+      return new Response('Origem da requisicao recusada.', { status: 403 });
+    }
+  }
 
   // Configurações administráveis (empresa, WhatsApp, redes sociais) ficam
   // disponíveis em Astro.locals.settings em toda página/rota — site público
@@ -27,6 +42,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.settings = await getSettings(db);
   context.locals.services = await listServices(db);
   context.locals.posts = await listPosts(db);
+  context.locals.navigation = await listNavigation(db);
 
   if (!pathname.startsWith('/admin')) {
     // O editor visual abre a própria página pública dentro de um iframe. Só

@@ -27,6 +27,8 @@ declare namespace App {
     settings: import('./lib/settings').SiteSettings;
     services: import('./lib/services').Service[];
     posts: import('./lib/posts').Post[];
+    /** Menu publico carregado uma unica vez por requisicao pelo middleware. */
+    navigation: import('./lib/navigation').NavigationItem[];
     /** Página aberta dentro do editor visual por um usuário autenticado. */
     editMode?: boolean;
   }

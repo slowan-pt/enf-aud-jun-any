@@ -1,0 +1,385 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import {
+  listNavigationAdmin,
+  listNavigationPageOptions,
+  removeNavigationItem,
+  reorderNavigation,
+  upsertNavigationItem,
+} from '../../../lib/navigation';
+
+const db = getDB();
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? 'save');
+  try {
+    if (action === 'remove') {
+      await removeNavigationItem(db, Number(form.get('id')));
+    } else if (action === 'reorder') {
+      await reorderNavigation(
+        db,
+        String(form.get('ids') ?? '')
+          .split(',')
+          .map(Number)
+      );
+    } else {
+      const id = Number(form.get('id')) || undefined;
+      const type = form.get('type') === 'external' ? 'external' : 'internal';
+      await upsertNavigationItem(db, {
+        id,
+        label: String(form.get('label') ?? ''),
+        type,
+        pageId: type === 'internal' ? Number(form.get('page_id')) || null : null,
+        url: String(form.get('url') ?? ''),
+        parentId: Number(form.get('parent_id')) || null,
+        order: Number(form.get('order')) || 0,
+        newTab: form.get('new_tab') === 'on',
+      });
+    }
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: `navigation.${action}`,
+      target: 'Menu principal',
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect('/admin/paginas/menu?saved=1');
+  } catch (cause) {
+    error = cause instanceof Error ? cause.message : 'Nao foi possivel atualizar o menu.';
+  }
+}
+const [items, pages] = await Promise.all([
+  listNavigationAdmin(db),
+  listNavigationPageOptions(db),
+]);
+const availablePages = pages.filter((page) => !page.archived);
+---
+
+<AdminLayout
+  title="Menu do site"
+  description="Ordene os itens, crie niveis e escolha paginas internas ou URLs externas seguras."
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <a href="/admin/paginas" class="btn btn--secondary btn--sm"
+      ><Icon name="arrow-left" size={16} />Voltar</a
+    >
+  </div>
+  {
+    Astro.url.searchParams.get('saved') === '1' && (
+      <p class="notice notice--success">Menu atualizado.</p>
+    )
+  }{
+    error && (
+      <p class="notice notice--danger" role="alert">
+        {error}
+      </p>
+    )
+  }
+  <div class="menu-layout">
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Estrutura atual</h2><span class="muted small"
+          >Arraste para reordenar</span
+        >
+      </div>
+      <form method="post" data-order-form>
+        <input type="hidden" name="_action" value="reorder" /><input
+          type="hidden"
+          name="ids"
+          data-order-ids
+        /><ol class="menu-list" data-menu-list>
+          {
+            items.map((item) => (
+              <li
+                class:list={['menu-item', { 'menu-item--child': item.parentId !== null }]}
+                draggable="true"
+                data-menu-item
+                data-id={item.id}
+              >
+                <span class="drag" title="Arraste para reordenar">
+                  <Icon name="menu" size={18} />
+                </span>
+                <div class="menu-item__main">
+                  <>
+                    <strong>{item.label}</strong>
+                    <span>
+                      {item.type === 'internal' ? item.pageTitle : item.href}
+                      {item.parentId ? ` · filho de #${item.parentId}` : ''}
+                    </span>
+                  </>
+                </div>
+                {!item.active && (
+                  <span class="badge badge--warning">Destino nao publicado</span>
+                )}
+                {item.newTab && <span class="badge badge--neutral">Nova aba</span>}
+                <button
+                  type="button"
+                  class="row-btn"
+                  data-edit-item
+                  aria-label={`Editar ${item.label}`}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+                <button
+                  type="submit"
+                  class="row-btn row-btn--danger"
+                  form={`remove-${item.id}`}
+                  aria-label={`Remover ${item.label}`}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+                <script
+                  type="application/json"
+                  data-item-json
+                  set:html={JSON.stringify(item).replace(/</g, '\\u003c')}
+                />
+              </li>
+            ))
+          }
+        </ol><div class="panel__foot">
+          <button class="btn btn--secondary btn--sm" type="submit"
+            ><Icon name="check" size={16} />Salvar ordem</button
+          >
+        </div>
+      </form>
+      {
+        items.map((item) => (
+          <form id={`remove-${item.id}`} method="post">
+            <>
+              <input type="hidden" name="_action" value="remove" />
+              <input type="hidden" name="id" value={item.id} />
+            </>
+          </form>
+        ))
+      }
+    </section>
+    <aside class="panel panel__body form-section">
+      <h2 class="form-section__title" data-form-title>Novo item</h2><form
+        method="post"
+        class="form-section"
+        data-item-form
+      >
+        <input type="hidden" name="_action" value="save" /><input
+          type="hidden"
+          name="id"
+          data-id-input
+        />
+        <label class="field"
+          ><span class="label">Nome exibido</span><input
+            class="input"
+            name="label"
+            required
+            maxlength="100"
+          /></label
+        >
+        <label class="field"
+          ><span class="label">Destino</span><select class="select" name="type" data-type
+            ><option value="internal">Pagina interna</option><option value="external"
+              >URL externa</option
+            ></select
+          ></label
+        >
+        <label class="field" data-internal
+          ><span class="label">Pagina</span><select class="select" name="page_id"
+            ><option value="">Selecione</option>{
+              availablePages.map((page) => (
+                <option value={page.id}>
+                  {page.title} ({page.slug})
+                </option>
+              ))
+            }</select
+          ></label
+        >
+        <label class="field" data-external hidden
+          ><span class="label">URL HTTPS</span><input
+            class="input"
+            name="url"
+            type="url"
+            placeholder="https://exemplo.com"
+          /></label
+        >
+        <label class="field"
+          ><span class="label">Item pai</span><select class="select" name="parent_id"
+            ><option value="">Nenhum</option>{
+              items.map((item) => <option value={item.id}>{item.label}</option>)
+            }</select
+          ></label
+        >
+        <label class="field"
+          ><span class="label">Ordem</span><input
+            class="input"
+            type="number"
+            name="order"
+            value="100"
+            min="0"
+            max="9999"
+          /></label
+        >
+        <label class="check"
+          ><input type="checkbox" name="new_tab" /><span>Abrir em nova aba</span></label
+        >
+        <div class="form-actions">
+          <button type="submit" class="btn"><Icon name="check" size={16} />Salvar item</button
+          ><button type="button" class="btn btn--secondary" data-reset-form hidden
+            >Cancelar</button
+          >
+        </div>
+      </form>
+    </aside>
+  </div>
+</AdminLayout>
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-item-form]')!;
+  const type = form.querySelector<HTMLSelectElement>('[data-type]')!;
+  const internal = form.querySelector<HTMLElement>('[data-internal]')!;
+  const external = form.querySelector<HTMLElement>('[data-external]')!;
+  function syncType() {
+    const isExternal = type.value === 'external';
+    internal.hidden = isExternal;
+    external.hidden = !isExternal;
+    (form.elements.namedItem('page_id') as HTMLSelectElement | null)?.toggleAttribute(
+      'required',
+      !isExternal
+    );
+    (form.elements.namedItem('url') as HTMLInputElement | null)?.toggleAttribute(
+      'required',
+      isExternal
+    );
+  }
+  type.addEventListener('change', syncType);
+  syncType();
+  document.querySelectorAll<HTMLElement>('[data-edit-item]').forEach((button) =>
+    button.addEventListener('click', () => {
+      const row = button.closest('[data-menu-item]')!;
+      const data = JSON.parse(row.querySelector('[data-item-json]')!.textContent || '{}');
+      (form.elements.namedItem('id') as HTMLInputElement).value = String(data.id);
+      (form.elements.namedItem('label') as HTMLInputElement).value = data.label;
+      (form.elements.namedItem('type') as HTMLSelectElement).value = data.type;
+      (form.elements.namedItem('page_id') as HTMLSelectElement).value = String(
+        data.pageId ?? ''
+      );
+      (form.elements.namedItem('url') as HTMLInputElement).value =
+        data.type === 'external' ? data.href : '';
+      (form.elements.namedItem('parent_id') as HTMLSelectElement).value = String(
+        data.parentId ?? ''
+      );
+      (form.elements.namedItem('order') as HTMLInputElement).value = String(data.order);
+      (form.elements.namedItem('new_tab') as HTMLInputElement).checked = data.newTab;
+      document.querySelector('[data-form-title]')!.textContent = 'Editar item';
+      document.querySelector<HTMLElement>('[data-reset-form]')!.hidden = false;
+      syncType();
+      form.scrollIntoView({ behavior: 'smooth' });
+    })
+  );
+  document.querySelector('[data-reset-form]')?.addEventListener('click', () => {
+    form.reset();
+    (form.elements.namedItem('id') as HTMLInputElement).value = '';
+    document.querySelector('[data-form-title]')!.textContent = 'Novo item';
+    document.querySelector<HTMLElement>('[data-reset-form]')!.hidden = true;
+    syncType();
+  });
+  const list = document.querySelector<HTMLOListElement>('[data-menu-list]')!;
+  let dragged: HTMLElement | null = null;
+  list.addEventListener('dragstart', (event) => {
+    dragged = (event.target as Element).closest<HTMLElement>('[data-menu-item]') ?? null;
+    dragged?.classList.add('is-dragging');
+  });
+  list.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    const over = (event.target as Element).closest<HTMLElement>('[data-menu-item]');
+    if (dragged && over && over !== dragged) {
+      const rect = over.getBoundingClientRect();
+      list.insertBefore(
+        dragged,
+        event.clientY < rect.top + rect.height / 2 ? over : over.nextSibling
+      );
+    }
+  });
+  list.addEventListener('dragend', () => {
+    dragged?.classList.remove('is-dragging');
+    dragged = null;
+  });
+  document.querySelector('[data-order-form]')?.addEventListener('submit', () => {
+    document.querySelector<HTMLInputElement>('[data-order-ids]')!.value = [
+      ...list.querySelectorAll<HTMLElement>('[data-menu-item]'),
+    ]
+      .map((item) => item.dataset.id)
+      .join(',');
+  });
+</script>
+<style>
+  .notice {
+    margin-bottom: var(--sp-4);
+    padding: 0.8rem 1rem;
+    border-radius: var(--r-sm);
+  }
+  .notice--success {
+    color: #14532d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .notice--danger {
+    color: #7f1d1d;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+  .menu-layout {
+    display: grid;
+    gap: var(--sp-5);
+    align-items: start;
+  }
+  @media (min-width: 1100px) {
+    .menu-layout {
+      grid-template-columns: minmax(0, 1fr) 360px;
+    }
+  }
+  .menu-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--sp-3);
+    display: grid;
+    gap: 2px;
+  }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: 58px;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+  }
+  .menu-item--child {
+    margin-left: 2rem;
+    border-left: 3px solid var(--c-brand-200);
+  }
+  .menu-item.is-dragging {
+    opacity: 0.4;
+  }
+  .drag {
+    cursor: grab;
+    color: var(--text-muted);
+  }
+  .menu-item__main {
+    flex: 1;
+    min-width: 120px;
+  }
+  .menu-item__main strong,
+  .menu-item__main span {
+    display: block;
+  }
+  .menu-item__main span {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .form-actions {
+    display: flex;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+</style>

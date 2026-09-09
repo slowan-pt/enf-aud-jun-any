@@ -1,0 +1,524 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import { listMedia } from '../../../lib/media';
+import {
+  getGenericPageById,
+  listGenericPages,
+  normalizeGenericPageSlug,
+  updateGenericPage,
+  type GenericPageContent,
+} from '../../../lib/generic-pages';
+import { slugify } from '../../../lib/urls';
+
+const db = getDB();
+const id = Number(Astro.params.id);
+let page = Number.isInteger(id) ? await getGenericPageById(db, id) : null;
+if (!page) return new Response('Pagina nao encontrada.', { status: 404 });
+let error = '';
+
+if (Astro.request.method === 'POST' && !page.archivedAt) {
+  const form = await Astro.request.formData();
+  try {
+    const sectionIds = form.getAll('section_id').map(String);
+    const eyebrows = form.getAll('section_eyebrow').map(String);
+    const titles = form.getAll('section_title').map(String);
+    const bodies = form.getAll('section_body').map(String);
+    const images = form.getAll('section_image').map(String);
+    const imageAlts = form.getAll('section_image_alt').map(String);
+    const content: GenericPageContent = {
+      intro: String(form.get('intro') ?? ''),
+      sections: sectionIds.map((sectionId, index) => ({
+        id: slugify(sectionId) || `secao-${index + 1}`,
+        eyebrow: eyebrows[index] ?? '',
+        title: titles[index] ?? '',
+        body: bodies[index] ?? '',
+        image: images[index] ?? '',
+        imageAlt: imageAlts[index] ?? '',
+      })),
+    };
+    const parentValue = Number(form.get('parent_id'));
+    const socialValue = Number(form.get('social_image_id'));
+    await updateGenericPage(
+      db,
+      id,
+      {
+        title: String(form.get('title') ?? ''),
+        slug: normalizeGenericPageSlug(String(form.get('slug') ?? '')),
+        status: form.get('status') === 'published' ? 'published' : 'draft',
+        content,
+        seoTitle: String(form.get('seo_title') ?? ''),
+        seoDescription: String(form.get('seo_description') ?? ''),
+        indexable: form.get('indexable') === 'on',
+        socialImageId: socialValue > 0 ? socialValue : null,
+        parentId: parentValue > 0 && parentValue !== id ? parentValue : null,
+        showInMenu: form.get('show_in_menu') === 'on',
+        menuOrder: Number(form.get('menu_order')) || 0,
+      },
+      Astro.locals.user?.id
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'page.update',
+      target: `${page.title} (#${page.id})`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect(`/admin/paginas/${id}?saved=1`);
+  } catch (cause) {
+    error = cause instanceof Error ? cause.message : 'Nao foi possivel salvar.';
+  }
+}
+
+page = (await getGenericPageById(db, id))!;
+const [allPages, media] = await Promise.all([listGenericPages(db), listMedia(db)]);
+const imageMedia = media.filter((item) => item.mimeType.startsWith('image/'));
+const saved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title={page.title}
+  description={`Pagina institucional #${page.id}. O ID permanece igual mesmo quando o slug muda.`}
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <a href="/admin/paginas" class="btn btn--secondary btn--sm"
+      ><Icon name="arrow-left" size={16} />Voltar</a
+    >
+    <a href={`/admin/editor/paginas/${page.id}`} class="btn btn--secondary btn--sm"
+      ><Icon name="pointer" size={16} />Editor Visual</a
+    >
+    {
+      !page.archivedAt && (
+        <a
+          href={`${page.slug}?__edit=1`}
+          target="_blank"
+          rel="noopener"
+          class="btn btn--secondary btn--sm"
+        >
+          <Icon name="eye" size={16} />
+          Pre-visualizar
+        </a>
+      )
+    }
+  </div>
+  {saved && <p class="notice notice--success">Pagina salva.</p>}{
+    error && (
+      <p class="notice notice--danger" role="alert">
+        {error}
+      </p>
+    )
+  }
+  {
+    page.archivedAt ? (
+      <section class="panel panel__body archived">
+        <>
+          <h2 class="title-sm">Pagina arquivada</h2>
+          <p>
+            Restaure a pagina para voltar a editar. A exclusao definitiva e irreversivel e exige
+            o titulo exato.
+          </p>
+          <form method="post" action="/admin/paginas" class="delete-form">
+            <>
+              <input type="hidden" name="id" value={page.id} />
+              <label class="field">
+                <>
+                  <span class="label">Digite: {page.title}</span>
+                  <input class="input" name="confirmation" required autocomplete="off" />
+                </>
+              </label>
+              <button class="btn btn--danger" name="_action" value="delete">
+                <Icon name="trash" size={16} />
+                Excluir definitivamente
+              </button>
+            </>
+          </form>
+        </>
+      </section>
+    ) : (
+      <form method="post" class="editor-layout" id="page-form">
+        <div class="panel panel__body form-section">
+          <section class="form-section">
+            <>
+              <h2 class="form-section__title">Identificacao e publicacao</h2>
+              <div class="grid-2">
+                <>
+                  <label class="field">
+                    <>
+                      <span class="label">Titulo</span>
+                      <input
+                        class="input"
+                        name="title"
+                        value={page.title}
+                        required
+                        maxlength="200"
+                      />
+                    </>
+                  </label>
+                  <label class="field">
+                    <>
+                      <span class="label">Slug</span>
+                      <input
+                        class="input"
+                        name="slug"
+                        value={page.slug}
+                        required
+                        maxlength="220"
+                      />
+                      <span class="help">
+                        Ao alterar, o endereco anterior recebe redirect 301.
+                      </span>
+                    </>
+                  </label>
+                  <label class="field">
+                    <>
+                      <span class="label">Status</span>
+                      <select class="select" name="status">
+                        <>
+                          <option value="draft" selected={page.status === 'draft'}>
+                            Rascunho
+                          </option>
+                          <option value="published" selected={page.status === 'published'}>
+                            Publicada
+                          </option>
+                        </>
+                      </select>
+                    </>
+                  </label>
+                  <label class="field">
+                    <>
+                      <span class="label">Pagina-pai</span>
+                      <select class="select" name="parent_id">
+                        <option value="">Nenhuma</option>
+                        {allPages
+                          .filter(
+                            (candidate) => candidate.id !== page.id && !candidate.archivedAt
+                          )
+                          .map((candidate) => (
+                            <option
+                              value={candidate.id}
+                              selected={candidate.id === page.parentId}
+                            >
+                              {candidate.title}
+                            </option>
+                          ))}
+                      </select>
+                    </>
+                  </label>
+                </>
+              </div>
+            </>
+          </section>
+          <section class="form-section">
+            <>
+              <h2 class="form-section__title">Conteudo</h2>
+              <label class="field">
+                <>
+                  <span class="label">Introducao</span>
+                  <textarea class="textarea" name="intro" rows="4" maxlength="2000">
+                    {page.content.intro}
+                  </textarea>
+                </>
+              </label>
+              <div class="sections" data-sections>
+                {page.content.sections.map((section, index) => (
+                  <article class="section-editor" draggable="true" data-section-editor>
+                    <div class="section-editor__head">
+                      <span class="drag" title="Arraste para reordenar">
+                        <Icon name="menu" size={18} />
+                      </span>
+                      <strong>Secao {index + 1}</strong>
+                      <button
+                        type="button"
+                        class="row-btn row-btn--danger"
+                        data-remove-section
+                        aria-label="Remover secao"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
+                    </div>
+                    <div class="grid-2">
+                      <label class="field">
+                        <span class="label">ID estavel</span>
+                        <input
+                          class="input"
+                          name="section_id"
+                          value={section.id}
+                          required
+                          pattern="[a-z0-9-]+"
+                        />
+                      </label>
+                      <label class="field">
+                        <span class="label">Chamada curta</span>
+                        <input
+                          class="input"
+                          name="section_eyebrow"
+                          value={section.eyebrow}
+                          maxlength="120"
+                        />
+                      </label>
+                    </div>
+                    <label class="field">
+                      <span class="label">Titulo da secao</span>
+                      <input
+                        class="input"
+                        name="section_title"
+                        value={section.title}
+                        maxlength="200"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="label">Texto</span>
+                      <textarea class="textarea" name="section_body" rows="7" maxlength="20000">
+                        {section.body}
+                      </textarea>
+                    </label>
+                    <div class="grid-2">
+                      <label class="field">
+                        <span class="label">Imagem</span>
+                        <input class="input" name="section_image" value={section.image} />
+                      </label>
+                      <label class="field">
+                        <span class="label">Texto alternativo</span>
+                        <input
+                          class="input"
+                          name="section_image_alt"
+                          value={section.imageAlt}
+                          maxlength="300"
+                        />
+                      </label>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <button type="button" class="btn btn--secondary btn--sm" data-add-section>
+                <Icon name="plus" size={16} />
+                Adicionar secao
+              </button>
+            </>
+          </section>
+          <section class="form-section">
+            <>
+              <h2 class="form-section__title">SEO e compartilhamento</h2>
+              <label class="field">
+                <>
+                  <span class="label">Titulo SEO</span>
+                  <input class="input" name="seo_title" value={page.seoTitle} maxlength="200" />
+                </>
+              </label>
+              <label class="field">
+                <>
+                  <span class="label">Descricao SEO</span>
+                  <textarea class="textarea" name="seo_description" rows="3" maxlength="500">
+                    {page.seoDescription}
+                  </textarea>
+                </>
+              </label>
+              <label class="field">
+                <>
+                  <span class="label">Imagem social</span>
+                  <select class="select" name="social_image_id">
+                    <option value="">Padrao do site</option>
+                    {imageMedia.map((item) => (
+                      <option value={item.id} selected={item.id === page.socialImageId}>
+                        {item.title || item.filename}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              </label>
+              <label class="check">
+                <>
+                  <input type="checkbox" name="indexable" checked={page.indexable} />
+                  <span>Permitir indexacao por buscadores</span>
+                </>
+              </label>
+            </>
+          </section>
+        </div>
+        <aside class="editor-side">
+          <>
+            <section class="panel panel__body form-section">
+              <>
+                <h2 class="form-section__title">Menu</h2>
+                <label class="check">
+                  <>
+                    <input type="checkbox" name="show_in_menu" checked={page.showInMenu} />
+                    <span>Exibir no menu principal</span>
+                  </>
+                </label>
+                <label class="field">
+                  <>
+                    <span class="label">Ordem</span>
+                    <input
+                      class="input"
+                      type="number"
+                      name="menu_order"
+                      min="0"
+                      max="9999"
+                      value={page.menuOrder}
+                    />
+                  </>
+                </label>
+                <a href="/admin/paginas/menu" class="btn btn--secondary btn--sm">
+                  <Icon name="menu" size={16} />
+                  Organizar menu
+                </a>
+              </>
+            </section>
+            <button type="submit" class="btn btn--block">
+              <Icon name="check" size={16} />
+              Salvar pagina
+            </button>
+          </>
+        </aside>
+      </form>
+    )
+  }
+</AdminLayout>
+<template id="section-template"
+  ><article class="section-editor" draggable="true" data-section-editor>
+    <div class="section-editor__head">
+      <span class="drag"><Icon name="menu" size={18} /></span><strong>Nova secao</strong><button
+        type="button"
+        class="row-btn row-btn--danger"
+        data-remove-section
+        aria-label="Remover secao"><Icon name="trash" size={16} /></button
+      >
+    </div><div class="grid-2">
+      <label class="field"
+        ><span class="label">ID estavel</span><input
+          class="input"
+          name="section_id"
+          value="nova-secao"
+          required
+          pattern="[a-z0-9-]+"
+        /></label
+      ><label class="field"
+        ><span class="label">Chamada curta</span><input
+          class="input"
+          name="section_eyebrow"
+          maxlength="120"
+        /></label
+      >
+    </div><label class="field"
+      ><span class="label">Titulo da secao</span><input
+        class="input"
+        name="section_title"
+        maxlength="200"
+      /></label
+    ><label class="field"
+      ><span class="label">Texto</span><textarea
+        class="textarea"
+        name="section_body"
+        rows="7"
+        maxlength="20000"></textarea></label
+    ><div class="grid-2">
+      <label class="field"
+        ><span class="label">Imagem</span><input class="input" name="section_image" /></label
+      ><label class="field"
+        ><span class="label">Texto alternativo</span><input
+          class="input"
+          name="section_image_alt"
+          maxlength="300"
+        /></label
+      >
+    </div>
+  </article></template
+>
+<script>
+  const container = document.querySelector<HTMLElement>('[data-sections]');
+  const template = document.querySelector<HTMLTemplateElement>('#section-template');
+  document.querySelector('[data-add-section]')?.addEventListener('click', () => {
+    if (!container || !template || container.children.length >= 30) return;
+    const fragment = template.content.cloneNode(true);
+    const input = (fragment as DocumentFragment).querySelector<HTMLInputElement>(
+      '[name="section_id"]'
+    );
+    if (input) input.value = `secao-${Date.now().toString(36)}`;
+    container.append(fragment);
+  });
+  container?.addEventListener('click', (event) => {
+    const button = (event.target as Element).closest('[data-remove-section]');
+    if (button && container.children.length > 1)
+      button.closest('[data-section-editor]')?.remove();
+  });
+  let dragged: HTMLElement | null = null;
+  container?.addEventListener('dragstart', (event) => {
+    dragged = (event.target as Element).closest<HTMLElement>('[data-section-editor]') ?? null;
+    dragged?.classList.add('is-dragging');
+  });
+  container?.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    const over = (event.target as Element).closest<HTMLElement>('[data-section-editor]');
+    if (dragged && over && over !== dragged) {
+      const rect = over.getBoundingClientRect();
+      container.insertBefore(
+        dragged,
+        event.clientY < rect.top + rect.height / 2 ? over : over.nextSibling
+      );
+    }
+  });
+  container?.addEventListener('dragend', () => {
+    dragged?.classList.remove('is-dragging');
+    dragged = null;
+  });
+</script>
+<style>
+  .notice {
+    margin-bottom: var(--sp-4);
+    padding: 0.8rem 1rem;
+    border-radius: var(--r-sm);
+  }
+  .notice--success {
+    color: #14532d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .notice--danger {
+    color: #7f1d1d;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+  .sections {
+    display: grid;
+    gap: var(--sp-4);
+  }
+  .section-editor {
+    display: grid;
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-ink-50);
+  }
+  .section-editor.is-dragging {
+    opacity: 0.45;
+  }
+  .section-editor__head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .section-editor__head strong {
+    flex: 1;
+  }
+  .drag {
+    cursor: grab;
+    color: var(--text-muted);
+  }
+  .archived {
+    display: grid;
+    gap: var(--sp-4);
+  }
+  .delete-form {
+    display: flex;
+    align-items: end;
+    gap: var(--sp-3);
+    max-width: 760px;
+  }
+  .delete-form .field {
+    flex: 1;
+  }
+</style>

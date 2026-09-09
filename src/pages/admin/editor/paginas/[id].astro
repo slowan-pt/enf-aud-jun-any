@@ -1,0 +1,1036 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import Icon from '../../../../components/Icon.astro';
+import { getDB } from '../../../../lib/db';
+import { getGenericPageById } from '../../../../lib/generic-pages';
+import { listMedia } from '../../../../lib/media';
+
+const id = Number(Astro.params.id);
+const db = getDB();
+const [page, media] = await Promise.all([
+  Number.isInteger(id) ? getGenericPageById(db, id) : null,
+  listMedia(db),
+]);
+if (!page || page.archivedAt) return new Response('Pagina nao encontrada.', { status: 404 });
+const bootstrapJson = JSON.stringify({
+  id: page.id,
+  slug: page.slug,
+  content: page.content,
+  editor: page.editor,
+}).replace(/</g, '\\u003c');
+---
+
+<AdminLayout
+  title={`Editor Visual: ${page.title}`}
+  description="Selecione um elemento na pagina para editar, mover, redimensionar ou organizar em camadas."
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <a href={`/admin/paginas/${page.id}`} class="btn btn--secondary btn--sm"
+      ><Icon name="settings" size={16} />Configuracoes</a
+    ><a href={page.slug} target="_blank" rel="noopener" class="btn btn--secondary btn--sm"
+      ><Icon name="eye" size={16} />Ver pagina</a
+    >
+  </div>
+  <script
+    is:inline
+    type="application/json"
+    id="generic-editor-bootstrap"
+    set:html={bootstrapJson}
+  />
+  <div class="visual-toolbar">
+    <div class="segmented" aria-label="Dispositivo">
+      <button type="button" class="is-active" data-device="desktop">Desktop</button><button
+        type="button"
+        data-device="mobile">Mobile</button
+      >
+    </div>
+    <button type="button" class="icon-btn" data-undo title="Desfazer" disabled
+      ><Icon name="rotate-ccw" size={18} /></button
+    ><button type="button" class="icon-btn redo" data-redo title="Refazer" disabled
+      ><Icon name="rotate-ccw" size={18} /></button
+    >
+    <span class="save-status" data-status>Tudo salvo</span><button
+      type="button"
+      class="btn btn--sm"
+      data-save><Icon name="check" size={16} />Salvar</button
+    >
+  </div>
+  <div class="visual-shell">
+    <aside class="visual-panel">
+      <section>
+        <h2>Adicionar elemento</h2><label class="field"
+          ><span class="label">Secao</span><select class="select" data-add-section
+            >{
+              page.content.sections.map((section) => (
+                <option value={section.id}>{section.title || section.id}</option>
+              ))
+            }</select
+          ></label
+        ><div class="add-grid">
+          <button type="button" data-add="text">Texto</button><button
+            type="button"
+            data-add="image">Imagem</button
+          ><button type="button" data-add="video">Video</button><button
+            type="button"
+            data-add="icon">Icone</button
+          ><button type="button" data-add="shape">Forma</button>
+        </div>
+      </section>
+      <section>
+        <h2>Secoes</h2><ol class="section-list" data-section-list>
+          {
+            page.editor.sectionOrder.map((sectionId) => (
+              <li data-section-id={sectionId}>
+                <>
+                  <span>
+                    {page.content.sections.find((section) => section.id === sectionId)?.title ||
+                      sectionId}
+                  </span>
+                  <button type="button" data-section-up aria-label="Mover para cima">
+                    ↑
+                  </button>
+                  <button type="button" data-section-down aria-label="Mover para baixo">
+                    ↓
+                  </button>
+                  <label title="Exibir secao">
+                    <>
+                      <input
+                        type="checkbox"
+                        data-section-visible
+                        checked={!page.editor.hiddenSections.includes(sectionId)}
+                      />
+                      <span>Exibir</span>
+                    </>
+                  </label>
+                </>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+      <section>
+        <h2>Aparencia da pagina</h2><div class="color-grid">
+          <label
+            >Marca<input
+              type="color"
+              data-page-color="brandColor"
+              value={page.editor.pageStyle.brandColor || '#06203a'}
+            /></label
+          ><label
+            >Destaque<input
+              type="color"
+              data-page-color="accentColor"
+              value={page.editor.pageStyle.accentColor || '#0d8b7d'}
+            /></label
+          ><label
+            >Fundo<input
+              type="color"
+              data-page-color="backgroundColor"
+              value={page.editor.pageStyle.backgroundColor || '#ffffff'}
+            /></label
+          ><label
+            >Titulos<input
+              type="color"
+              data-page-color="headingColor"
+              value={page.editor.pageStyle.headingColor || '#06203a'}
+            /></label
+          >
+        </div><button type="button" class="btn btn--secondary btn--sm" data-reset-colors
+          >Restaurar cores</button
+        >
+      </section>
+    </aside>
+    <div class="preview-wrap" data-preview-wrap>
+      <iframe
+        src={`${page.slug}?__edit=1`}
+        title={`Pre-visualizacao de ${page.title}`}
+        data-preview></iframe>
+    </div>
+    <aside class="visual-panel props">
+      <section>
+        <h2>Propriedades</h2><p class="muted small" data-empty>
+          Selecione um elemento na pagina.
+        </p><div data-properties hidden>
+          <strong data-selection-label></strong><span class="kbd" data-selection-key
+          ></span><label class="field" data-text-field
+            ><span class="label">Conteudo</span><textarea class="textarea" rows="5" data-text
+            ></textarea></label
+          ><div data-media-fields hidden>
+            <label class="field"
+              ><span class="label">Arquivo ou icone</span><input
+                class="input"
+                type="text"
+                data-media-value
+              /></label
+            ><label class="field" data-library-field
+              ><span class="label">Biblioteca</span><select class="select" data-media-library>
+                <option value="">Selecionar arquivo...</option>
+                {
+                  media.map((item) => (
+                    <option value={item.url} data-alt={item.altText} data-mime={item.mimeType}>
+                      {item.title || item.filename}
+                    </option>
+                  ))
+                }
+              </select></label
+            ><label class="field" data-alt-field
+              ><span class="label">Texto alternativo</span><input
+                class="input"
+                type="text"
+                maxlength="300"
+                data-media-alt
+              /></label
+            ><div class="media-actions">
+              <button type="button" class="btn btn--secondary btn--sm" data-media-remove
+                >Remover</button
+              ><a class="btn btn--secondary btn--sm" href="/admin/midia" target="_blank"
+                >Biblioteca e upload</a
+              >
+            </div>
+          </div><div class="property-grid">
+            <label>X<input type="number" step=".1" data-prop="x" /></label><label
+              >Y<input type="number" step=".1" data-prop="y" /></label
+            ><label
+              >Largura<input type="number" step=".1" min="0" max="100" data-prop="w" /></label
+            ><label
+              >Altura<input type="number" step=".1" min="0" max="100" data-prop="h" /></label
+            ><label
+              >Rotacao<input type="number" step="1" min="-180" max="180" data-prop="r" /></label
+            ><label>Camada<input type="number" step="1" min="0" max="99" data-prop="z" /></label
+            ><label
+              >Tamanho<input
+                type="number"
+                step=".1"
+                min="0"
+                max="12"
+                data-prop="fontSize"
+              /></label
+            ><label
+              >Opacidade<input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                data-prop="opacity"
+              /></label
+            >
+          </div><div class="checks">
+            <label><input type="checkbox" data-boolean-prop="locked" />Bloquear</label><label
+              ><input type="checkbox" data-boolean-prop="hidden" />Ocultar</label
+            >
+          </div><div class="action-grid">
+            <button type="button" data-front>Trazer a frente</button><button
+              type="button"
+              data-back>Enviar para tras</button
+            ><button type="button" data-duplicate>Duplicar</button><button
+              type="button"
+              class="danger"
+              data-delete>Excluir/ocultar</button
+            >
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2>Aparencia da secao</h2><label class="field"
+          ><span class="label">Secao</span><select class="select" data-style-section
+            >{
+              page.content.sections.map((section) => (
+                <option value={section.id}>{section.title || section.id}</option>
+              ))
+            }</select
+          ></label
+        ><div class="color-grid">
+          <label>Fundo<input type="color" data-section-color="bg" value="#ffffff" /></label
+          ><label>Texto<input type="color" data-section-color="text" value="#1f2937" /></label>
+        </div><div class="property-grid">
+          <label
+            >Altura minima<input
+              type="number"
+              min="0"
+              max="2000"
+              data-section-number="minHeight"
+            /></label
+          ><label
+            >Espacamento<input
+              type="number"
+              min="0"
+              max="300"
+              data-section-number="paddingY"
+            /></label
+          >
+        </div><button type="button" class="btn btn--secondary btn--sm" data-reset-section
+          >Restaurar secao</button
+        >
+      </section>
+    </aside>
+  </div>
+</AdminLayout>
+<script>
+  type Layout = {
+    v: 1 | 2;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    z: number;
+    fontSize: number;
+    color: string;
+    align: string;
+    weight: number;
+    r: number;
+    locked: boolean;
+    hidden: boolean;
+    label: string;
+    opacity: number;
+  };
+  type Selection = {
+    key: string;
+    path: string | null;
+    overlay: string | null;
+    section: string;
+    kind: string;
+    value: string;
+    label: string;
+    layout: Layout;
+  };
+  type ContentState = {
+    intro: string;
+    sections: Array<Record<string, string>>;
+  };
+  type LayoutPairState = { desktop: Layout; mobile: Layout | null };
+  type OverlayState = {
+    id: string;
+    section: string;
+    kind: string;
+    content: string;
+    alt: string;
+    text: string;
+    fill: string;
+    stroke: string;
+    strokeWidth: number;
+    href: string;
+    linkTarget: string;
+    desktop: Layout;
+    mobile: Layout | null;
+  };
+  type EditorState = {
+    pageStyle: Record<string, string>;
+    sectionStyles: Record<string, Record<string, string>>;
+    sectionOrder: string[];
+    hiddenSections: string[];
+    layouts: Record<string, LayoutPairState>;
+    overlays: OverlayState[];
+  };
+  type Snapshot = { content: ContentState; editor: EditorState };
+  const state = JSON.parse(
+    document.querySelector('#generic-editor-bootstrap')!.textContent || '{}'
+  ) as { id: number; content: ContentState; editor: EditorState };
+  let content: ContentState = state.content;
+  let editor: EditorState = state.editor;
+  let device: 'desktop' | 'mobile' = 'desktop';
+  let selection: Selection | null = null;
+  let saveTimer: number | undefined;
+  let saving = false;
+  const undo: Snapshot[] = [];
+  const redo: Snapshot[] = [];
+  const frame = document.querySelector<HTMLIFrameElement>('[data-preview]')!;
+  const status = document.querySelector<HTMLElement>('[data-status]')!;
+  const emptyLayout = (): Layout => ({
+    v: 2,
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+    z: 0,
+    fontSize: 0,
+    color: '',
+    align: '',
+    weight: 0,
+    r: 0,
+    locked: false,
+    hidden: false,
+    label: '',
+    opacity: 100,
+  });
+  const clone = (): Snapshot => structuredClone({ content, editor });
+  function remember() {
+    undo.push(clone());
+    if (undo.length > 60) undo.shift();
+    redo.length = 0;
+    syncHistory();
+  }
+  function syncHistory() {
+    document.querySelector<HTMLButtonElement>('[data-undo]')!.disabled = !undo.length;
+    document.querySelector<HTMLButtonElement>('[data-redo]')!.disabled = !redo.length;
+  }
+  function toFrame(message: Record<string, unknown>) {
+    frame.contentWindow?.postMessage(message, window.location.origin);
+  }
+  function dirty() {
+    status.textContent = 'Alteracoes pendentes';
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(save, 700);
+  }
+  async function save() {
+    if (saving) return;
+    saving = true;
+    status.textContent = 'Salvando...';
+    try {
+      const response = await fetch('/admin/api/generic-page-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: state.id, content, editor }),
+      });
+      if (!response.ok) throw new Error();
+      status.textContent = 'Tudo salvo';
+    } catch {
+      status.textContent = 'Erro ao salvar';
+    } finally {
+      saving = false;
+    }
+  }
+  document.querySelector('[data-save]')?.addEventListener('click', save);
+  function reload() {
+    frame.contentWindow?.location.reload();
+    selection = null;
+    showSelection();
+  }
+  function applySnapshot(snapshot: Snapshot) {
+    content = snapshot.content;
+    editor = snapshot.editor;
+    dirty();
+    reload();
+    renderSections();
+    syncSectionStyle();
+  }
+  document.querySelector('[data-undo]')?.addEventListener('click', () => {
+    const snapshot = undo.pop();
+    if (!snapshot) return;
+    redo.push(clone());
+    applySnapshot(snapshot);
+    syncHistory();
+  });
+  document.querySelector('[data-redo]')?.addEventListener('click', () => {
+    const snapshot = redo.pop();
+    if (!snapshot) return;
+    undo.push(clone());
+    applySnapshot(snapshot);
+    syncHistory();
+  });
+  window.addEventListener('beforeunload', (event) => {
+    if (status.textContent !== 'Tudo salvo') {
+      event.preventDefault();
+    }
+  });
+  function layoutFor(key: string) {
+    const pair = editor.layouts[key] ?? { desktop: emptyLayout(), mobile: null };
+    return device === 'mobile' ? (pair.mobile ?? pair.desktop) : pair.desktop;
+  }
+  function storeLayout(key: string, layout: Layout, targetDevice = device) {
+    editor.layouts[key] ??= { desktop: emptyLayout(), mobile: null };
+    if (targetDevice === 'mobile') editor.layouts[key].mobile = layout;
+    else editor.layouts[key].desktop = layout;
+  }
+  function setPath(path: string, value: string) {
+    if (path === 'intro') {
+      content.intro = value;
+      return;
+    }
+    const match = /^sections\.(\d+)\.([A-Za-z]+)$/.exec(path);
+    if (!match) return;
+    const section = content.sections[Number(match[1])];
+    if (section) section[match[2]!] = value;
+  }
+  function showSelection() {
+    const has = Boolean(selection);
+    document.querySelector<HTMLElement>('[data-empty]')!.hidden = has;
+    document.querySelector<HTMLElement>('[data-properties]')!.hidden = !has;
+    if (!selection) return;
+    document.querySelector('[data-selection-label]')!.textContent =
+      selection.label || selection.kind;
+    document.querySelector('[data-selection-key]')!.textContent = selection.key;
+    const text = document.querySelector<HTMLTextAreaElement>('[data-text]')!;
+    text.value = selection.value || '';
+    document.querySelector<HTMLElement>('[data-text-field]')!.hidden = ![
+      'text',
+      'multiline',
+      'shape',
+    ].includes(selection.kind);
+    const hasMedia = ['image', 'video', 'icon'].includes(selection.kind);
+    const mediaFields = document.querySelector<HTMLElement>('[data-media-fields]')!;
+    mediaFields.hidden = !hasMedia;
+    if (hasMedia) {
+      const overlay = selection.overlay
+        ? editor.overlays.find((item) => item.id === selection?.overlay)
+        : null;
+      document.querySelector<HTMLInputElement>('[data-media-value]')!.value =
+        overlay?.content ?? selection.value ?? '';
+      const alt =
+        overlay?.alt ??
+        (selection.path?.endsWith('.image')
+          ? (content.sections[Number(selection.path.split('.')[1])]?.imageAlt ?? '')
+          : '');
+      document.querySelector<HTMLInputElement>('[data-media-alt]')!.value = alt;
+      document.querySelector<HTMLElement>('[data-alt-field]')!.hidden =
+        selection.kind === 'video';
+      document.querySelector<HTMLElement>('[data-library-field]')!.hidden =
+        selection.kind === 'icon';
+      document.querySelector<HTMLSelectElement>('[data-media-library]')!.value = '';
+    }
+    const layout = layoutFor(selection.key);
+    document
+      .querySelectorAll<HTMLInputElement>('[data-prop]')
+      .forEach(
+        (input) => (input.value = String(layout[input.dataset.prop as keyof Layout] ?? 0))
+      );
+    document
+      .querySelectorAll<HTMLInputElement>('[data-boolean-prop]')
+      .forEach(
+        (input) => (input.checked = Boolean(layout[input.dataset.booleanProp as keyof Layout]))
+      );
+  }
+  window.addEventListener('message', (event) => {
+    if (event.origin !== window.location.origin) return;
+    const data = event.data;
+    if (!data || typeof data.type !== 'string') return;
+    if (data.type === 'editor:ready') {
+      toFrame({ type: 'editor:hidden-sections', hidden: editor.hiddenSections });
+      toFrame({ type: 'editor:layouts', layouts: editor.layouts });
+      toFrame({ type: 'editor:device', device });
+      return;
+    }
+    if (data.type === 'editor:select') {
+      selection = data.element;
+      showSelection();
+      return;
+    }
+    if (data.type === 'editor:deselect') {
+      selection = null;
+      showSelection();
+      return;
+    }
+    if (data.type === 'editor:select-section') {
+      const select = document.querySelector<HTMLSelectElement>('[data-style-section]')!;
+      if ([...select.options].some((option) => option.value === data.section)) {
+        select.value = data.section;
+        syncSectionStyle();
+      }
+      return;
+    }
+    if (data.type === 'editor:layout') {
+      remember();
+      storeLayout(data.key, data.layout, data.device);
+      const currentSelection = selection;
+      if (currentSelection && currentSelection.key === data.key) {
+        currentSelection.layout = data.layout;
+      }
+      showSelection();
+      dirty();
+      return;
+    }
+    if (data.type === 'editor:change') {
+      if (!selection) return;
+      remember();
+      if (data.overlay) {
+        const item = editor.overlays.find((overlay) => overlay.id === data.overlay);
+        if (item) {
+          if (item.kind === 'shape') item.text = data.value;
+          else item.content = data.value;
+        }
+      } else if (data.path) setPath(data.path, data.value);
+      selection.value = data.value;
+      showSelection();
+      dirty();
+      return;
+    }
+    if (data.type === 'editor:overlay-move-section') {
+      const item = editor.overlays.find((overlay) => overlay.id === data.id);
+      if (!item) return;
+      remember();
+      item.section = data.to;
+      storeLayout(`overlay:${data.id}`, data.layout, data.device);
+      dirty();
+      return;
+    }
+    if (data.type === 'editor:drop-resolved') {
+      addOverlay(data.kind, data.section, data.x, data.y);
+      return;
+    }
+  });
+  document.querySelectorAll<HTMLElement>('[data-device]').forEach((button) =>
+    button.addEventListener('click', () => {
+      device = button.dataset.device as typeof device;
+      document
+        .querySelectorAll('[data-device]')
+        .forEach((node) => node.classList.toggle('is-active', node === button));
+      document
+        .querySelector('[data-preview-wrap]')
+        ?.classList.toggle('is-mobile', device === 'mobile');
+      toFrame({ type: 'editor:device', device });
+      showSelection();
+    })
+  );
+  document
+    .querySelector<HTMLTextAreaElement>('[data-text]')!
+    .addEventListener('input', (event) => {
+      if (!selection) return;
+      const value = (event.target as HTMLTextAreaElement).value;
+      remember();
+      if (selection.overlay) {
+        const selectedOverlay = selection.overlay;
+        const item = editor.overlays.find((overlay) => overlay.id === selectedOverlay);
+        if (item) {
+          if (item.kind === 'shape') item.text = value;
+          else item.content = value;
+        }
+      } else if (selection.path) setPath(selection.path, value);
+      selection.value = value;
+      toFrame({ type: 'editor:set', path: selection.path, overlay: selection.overlay, value });
+      dirty();
+    });
+  function updateSelectedMedia(value: string) {
+    if (!selection) return;
+    remember();
+    if (selection.overlay) {
+      const item = editor.overlays.find((overlay) => overlay.id === selection?.overlay);
+      if (item) item.content = value;
+    } else if (selection.path) setPath(selection.path, value);
+    selection.value = value;
+    toFrame({ type: 'editor:set', path: selection.path, overlay: selection.overlay, value });
+    dirty();
+  }
+  document
+    .querySelector<HTMLInputElement>('[data-media-value]')!
+    .addEventListener('input', (event) =>
+      updateSelectedMedia((event.target as HTMLInputElement).value)
+    );
+  document
+    .querySelector<HTMLSelectElement>('[data-media-library]')!
+    .addEventListener('change', (event) => {
+      const select = event.target as HTMLSelectElement;
+      if (!select.value) return;
+      const option = select.selectedOptions[0];
+      const isVideo = selection?.kind === 'video';
+      const matches = isVideo
+        ? option?.dataset.mime?.startsWith('video/')
+        : option?.dataset.mime?.startsWith('image/');
+      if (!matches) {
+        status.textContent = isVideo ? 'Selecione um video.' : 'Selecione uma imagem.';
+        select.value = '';
+        return;
+      }
+      updateSelectedMedia(select.value);
+      const altInput = document.querySelector<HTMLInputElement>('[data-media-alt]')!;
+      if (!isVideo && !altInput.value && option?.dataset.alt) {
+        altInput.value = option.dataset.alt;
+        altInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+  document
+    .querySelector<HTMLInputElement>('[data-media-alt]')!
+    .addEventListener('input', (event) => {
+      if (!selection) return;
+      remember();
+      const value = (event.target as HTMLInputElement).value.slice(0, 300);
+      if (selection.overlay) {
+        const item = editor.overlays.find((overlay) => overlay.id === selection?.overlay);
+        if (item) item.alt = value;
+      } else if (selection.path?.endsWith('.image')) {
+        setPath(selection.path.replace(/\.image$/, '.imageAlt'), value);
+      }
+      dirty();
+    });
+  document.querySelector('[data-media-remove]')?.addEventListener('click', () => {
+    updateSelectedMedia('');
+    const input = document.querySelector<HTMLInputElement>('[data-media-value]')!;
+    input.value = '';
+  });
+  document.querySelectorAll<HTMLInputElement>('[data-prop]').forEach((input) =>
+    input.addEventListener('change', () => {
+      if (!selection) return;
+      toFrame({
+        type: 'editor:layout-prop',
+        property: input.dataset.prop,
+        value: Number(input.value),
+      });
+    })
+  );
+  document.querySelectorAll<HTMLInputElement>('[data-boolean-prop]').forEach((input) =>
+    input.addEventListener('change', () => {
+      if (!selection) return;
+      toFrame({
+        type: 'editor:layout-prop',
+        property: input.dataset.booleanProp,
+        value: input.checked,
+      });
+    })
+  );
+  function setZ(value: number) {
+    if (!selection) return;
+    toFrame({
+      type: 'editor:layout-prop',
+      property: 'z',
+      value: Math.max(0, Math.min(99, value)),
+    });
+  }
+  document
+    .querySelector('[data-front]')
+    ?.addEventListener('click', () =>
+      setZ(
+        Math.max(
+          0,
+          ...Object.values(editor.layouts).map(
+            (pair) => (device === 'mobile' ? pair.mobile?.z : pair.desktop.z) || 0
+          )
+        ) + 1
+      )
+    );
+  document.querySelector('[data-back]')?.addEventListener('click', () => setZ(0));
+  document.querySelector('[data-duplicate]')?.addEventListener('click', () => {
+    if (!selection) return;
+    const source = selection.overlay
+      ? editor.overlays.find((item) => item.id === selection?.overlay)
+      : null;
+    const kind = source?.kind ?? (selection.kind === 'multiline' ? 'text' : selection.kind);
+    addOverlay(
+      kind,
+      selection.section,
+      (layoutFor(selection.key).x || 0) + 3,
+      (layoutFor(selection.key).y || 0) + 3,
+      source ?? undefined
+    );
+  });
+  document.querySelector('[data-delete]')?.addEventListener('click', () => {
+    if (!selection) return;
+    remember();
+    if (selection.overlay)
+      editor.overlays = editor.overlays.filter((item) => item.id !== selection?.overlay);
+    else {
+      const layout = { ...layoutFor(selection.key), hidden: true };
+      storeLayout(selection.key, layout);
+    }
+    dirty();
+    reload();
+  });
+  const defaults: Record<string, string> = {
+    text: 'Novo texto',
+    image: '',
+    video: '',
+    icon: 'stethoscope',
+    shape: 'rect',
+  };
+  function addOverlay(kind: string, section: string, x = 5, y = 5, source?: OverlayState) {
+    remember();
+    const id = `el-${crypto.randomUUID().slice(0, 8)}`;
+    const overlay: OverlayState = {
+      id,
+      section,
+      kind,
+      content: source?.content ?? defaults[kind] ?? '',
+      alt: source?.alt ?? '',
+      text: source?.text ?? (kind === 'shape' ? 'Texto' : ''),
+      fill: source?.fill ?? '',
+      stroke: source?.stroke ?? '',
+      strokeWidth: source?.strokeWidth ?? 0,
+      href: source?.href ?? '',
+      linkTarget: source?.linkTarget ?? '_self',
+      desktop: { ...emptyLayout(), x, y, w: kind === 'text' ? 30 : kind === 'icon' ? 10 : 25 },
+      mobile: null,
+    };
+    editor.overlays.push(overlay);
+    editor.layouts[`overlay:${id}`] = { desktop: overlay.desktop, mobile: null };
+    toFrame({ type: 'editor:overlay-create', overlay });
+    dirty();
+  }
+  const addSection = document.querySelector<HTMLSelectElement>('[data-add-section]')!;
+  document.querySelectorAll<HTMLElement>('[data-add]').forEach((button) =>
+    button.addEventListener('click', () =>
+      toFrame({
+        type: 'editor:visible-insert-request',
+        kind: button.dataset.add,
+        section: addSection.value,
+      })
+    )
+  );
+  function renderSections() {
+    const list = document.querySelector<HTMLOListElement>('[data-section-list]')!;
+    list.querySelectorAll<HTMLElement>('[data-section-id]').forEach((row) => {
+      const id = row.dataset.sectionId!;
+      row.querySelector<HTMLInputElement>('[data-section-visible]')!.checked =
+        !editor.hiddenSections.includes(id);
+    });
+    toFrame({ type: 'editor:hidden-sections', hidden: editor.hiddenSections });
+    const orderMap: Record<string, number> = {};
+    editor.sectionOrder.forEach((id: string, index: number) => (orderMap[id] = index));
+    toFrame({ type: 'editor:section-order', orderMap });
+  }
+  document.querySelector('[data-section-list]')?.addEventListener('click', (event) => {
+    const button = (event.target as Element).closest<HTMLElement>(
+      '[data-section-up],[data-section-down]'
+    );
+    if (!button) return;
+    const row = button.closest<HTMLElement>('[data-section-id]')!;
+    const index = editor.sectionOrder.indexOf(row.dataset.sectionId ?? '');
+    const next = button.hasAttribute('data-section-up') ? index - 1 : index + 1;
+    if (next < 0 || next >= editor.sectionOrder.length) return;
+    remember();
+    [editor.sectionOrder[index], editor.sectionOrder[next]] = [
+      editor.sectionOrder[next],
+      editor.sectionOrder[index],
+    ];
+    const rows = [...row.parentElement!.children];
+    row.parentElement!.insertBefore(
+      row,
+      button.hasAttribute('data-section-up') ? rows[next] : rows[next].nextSibling
+    );
+    renderSections();
+    dirty();
+  });
+  document.querySelector('[data-section-list]')?.addEventListener('change', (event) => {
+    const input = (event.target as Element).closest<HTMLInputElement>('[data-section-visible]');
+    if (!input) return;
+    remember();
+    const id = input.closest<HTMLElement>('[data-section-id]')!.dataset.sectionId!;
+    editor.hiddenSections = input.checked
+      ? editor.hiddenSections.filter((item: string) => item !== id)
+      : [...new Set([...editor.hiddenSections, id])];
+    renderSections();
+    dirty();
+  });
+  document.querySelectorAll<HTMLInputElement>('[data-page-color]').forEach((input) =>
+    input.addEventListener('change', () => {
+      remember();
+      editor.pageStyle[input.dataset.pageColor!] = input.value;
+      dirty();
+      save().then(reload);
+    })
+  );
+  document.querySelector('[data-reset-colors]')?.addEventListener('click', () => {
+    remember();
+    editor.pageStyle = {
+      brandColor: '',
+      accentColor: '',
+      backgroundColor: '',
+      headingColor: '',
+    };
+    dirty();
+    save().then(reload);
+  });
+  const styleSection = document.querySelector<HTMLSelectElement>('[data-style-section]')!;
+  function syncSectionStyle() {
+    const style = editor.sectionStyles[styleSection.value] ?? {};
+    document
+      .querySelectorAll<HTMLInputElement>('[data-section-color]')
+      .forEach(
+        (input) =>
+          (input.value =
+            style[input.dataset.sectionColor!] ||
+            (input.dataset.sectionColor === 'bg' ? '#ffffff' : '#1f2937'))
+      );
+    document
+      .querySelectorAll<HTMLInputElement>('[data-section-number]')
+      .forEach((input) => (input.value = style[input.dataset.sectionNumber!] || ''));
+  }
+  styleSection.addEventListener('change', syncSectionStyle);
+  document
+    .querySelectorAll<HTMLInputElement>('[data-section-color],[data-section-number]')
+    .forEach((input) =>
+      input.addEventListener('change', () => {
+        remember();
+        const style = (editor.sectionStyles[styleSection.value] ??= {
+          bg: '',
+          text: '',
+          image: '',
+          overlay: '',
+          minHeight: '',
+          paddingY: '',
+        });
+        if (input.dataset.sectionColor) style[input.dataset.sectionColor] = input.value;
+        if (input.dataset.sectionNumber) style[input.dataset.sectionNumber] = input.value;
+        dirty();
+        save().then(reload);
+      })
+    );
+  document.querySelector('[data-reset-section]')?.addEventListener('click', () => {
+    remember();
+    editor.sectionStyles[styleSection.value] = {
+      bg: '',
+      text: '',
+      image: '',
+      overlay: '',
+      minHeight: '',
+      paddingY: '',
+    };
+    syncSectionStyle();
+    dirty();
+    save().then(reload);
+  });
+  syncSectionStyle();
+</script>
+<style>
+  .visual-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-3);
+    padding: 0.5rem;
+    border: 1px solid var(--line);
+    background: var(--c-white);
+    border-radius: var(--r-sm);
+  }
+  .save-status {
+    margin-left: auto;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+  .segmented {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+  }
+  .segmented button {
+    padding: 0.45rem 0.7rem;
+    font-size: var(--fs-xs);
+  }
+  .segmented .is-active {
+    background: var(--c-brand-700);
+    color: #fff;
+  }
+  .redo {
+    transform: scaleX(-1);
+  }
+  .visual-shell {
+    display: grid;
+    grid-template-columns: 230px minmax(420px, 1fr) 270px;
+    gap: var(--sp-3);
+    align-items: start;
+  }
+  .visual-panel {
+    display: grid;
+    gap: var(--sp-3);
+  }
+  .visual-panel section {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--c-white);
+  }
+  .visual-panel h2 {
+    font-size: var(--fs-sm);
+  }
+  .preview-wrap {
+    min-height: 720px;
+    padding: 12px;
+    background: #dbe3ea;
+    border-radius: var(--r-sm);
+    overflow: auto;
+  }
+  .preview-wrap iframe {
+    display: block;
+    width: 100%;
+    height: 700px;
+    border: 0;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+  }
+  .preview-wrap.is-mobile iframe {
+    width: 390px;
+    margin: auto;
+  }
+  .add-grid,
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .add-grid button,
+  .action-grid button,
+  .section-list button {
+    padding: 0.45rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+    font-size: var(--fs-xs);
+    background: var(--c-ink-50);
+  }
+  .action-grid .danger {
+    color: #991b1b;
+  }
+  .section-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 3px;
+  }
+  .section-list li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 3px;
+    align-items: center;
+    padding: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    font-size: var(--fs-xs);
+  }
+  .section-list label {
+    grid-column: 1/-1;
+    display: flex;
+    gap: 0.35rem;
+  }
+  .property-grid,
+  .color-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-2);
+  }
+  .property-grid label,
+  .color-grid label {
+    display: grid;
+    gap: 3px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+  }
+  .property-grid input {
+    width: 100%;
+    padding: 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+  }
+  .color-grid input {
+    width: 100%;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-xs);
+  }
+  .checks {
+    display: flex;
+    gap: var(--sp-3);
+    font-size: var(--fs-xs);
+  }
+  @media (max-width: 1250px) {
+    .visual-shell {
+      grid-template-columns: 210px minmax(390px, 1fr);
+    }
+    .visual-panel.props {
+      grid-column: 1/-1;
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 850px) {
+    .visual-shell {
+      grid-template-columns: 1fr;
+    }
+    .visual-panel.props {
+      grid-template-columns: 1fr;
+    }
+    .preview-wrap {
+      min-height: 600px;
+    }
+    .preview-wrap iframe {
+      height: 580px;
+    }
+  }
+</style>

@@ -23,10 +23,10 @@ if (!existsSync(ISOLATED_DIR)) {
 }
 
 const env = { ...process.env, ISOLATED_TEST_DB_DIR: ISOLATED_DIR };
-// --ignore-lock: roda ao lado do dev server normal (porta 4321) sem
-// disputar o lock file do Astro nem tocar nele — os dois processos nunca
-// interferem um no outro.
-const child = spawnSync('npx', ['astro', 'dev', '--port', PORT, '--ignore-lock'], {
+// Astro 7 gerencia automaticamente o servidor em background quando detecta
+// um ambiente de agente. Nesse modo ele proibe --ignore-lock; a porta e o
+// ISOLATED_TEST_DB_DIR continuam separando este processo do desenvolvimento.
+const child = spawnSync('npx', ['astro', 'dev', '--port', PORT], {
   stdio: 'inherit',
   shell: process.platform === 'win32',
   env,

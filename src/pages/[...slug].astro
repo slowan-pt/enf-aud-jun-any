@@ -1,0 +1,188 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import SectionOverlays from '../components/SectionOverlays.astro';
+import { getDB } from '../lib/db';
+import { getGenericPageBySlug } from '../lib/generic-pages';
+import {
+  layoutStylesheet,
+  pageStyleOverride,
+  sectionStyleAttr,
+  type SectionStyle,
+} from '../lib/pages';
+import { safeMediaUrl } from '../lib/urls';
+
+const path = `/${Astro.params.slug ?? ''}`.replace(/\/+$/, '') || '/';
+const edit = Boolean(Astro.locals.editMode);
+const page = await getGenericPageBySlug(getDB(), path, edit);
+if (!page || page.archivedAt) return new Response('Pagina nao encontrada.', { status: 404 });
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+const ordered = page.editor.sectionOrder
+  .map((id) => page.content.sections.find((section) => section.id === id))
+  .filter((section): section is (typeof page.content.sections)[number] => Boolean(section));
+const hidden = new Set(page.editor.hiddenSections);
+const sectionStyle = (style: SectionStyle | undefined) => sectionStyleAttr(style);
+const layoutCss = layoutStylesheet(page.editor.layouts, page.editor.overlays);
+---
+
+<BaseLayout
+  title={page.seoTitle || page.title}
+  description={page.seoDescription || page.content.intro}
+  path={page.slug}
+  ogImage={page.socialImage || undefined}
+  noindex={!page.indexable || page.status !== 'published'}
+  colorOverride={pageStyleOverride(page.editor.pageStyle)}
+  bodyClass="page-generic"
+>
+  <header class="generic-hero" data-section="hero" data-section-label={ed('Cabecalho')}>
+    <div class="container generic-hero__inner">
+      <Breadcrumbs items={[{ label: page.title }]} />
+      <h1>{page.title}</h1>
+      {
+        page.content.intro && (
+          <p data-edit="intro" data-edit-kind={ed('multiline')} data-layout-key="intro">
+            {page.content.intro}
+          </p>
+        )
+      }
+    </div>
+  </header>
+  <div class="generic-sections">
+    {
+      ordered.map((section) => (
+        <section
+          class:list={[
+            'section',
+            'generic-section',
+            {
+              'is-section-off': hidden.has(section.id) && !edit,
+              'is-section-off-preview': hidden.has(section.id) && edit,
+            },
+          ]}
+          style={sectionStyle(page.editor.sectionStyles[section.id])}
+          data-section={section.id}
+          data-section-label={ed(section.title || section.id)}
+        >
+          <div
+            class:list={[
+              'container',
+              'generic-section__inner',
+              { 'generic-section__inner--media': Boolean(section.image) },
+            ]}
+          >
+            <div>
+              {section.eyebrow && (
+                <p
+                  class="eyebrow"
+                  data-edit={`sections.${page.content.sections.indexOf(section)}.eyebrow`}
+                >
+                  {section.eyebrow}
+                </p>
+              )}
+              {section.title && (
+                <h2
+                  class="title-lg"
+                  data-edit={`sections.${page.content.sections.indexOf(section)}.title`}
+                >
+                  {section.title}
+                </h2>
+              )}
+              {section.body && (
+                <p
+                  class="generic-section__body"
+                  data-edit={`sections.${page.content.sections.indexOf(section)}.body`}
+                  data-edit-kind={ed('multiline')}
+                >
+                  {section.body}
+                </p>
+              )}
+            </div>
+            {section.image && (
+              <img
+                src={safeMediaUrl(section.image)}
+                alt={section.imageAlt}
+                loading="lazy"
+                data-edit={`sections.${page.content.sections.indexOf(section)}.image`}
+                data-edit-kind={ed('image')}
+              />
+            )}
+            <SectionOverlays section={section.id} overlays={page.editor.overlays} />
+          </div>
+        </section>
+      ))
+    }
+  </div>
+  {layoutCss && <style set:html={layoutCss} />}
+  {edit && <script is:inline src="/vendor/moveable.min.js" />}
+  {edit && <script is:inline src="/editor-runtime.js" />}
+</BaseLayout>
+
+<style>
+  .generic-hero {
+    padding: clamp(3.5rem, 8vw, 6.5rem) 0;
+    background: var(--c-brand-50);
+    border-bottom: 1px solid var(--line);
+  }
+  .generic-hero__inner {
+    display: grid;
+    gap: var(--sp-4);
+  }
+  .generic-hero h1 {
+    max-width: 18ch;
+    font-size: clamp(2.2rem, 5vw, 4.5rem);
+    line-height: 1.05;
+    color: var(--text-strong);
+  }
+  .generic-hero p {
+    max-width: 70ch;
+    font-size: var(--fs-lg);
+    line-height: var(--lh-relaxed);
+    color: var(--text-muted);
+  }
+  .generic-sections {
+    display: flex;
+    flex-direction: column;
+  }
+  .generic-section {
+    position: relative;
+    container-type: inline-size;
+  }
+  .generic-section:nth-child(even) {
+    background: var(--bg-subtle);
+  }
+  .generic-section__inner {
+    position: relative;
+    display: grid;
+    gap: var(--sp-6);
+    align-items: center;
+  }
+  .generic-section__inner--media {
+    grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  }
+  .generic-section img {
+    width: 100%;
+    max-height: 520px;
+    object-fit: cover;
+    border-radius: var(--r-md);
+  }
+  .generic-section__body {
+    margin-top: var(--sp-5);
+    max-width: 75ch;
+    white-space: pre-line;
+    line-height: var(--lh-relaxed);
+  }
+  .is-section-off {
+    display: none;
+  }
+  .is-section-off-preview {
+    opacity: 0.35;
+  }
+  @media (max-width: 767px) {
+    .generic-section__inner--media {
+      grid-template-columns: 1fr;
+    }
+    .generic-section img {
+      order: -1;
+    }
+  }
+</style>

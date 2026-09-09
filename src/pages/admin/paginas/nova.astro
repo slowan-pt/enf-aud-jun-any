@@ -1,0 +1,154 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import Icon from '../../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../../lib/db';
+import {
+  createGenericPage,
+  GENERIC_PAGE_TEMPLATES,
+  normalizeGenericPageSlug,
+} from '../../../lib/generic-pages';
+
+let error = '';
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const title = String(form.get('title') ?? '').trim();
+  const slug = normalizeGenericPageSlug(String(form.get('slug') ?? '') || title);
+  const template =
+    GENERIC_PAGE_TEMPLATES[String(form.get('template') ?? 'blank')] ??
+    GENERIC_PAGE_TEMPLATES.blank!;
+  try {
+    if (!title) throw new Error('Informe o titulo da pagina.');
+    const db = getDB();
+    const id = await createGenericPage(
+      db,
+      {
+        title,
+        slug,
+        status: 'draft',
+        content: template.content,
+        seoTitle: '',
+        seoDescription: '',
+        indexable: true,
+        socialImageId: null,
+        parentId: null,
+        showInMenu: false,
+        menuOrder: 100,
+      },
+      Astro.locals.user?.id
+    );
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'page.create',
+      target: `${title} (${slug})`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    return Astro.redirect(`/admin/paginas/${id}`);
+  } catch (cause) {
+    error = cause instanceof Error ? cause.message : 'Nao foi possivel criar a pagina.';
+  }
+}
+---
+
+<AdminLayout
+  title="Nova pagina"
+  description="Comece em branco ou use uma estrutura neutra e totalmente editavel."
+  active="/admin/paginas"
+>
+  <div slot="actions">
+    <a href="/admin/paginas" class="btn btn--secondary btn--sm"
+      ><Icon name="arrow-left" size={16} />Voltar</a
+    >
+  </div>
+  {
+    error && (
+      <p class="notice" role="alert">
+        {error}
+      </p>
+    )
+  }
+  <form method="post" class="panel panel__body form-section">
+    <div class="grid-2">
+      <label class="field"
+        ><span class="label">Titulo</span><input
+          class="input"
+          name="title"
+          required
+          maxlength="200"
+          autocomplete="off"
+        /></label
+      ><label class="field"
+        ><span class="label">Slug</span><input
+          class="input"
+          name="slug"
+          placeholder="nossa-historia"
+          pattern="[a-zA-Z0-9/_ -]+"
+          autocomplete="off"
+        /><span class="help">Se ficar vazio, sera criado a partir do titulo.</span></label
+      >
+    </div>
+    <fieldset class="templates">
+      <legend class="label">Modelo inicial</legend>{
+        Object.entries(GENERIC_PAGE_TEMPLATES).map(([key, template], index) => (
+          <label class="template-option">
+            <>
+              <input type="radio" name="template" value={key} checked={index === 0} />
+              <span>
+                <>
+                  <strong>{template.label}</strong>
+                  <small>{template.description}</small>
+                </>
+              </span>
+            </>
+          </label>
+        ))
+      }
+    </fieldset>
+    <div>
+      <button type="submit" class="btn"><Icon name="plus" size={16} />Criar pagina</button>
+    </div>
+  </form>
+</AdminLayout>
+<style>
+  .notice {
+    margin-bottom: var(--sp-4);
+    padding: 0.8rem 1rem;
+    color: #7f1d1d;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--r-sm);
+  }
+  .templates {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: var(--sp-3);
+    border: 0;
+    padding: 0;
+  }
+  .templates legend {
+    grid-column: 1/-1;
+    margin-bottom: var(--sp-2);
+  }
+  .template-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+  }
+  .template-option:has(input:checked) {
+    border-color: var(--c-brand-500);
+    background: var(--c-brand-50);
+  }
+  .template-option strong,
+  .template-option small {
+    display: block;
+  }
+  .template-option small {
+    margin-top: 0.2rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+</style>

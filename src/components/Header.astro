@@ -16,14 +16,37 @@ function isActive(href: string): boolean {
 // src/data/site.ts) — um serviço criado, renomeado ou arquivado pelo painel
 // aparece/some aqui automaticamente, sem editar código.
 const publishedServices = publishedOnly(Astro.locals.services);
-const nav = mainNav.map((item) =>
-  item.label === 'Serviços'
+const storedNav = Astro.locals.navigation ?? [];
+const baseNav = storedNav.length
+  ? storedNav
+  : mainNav.map((item, index) => ({
+      ...item,
+      id: -(index + 1),
+      type: 'internal' as const,
+      pageId: null,
+      parentId: null,
+      order: index * 10,
+      newTab: false,
+      children: [],
+    }));
+const nav = baseNav.map((item) =>
+  item.href === '/servicos'
     ? {
         ...item,
-        children: publishedServices.map((service) => ({
-          label: service.shortName || service.name,
-          href: `/servicos/${service.slug}`,
-        })),
+        children: [
+          ...item.children,
+          ...publishedServices.map((service) => ({
+            id: -service.id,
+            label: service.shortName || service.name,
+            type: 'internal' as const,
+            pageId: null,
+            href: `/servicos/${service.slug}`,
+            parentId: item.id,
+            order: service.order,
+            newTab: false,
+            children: [],
+          })),
+        ],
       }
     : item
 );
@@ -64,7 +87,7 @@ const nav = mainNav.map((item) =>
         <ul class="nav__list">
           {
             nav.map((item) =>
-              item.children ? (
+              item.children.length ? (
                 <li class="nav__item nav__item--has-menu">
                   <button
                     type="button"
@@ -82,8 +105,13 @@ const nav = mainNav.map((item) =>
                   </button>
                   <div class="dropdown" data-dropdown>
                     <div class="dropdown__inner">
-                      <a href={item.href} class="dropdown__all">
-                        <span>Todos os serviços</span>
+                      <a
+                        href={item.href}
+                        class="dropdown__all"
+                        target={item.newTab ? '_blank' : undefined}
+                        rel={item.newTab ? 'noopener' : undefined}
+                      >
+                        <span>Visão geral</span>
                         <Icon name="arrow-right" size={16} class="icon--arrow" />
                       </a>
                       <ul class="dropdown__list">
@@ -91,6 +119,8 @@ const nav = mainNav.map((item) =>
                           <li>
                             <a
                               href={child.href}
+                              target={child.newTab ? '_blank' : undefined}
+                              rel={child.newTab ? 'noopener' : undefined}
                               class:list={[
                                 'dropdown__link',
                                 { 'is-active': isActive(child.href) },
@@ -109,6 +139,8 @@ const nav = mainNav.map((item) =>
                 <li class="nav__item">
                   <a
                     href={item.href}
+                    target={item.newTab ? '_blank' : undefined}
+                    rel={item.newTab ? 'noopener' : undefined}
                     class:list={['nav__link', { 'is-active': isActive(item.href) }]}
                     aria-current={isActive(item.href) ? 'page' : undefined}
                   >
@@ -156,7 +188,7 @@ const nav = mainNav.map((item) =>
       <ul class="drawer__list">
         {
           nav.map((item) =>
-            item.children ? (
+            item.children.length ? (
               <li class="drawer__group">
                 <button
                   type="button"
@@ -169,14 +201,21 @@ const nav = mainNav.map((item) =>
                 </button>
                 <ul class="drawer__sub" data-accordion-panel hidden>
                   <li>
-                    <a href={item.href} class="drawer__sublink">
-                      Todos os serviços
+                    <a
+                      href={item.href}
+                      class="drawer__sublink"
+                      target={item.newTab ? '_blank' : undefined}
+                      rel={item.newTab ? 'noopener' : undefined}
+                    >
+                      Visão geral
                     </a>
                   </li>
                   {item.children.map((child) => (
                     <li>
                       <a
                         href={child.href}
+                        target={child.newTab ? '_blank' : undefined}
+                        rel={child.newTab ? 'noopener' : undefined}
                         class:list={['drawer__sublink', { 'is-active': isActive(child.href) }]}
                       >
                         {child.label}
@@ -189,6 +228,8 @@ const nav = mainNav.map((item) =>
               <li>
                 <a
                   href={item.href}
+                  target={item.newTab ? '_blank' : undefined}
+                  rel={item.newTab ? 'noopener' : undefined}
                   class:list={['drawer__link', { 'is-active': isActive(item.href) }]}
                 >
                   {item.label}
