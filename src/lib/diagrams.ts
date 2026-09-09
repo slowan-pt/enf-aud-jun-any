@@ -31,9 +31,17 @@ function rowToDiagram(row: DiagramRow): Diagram {
 }
 
 const SELECT = `SELECT id, title, canvas_json, updated_at FROM diagrams WHERE deleted_at IS NULL`;
+const SELECT_ARCHIVED = `SELECT id, title, canvas_json, updated_at FROM diagrams WHERE deleted_at IS NOT NULL`;
 
 export async function listDiagrams(db: D1Database): Promise<Diagram[]> {
   const { results } = await db.prepare(`${SELECT} ORDER BY updated_at DESC`).all<DiagramRow>();
+  return (results ?? []).map(rowToDiagram);
+}
+
+export async function listArchivedDiagrams(db: D1Database): Promise<Diagram[]> {
+  const { results } = await db
+    .prepare(`${SELECT_ARCHIVED} ORDER BY updated_at DESC`)
+    .all<DiagramRow>();
   return (results ?? []).map(rowToDiagram);
 }
 
@@ -95,10 +103,27 @@ export async function renameDiagram(
     .run();
 }
 
-/** Soft delete — nunca remove a linha de verdade, só some da listagem. */
+/** Arquivamento reversivel: nunca remove a linha de verdade. */
 export async function deleteDiagram(db: D1Database, id: number): Promise<void> {
   await db
     .prepare(`UPDATE diagrams SET deleted_at = datetime('now') WHERE id = ?1`)
+    .bind(id)
+    .run();
+}
+
+export async function restoreDiagram(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE diagrams SET deleted_at = NULL, updated_at = datetime('now')
+       WHERE id = ?1 AND deleted_at IS NOT NULL`
+    )
+    .bind(id)
+    .run();
+}
+
+export async function permanentlyDeleteDiagram(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare('DELETE FROM diagrams WHERE id = ?1 AND deleted_at IS NOT NULL')
     .bind(id)
     .run();
 }

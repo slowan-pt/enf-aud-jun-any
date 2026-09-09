@@ -9,9 +9,12 @@ import Icon from '../../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import {
   listDiagrams,
+  listArchivedDiagrams,
   createDiagram,
   duplicateDiagram,
   deleteDiagram,
+  restoreDiagram,
+  permanentlyDeleteDiagram,
   renameDiagram,
 } from '../../../lib/diagrams';
 
@@ -63,13 +66,31 @@ if (Astro.request.method === 'POST') {
           ip,
         });
       }
-    } else if (action === 'delete') {
+    } else if (action === 'archive') {
       await deleteDiagram(db, id);
       await writeAuditLog(db, {
         userId,
         userName,
-        action: 'diagram.delete',
+        action: 'diagram.archive',
         target: `Organograma #${id}`,
+        ip,
+      });
+    } else if (action === 'restore') {
+      await restoreDiagram(db, id);
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'diagram.restore',
+        target: `Organograma #${id}`,
+        ip,
+      });
+    } else if (action === 'delete-permanently') {
+      await permanentlyDeleteDiagram(db, id);
+      await writeAuditLog(db, {
+        userId,
+        userName,
+        action: 'diagram.delete',
+        target: `Organograma #${id} (permanente)`,
         ip,
       });
     }
@@ -77,7 +98,10 @@ if (Astro.request.method === 'POST') {
   return Astro.redirect('/admin/organogramas');
 }
 
-const diagrams = await listDiagrams(db);
+const [diagrams, archivedDiagrams] = await Promise.all([
+  listDiagrams(db),
+  listArchivedDiagrams(db),
+]);
 
 function formatDate(iso: string): string {
   const [datePart] = iso.split(' ');
@@ -153,14 +177,14 @@ function formatDate(iso: string): string {
                       <form
                         method="post"
                         style="display:contents"
-                        data-confirm-submit={`Excluir "${diagram.title}"? Esta ação não pode ser desfeita.`}
+                        data-confirm-submit={`Arquivar "${diagram.title}"? Ele podera ser restaurado depois.`}
                       >
                         <input type="hidden" name="id" value={diagram.id} />
-                        <input type="hidden" name="_action" value="delete" />
+                        <input type="hidden" name="_action" value="archive" />
                         <button
                           type="submit"
                           class="row-btn row-btn--danger"
-                          aria-label="Excluir"
+                          aria-label="Arquivar"
                         >
                           <Icon name="trash" size={16} />
                         </button>
@@ -187,6 +211,61 @@ function formatDate(iso: string): string {
       }
     </div>
   </section>
+
+  {
+    archivedDiagrams.length > 0 && (
+      <section class="panel" style="margin-top: var(--sp-5)">
+        <div class="panel__header">
+          <h2 class="panel__title">Arquivados</h2>
+        </div>
+        <div class="panel__body table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Titulo</th>
+                <th>Atualizado</th>
+                <th class="text-right">Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {archivedDiagrams.map((diagram) => (
+                <tr>
+                  <td class="table__main">{diagram.title}</td>
+                  <td class="muted small">{formatDate(diagram.updatedAt)}</td>
+                  <td>
+                    <div class="table__actions">
+                      <form method="post" style="display:contents">
+                        <input type="hidden" name="id" value={diagram.id} />
+                        <input type="hidden" name="_action" value="restore" />
+                        <button type="submit" class="row-btn" aria-label="Restaurar">
+                          <Icon name="rotate-ccw" size={16} />
+                        </button>
+                      </form>
+                      <form
+                        method="post"
+                        style="display:contents"
+                        data-confirm-title={diagram.title}
+                      >
+                        <input type="hidden" name="id" value={diagram.id} />
+                        <input type="hidden" name="_action" value="delete-permanently" />
+                        <button
+                          type="submit"
+                          class="row-btn row-btn--danger"
+                          aria-label="Excluir definitivamente"
+                        >
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 </AdminLayout>
 
 <style>
@@ -214,12 +293,17 @@ function formatDate(iso: string): string {
 </style>
 
 <script>
-  // Confirmação forte antes de excluir — o soft delete some da listagem
-  // imediatamente, sem uma etapa de "lixeira" nesta tela.
   document.querySelectorAll<HTMLFormElement>('[data-confirm-submit]').forEach((form) => {
     form.addEventListener('submit', (event) => {
       const message = form.dataset.confirmSubmit;
       if (message && !window.confirm(message)) event.preventDefault();
+    });
+  });
+  document.querySelectorAll<HTMLFormElement>('[data-confirm-title]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      const title = form.dataset.confirmTitle ?? '';
+      const typed = window.prompt(`Digite exatamente "${title}" para excluir definitivamente.`);
+      if (typed !== title) event.preventDefault();
     });
   });
 </script>

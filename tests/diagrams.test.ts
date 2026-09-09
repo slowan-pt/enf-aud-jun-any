@@ -8,11 +8,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   listDiagrams,
+  listArchivedDiagrams,
   getDiagram,
   createDiagram,
   updateDiagramCanvas,
   renameDiagram,
   deleteDiagram,
+  restoreDiagram,
+  permanentlyDeleteDiagram,
   duplicateDiagram,
   EMPTY_CANVAS_JSON,
 } from '../src/lib/diagrams';
@@ -42,7 +45,9 @@ function fakeDb(initialRows: Row[] = []) {
         return null;
       },
       async all() {
-        const visible = rows.filter((r) => !r.deleted_at);
+        const visible = sql.includes('deleted_at IS NOT NULL')
+          ? rows.filter((r) => r.deleted_at)
+          : rows.filter((r) => !r.deleted_at);
         visible.sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
         return { results: visible };
       },
@@ -80,10 +85,22 @@ function fakeDb(initialRows: Row[] = []) {
           }
           return {};
         }
+        if (sql.includes('SET deleted_at = NULL')) {
+          const id = params[0] as number;
+          const row = rows.find((r) => r.id === id && r.deleted_at);
+          if (row) row.deleted_at = null;
+          return {};
+        }
         if (sql.includes('SET deleted_at')) {
           const id = params[0] as number;
           const row = rows.find((r) => r.id === id);
           if (row) row.deleted_at = '2026-01-02';
+          return {};
+        }
+        if (sql.startsWith('DELETE FROM diagrams')) {
+          const id = params[0] as number;
+          const index = rows.findIndex((r) => r.id === id && r.deleted_at);
+          if (index >= 0) rows.splice(index, 1);
           return {};
         }
         return {};
@@ -130,6 +147,24 @@ describe('listDiagrams', () => {
     expect(await listDiagrams(db)).toHaveLength(0);
     // a linha continua existindo (soft delete) — só não aparece na listagem.
     expect(await getDiagram(db, id)).toBeNull();
+  });
+
+  it('lista arquivados, restaura e so permite exclusao permanente depois de arquivar', async () => {
+    const { db, rows } = fakeDb();
+    const id = await createDiagram(db, 'Fluxo arquivavel', 1);
+
+    await permanentlyDeleteDiagram(db, id);
+    expect(rows).toHaveLength(1);
+
+    await deleteDiagram(db, id);
+    expect(await listArchivedDiagrams(db)).toHaveLength(1);
+
+    await restoreDiagram(db, id);
+    expect(await listDiagrams(db)).toHaveLength(1);
+
+    await deleteDiagram(db, id);
+    await permanentlyDeleteDiagram(db, id);
+    expect(rows).toHaveLength(0);
   });
 });
 
