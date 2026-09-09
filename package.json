@@ -8,6 +8,8 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
+    "build:nova": "node scripts/build-nova.mjs",
+    "deploy:nova": "npm run build:nova && wrangler deploy --config wrangler.nova.jsonc",
     "preview": "astro preview",
     "typecheck": "astro check",
     "lint": "eslint . && prettier --check \"src/**/*.{astro,ts,css}\"",

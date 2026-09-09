@@ -12,6 +12,30 @@ Checkpoint operacional sem segredos, atualizado em 2026-09-09.
 - Versao ativa do Worker: `f82bdaf2-eb1e-4d8a-b2f3-b992ae6b343b`.
 - Versao anterior, preservada para rollback: `bef7c211-a1d5-4a62-a038-d90cac607e8c`.
 
+## Producao paralela para testes
+
+- URL: `https://essencial-saude-nova.slowgithub.workers.dev`.
+- Worker independente: `essencial-saude-nova`.
+- Versao ativa: `174b4913-16f1-4961-bfbc-dde8ecf9c865`.
+- Configuracao dedicada: `wrangler.nova.jsonc`.
+- D1 independente: `clone-estratagema-claude-db`
+  (`e02e8f7f-f32c-4863-b504-1e8b3c7227a3`). Esse banco estava comprovadamente
+  sem tabelas e foi reutilizado porque a conta atingiu o limite de bancos D1.
+- R2 independente: `essencial-saude-nova-media`.
+- Snapshot de origem: `.backups/d1-production-20260909-new-clone.sql`.
+  SHA-256: `A790383C832750AC3E4CAFC89645C68D83D700F417D5349632D6B9882163214A`.
+- Conteudo clonado: 5 paginas, 5 itens de menu, 2 usuarios, 10 registros de
+  midia, 6 servicos e 6 materias. Chaves estrangeiras integras.
+- As 10 midias do R2 foram copiadas para o novo bucket com as mesmas chaves,
+  tamanhos e tipos. Sessoes e tentativas de login da origem nao foram copiadas.
+- Canonical, Open Graph, sitemap e `PUBLIC_SITE_URL` apontam para a URL nova.
+- Login administrativo, painel de paginas, rotas publicas e todas as midias
+  foram verificados online. O Worker original permaneceu HTTP 200 e com as
+  contagens de banco inalteradas.
+
+Os dois ambientes passaram a divergir depois do snapshot. Alteracoes feitas
+no painel da URL nova nao modificam o site ou o banco originais.
+
 ## Entrega
 
 - Paginas genericas com criacao em branco ou por modelo, edicao, duplicacao,
@@ -121,6 +145,7 @@ Restauracao destrutiva deve ser tratada como operacao separada e revisada.
 
 ```powershell
 npm run qa
+npm run deploy:nova
 npx wrangler deployments list
 npx wrangler tail --format json
 ```

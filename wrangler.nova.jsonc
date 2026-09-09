@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "essencial-saude-nova",
+  "main": "dist/server/entry.mjs",
+  "no_bundle": true,
+  "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "rules": [{ "type": "ESModule", "globs": ["**/*.js", "**/*.mjs"] }],
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clone-estratagema-claude-db",
+      "database_id": "e02e8f7f-f32c-4863-b504-1e8b3c7227a3",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "essencial-saude-nova-media",
+    },
+  ],
+  "vars": {
+    "PUBLIC_SITE_URL": "https://essencial-saude-nova.slowgithub.workers.dev",
+  },
+}

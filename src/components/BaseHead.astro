@@ -43,15 +43,16 @@ const {
 
 const fullTitle = title ? seo.titleTemplate.replace('%s', title) : seo.defaultTitle;
 const canonicalPath = path ?? Astro.url.pathname;
-const canonical = new URL(canonicalPath, seo.siteUrl).href.replace(/(.+)\/$/, '$1');
-const ogImageUrl = new URL(ogImage, seo.siteUrl).href;
+const siteUrl = (Astro.site ?? new URL(seo.siteUrl)).href.replace(/\/$/, '');
+const canonical = new URL(canonicalPath, siteUrl).href.replace(/(.+)\/$/, '$1');
+const ogImageUrl = new URL(ogImage, siteUrl).href;
 
 /** Organização — apenas propriedades confirmadas. Nada fictício. */
 const organizationLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: company.name,
-  url: seo.siteUrl,
+  url: siteUrl,
   email: company.email,
   telephone: company.phone,
   description: company.description,
@@ -70,7 +71,7 @@ const websiteLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: seo.siteName,
-  url: seo.siteUrl,
+  url: siteUrl,
   inLanguage: 'pt-BR',
 };
 

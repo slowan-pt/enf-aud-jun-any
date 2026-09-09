@@ -14,7 +14,7 @@ import cloudflare from '@astrojs/cloudflare';
 const isolatedDbDir = process.env.ISOLATED_TEST_DB_DIR;
 
 export default defineConfig({
-  site: 'https://essencialsaudeauditoria.com.br',
+  site: process.env.PUBLIC_SITE_URL ?? 'https://essencialsaudeauditoria.com.br',
   output: 'server',
   // Sessão administrativa é gerida à mão (D1 + cookie assinado, ver
   // src/lib/auth.ts) — desliga o recurso Astro.session (que exigiria um
