@@ -3,135 +3,153 @@
 Arquivo de checkpoint, sem segredos. Atualizado automaticamente durante o
 desenvolvimento autônomo pedido pelo usuário. Nunca commitado à `main`.
 
-## Estado em 2026-09-08 (fim desta sessão)
+## Estado em 2026-09-08/09 (fim desta sessão)
 
-Último commit: `72ac85c` — "Torna o submenu de Serviços do cabeçalho
-dinâmico + thumbnail na listagem" (branch `feature/editor-visual`, já
-enviado para `origin/feature/editor-visual`).
+Último commit: `cd109a3` — "Adiciona modelos de auditoria e missão/visão/
+valores ao organograma" (branch `feature/editor-visual`, já enviado para
+`origin/feature/editor-visual`).
 
 `npm run qa` passa integralmente (lint + typecheck + testes + build), 0
-erros/0 avisos, 259 testes. Banco real local (porta 4321) recebeu apenas
-migrações de schema (colunas novas, sempre `NULL`/anuláveis) — nenhuma
-gravação de dado real feita pelo agente. Banco isolado (porta 4322) usado
-para todo teste manual/destrutivo, sempre descartado ao final
-(`npm run test:ui:isolated:discard`).
+erros/0 avisos, 267 testes. Banco real local (porta 4321) recebeu apenas
+migrações de schema (colunas/tabelas novas, sempre anuláveis ou vazias) —
+nenhuma gravação de dado real feita pelo agente; toda linha criada durante
+teste manual foi só no banco isolado (porta 4322), sempre descartado ao
+final (`npm run test:ui:isolated:discard`).
 
-**Commits desta rodada, além dos já listados abaixo:** `f19bb0d` (slug
-editável + redirect 301 em serviços/matérias), `32a90f9` (este arquivo),
-`e91b50d` (criar/duplicar serviços e matérias — "Novo serviço" antes era
-um placeholder "liberado na Etapa 2", agora cria de verdade), `72ac85c`
-(submenu de Serviços no cabeçalho deixou de ser uma lista estática
-desatualizável e passou a vir de `Astro.locals.services`; thumbnail real
-na listagem de serviços).
+## Itens do escopo original — estado atual
 
-## Concluído nesta sessão (em ordem)
+- **Item 3 (cópia de produção)** — **bloqueado, não por falta de tentativa**:
+  `wrangler whoami` (somente leitura) confirmou que as credenciais atuais só
+  têm escopo `account:read`/`user:read`, sem D1/Workers/R2. Por instrução
+  explícita do usuário, nenhum comando `--remote` foi tentado, nenhum segredo
+  foi pedido, e o ambiente "cópia de produção" (porta 4323) não foi criado
+  (seria enganoso chamá-lo assim alimentado só com dados locais). Só avança
+  se o usuário liberar acesso real.
+- **Item 4 (migrar páginas restantes)** — **concluído**. Todas as páginas
+  públicas fixas (Home, Quem Somos, Contato, Política de Privacidade,
+  Serviços — moldura e individuais —, Conteúdos — listagem e matérias
+  individuais) estão no Editor Visual, com os 4 pontos de entrada (Editar
+  conteúdo / Editor visual / Aparência / Configurações) e aparecem
+  automaticamente em Conteúdo → Editor Visual → Páginas.
+- **Item 5 (gerenciamento completo de páginas)** — **parcial, avançado**:
+  - ✅ Renomear slug com redirecionamento 301 automático (serviços e
+    matérias).
+  - ✅ Criar novo serviço de verdade (antes era um placeholder "liberado na
+    Etapa 2") e nova matéria (já existia).
+  - ✅ Duplicar serviço/matéria (sempre como rascunho, nunca em destaque,
+    slug nunca colide, `editor_json` nunca copiado).
+  - ✅ Publicar/despublicar/arquivar (já existia via campo `status`).
+  - ✅ SEO título/descrição por página/serviço/matéria (já existia).
+  - ✅ Thumbnail real na listagem de Serviços (Matérias já tinha).
+  - ✅ Submenu de Serviços no cabeçalho deixou de ser lista estática
+    desatualizável — agora vem de `Astro.locals.services` (publicados,
+    na ordem de `display_order`).
+  - ❌ **Excluir de verdade com confirmação forte** — hoje só existe
+    "arquivar" (soft delete via status), que já é seguro; avaliar se isso
+    já satisfaz o pedido ou se falta uma exclusão definitiva.
+  - ❌ **Reordenar os 5 itens fixos do cabeçalho** (Início/Quem Somos/
+    Serviços/Conteúdos/Contato) — continuam em ordem fixa em
+    `src/data/site.ts` (`mainNav`); só o SUBMENU de Serviços é dinâmico.
+  - ❌ **"Adicionar página" genérica (em branco ou por modelo)** — **decisão
+    de arquitetura pendente, não tarefa mecânica**: hoje cada página
+    institucional fixa é uma rota `.astro` própria com conteúdo em uma
+    linha da tabela `pages`. Não existe mecanismo para o usuário criar uma
+    página TOTALMENTE NOVA (ex.: "Nossa História") sem um desenvolvedor
+    adicionar um novo arquivo de rota. Fazer isso de verdade exige um
+    construtor de páginas genérico (rota catch-all, modelo de conteúdo em
+    blocos, tabela própria de "páginas custom") — uma escolha de design que
+    molda o restante do item 5 e o item 9. Recomendo confirmar com o
+    usuário o formato desejado antes de construir.
+- **Item 6 (biblioteca visual)** — **parcial**: o painel "Adicionar
+  elemento" (presente em toda página migrada) já cobre Texto/Imagem/Vídeo/
+  Ícone/Forma, com link para Uploads (`/admin/midia`); "Camadas" e "Cores"
+  (fundo) já existem por seção. "Organogramas" ganhou uma ferramenta própria
+  (ver item 8). "Modelos" tem só um começo (ver item 9) — os modelos de
+  organograma, não modelos de SEÇÃO DE PÁGINA ainda.
+- **Item 7 (ícones de saúde)** — **concluído**. Biblioteca já tinha boa
+  cobertura (`stethoscope`, `hospital`, `ambulance`, `pill`, `syringe`,
+  `microscope`, `first-aid`, `shield-check`, etc.); esta sessão completou as
+  lacunas da lista pedida: `nurse` (enfermagem), `icu` (UTI), `telemedicine`
+  (telemedicina), `exam` (exames). Todos em `src/data/icons.ts`, aparecem
+  automaticamente em `/admin/icones`.
+- **Item 8 (organogramas/fluxogramas)** — **concluído**. Nova área livre em
+  `/admin/organogramas` (lista) e `/admin/organogramas/[id]` (editor),
+  usando Fabric.js **só nesta tela** (nunca no site público nem nas páginas
+  semânticas — carregado via `<script is:inline src="/vendor/fabric.min.js">`,
+  igual ao padrão já usado por `moveable.min.js`). Caixas, texto, conectores
+  com seta que acompanham os nós ao mover, duplicar/excluir elemento,
+  camadas (frente/trás), cor de preenchimento/borda/texto, exportar como
+  PNG, 4 modelos iniciais (fluxo simples, hierarquia, etapas de auditoria,
+  missão/visão/valores). Nova tabela `diagrams`
+  (`migrations/0006_diagrams.sql`), CRUD em `src/lib/diagrams.ts`.
+  **fabric@7.4.0** foi escolhido deliberadamente (não a série 5.x, que tem
+  uma vulnerabilidade XSS conhecida na exportação SVG, corrigida só a partir
+  da 7.4.0 — verificado com `npm audit` antes de fixar a versão).
+- **Item 9 (modelos prontos)** — **parcial, só a fatia de organograma**: dos
+  9 modelos pedidos (apresentação institucional, auditoria concorrente,
+  indicadores hospitalares, missão/visão/valores, equipe, organograma, fluxo
+  assistencial, etapas de auditoria, CTA), **organograma**, **etapas de
+  auditoria** e **missão/visão/valores** já têm modelo inicial — mas dentro
+  da ferramenta de organogramas (Fabric.js), não como modelo de SEÇÃO DE
+  PÁGINA inserível via "Adicionar elemento". Os demais (apresentação
+  institucional, indicadores hospitalares, equipe, fluxo assistencial, CTA)
+  não têm nenhum modelo ainda. Implementar "modelos de seção" de verdade
+  exigiria adicionar uma aba "Modelos" ao painel "Adicionar elemento" **em
+  cada editor de página** (Home, Quem Somos, Contato, Serviços — moldura e
+  individual —, Política, Conteúdos — listagem e matéria individual —, ~8
+  arquivos grandes), inserindo um conjunto de overlays pré-configurados sem
+  apagar o conteúdo existente (mesmo princípio já usado nos modelos de
+  organograma). É uma tarefa grande, mecânica mas repetitiva; também caberia
+  perguntar ao usuário o conteúdo/redação exata de cada modelo antes de
+  escrever texto institucional em nome da empresa.
+- **Item 10 (qualidade/segurança)** — seguido em todo o trabalho desta
+  sessão: banco isolado para todo teste destrutivo, backup antes de migração
+  em coluna com dado existente, nunca `--remote`, validação server-side
+  (slug, tamanho de JSON, sanitização de ícone/URL), sem `innerHTML`/
+  `set:html` para conteúdo vindo do usuário, `npm audit` verificado antes de
+  fixar a versão do Fabric.js, testes automatizados por funcionalidade nova,
+  verificação manual real no navegador para cada funcionalidade.
 
-1. **QA**: corrigido escopo do TypeScript/Vitest que analisava
-   `mobile-app/` por engano (`tsconfig.json`, `vitest.config.ts`).
-2. **Serviços individuais**: controles de ícone (cor/tamanho/opacidade/
-   ocultar/restaurar) e de imagem (cover/contain/posição) completos;
-   testes manuais de inserir/mover/redimensionar/camadas/undo-redo.
-3. **Produção**: confirmado (via `wrangler whoami`, somente leitura) que as
-   credenciais atuais não têm escopo D1/Workers/R2 — só `account:read` e
-   `user:read`. Por instrução explícita do usuário, nenhum comando
-   `--remote` foi tentado e o ambiente "cópia de produção" (porta 4323)
-   **não foi criado**, pois teria que ser alimentado só com dados locais,
-   o que seria enganoso chamar de "cópia de produção". **Isto continua
-   pendente e depende só de o usuário liberar acesso real.**
-4. **Política de Privacidade** migrada para o Editor Visual (commit
-   `c256723`): modelo em `documents.ts`, página pública dinâmica, editor
-   visual + aparência + formulário de conteúdo, registrada nos hubs.
-5. **Página de Conteúdos** (listagem) migrada (commit `536c6c8`): hero +
-   CTA final editáveis; a grade de matérias em si continua vindo do banco
-   (tabela `posts`).
-6. **Matérias individuais** ganharam Editor Visual + Aparência próprios
-   (commit `e6ab208`): nova coluna `posts.editor_json`
-   (`migrations/0005_posts_editor_json.sql`), `src/lib/post-editor.ts`,
-   `/admin/api/post-editor-content.ts`, `/admin/editor/materias/*`. A
-   página pública `/conteudos/[slug]` ganhou seções "corpo"/"relacionados"
-   com cor/overlays próprios e ajuste de cover/contain/posição da capa
-   (a imagem oficial continua só em Conteúdo → Matérias). Generalizado o
-   handler `editor:image-style` do `editor-runtime.js` (antes fixo em
-   `data-edit="image"`) para aceitar um `path`, sem quebrar Serviços.
-7. **Slug editável com redirecionamento 301** (commit `f19bb0d`, início do
-   item 5): serviços e matérias agora podem ter o slug alterado pelo CRUD
-   tradicional; ao salvar, `slugExists` impede colisão e
-   `createRedirect` grava o 301 automaticamente na tabela `redirects` já
-   existente (aplicada de verdade pelo middleware). Testado manualmente:
-   renomear persiste, URL antiga redireciona, colisão é rejeitada sem
-   side-effect.
+## Todos os commits desta sessão (ordem cronológica)
 
-## Todas as páginas públicas fixas já estão no Editor Visual
+`26c81aa` (QA/escopo) → `e8c402c` (ícone/imagem de serviço) →
+`1ba1f30` (testes de transferência entre seções) → `c256723` (Política de
+Privacidade) → `536c6c8` (página de Conteúdos) → `e6ab208` (Matérias
+individuais + generaliza `editor:image-style`) → `f19bb0d` (slug editável +
+redirect 301) → `32a90f9` (continuidade) → `e91b50d` (criar/duplicar
+serviço e matéria) → `72ac85c` (submenu dinâmico + thumbnail) → `de41fc5`
+(continuidade) → `a45d2e1` (ícones de saúde) → `6b5c4ba` (organogramas) →
+`cd109a3` (modelos de organograma para auditoria/MVV).
 
-Home, Quem Somos, Contato, Política de Privacidade, Serviços (moldura +
-individuais) e Conteúdos (listagem + matérias individuais) — todas com os
-4 pontos de entrada (Editar conteúdo / Editor visual / Aparência /
-Configurações) e aparecendo automaticamente em Conteúdo → Editor Visual →
-Páginas. **Item 4 do escopo original está concluído.**
+## Pendente — próximas tarefas sugeridas, em ordem
 
-## Pendente — próxima tarefa exata
-
-Continuar o **item 5** (gerenciamento completo de páginas). Já feito nesta
-rodada: renomear slug com redirect 301, criar/duplicar serviço e matéria,
-thumbnail nas duas listagens, submenu de Serviços no cabeçalho tornado
-dinâmico. O que falta, em ordem de prioridade sugerida:
-
-- **Excluir com confirmação forte** — hoje só existe "arquivar"
-  (soft delete via status), o que já é seguro; avaliar se "excluir de
-  verdade" é realmente necessário ou se arquivar já satisfaz o pedido.
-- **Ordem no menu** — os 5 itens fixos do cabeçalho (Início/Quem Somos/
-  Serviços/Conteúdos/Contato) continuam em ordem fixa em
-  `src/data/site.ts` (`mainNav`); só o SUBMENU de Serviços já é dinâmico
-  (ordem = `display_order`, editável ao arrastar em `/admin/servicos`).
-  Reordenar os 5 itens fixos do topo não foi implementado — avaliar se
-  vale a pena (são só 5 itens, mudam raramente).
-- **Thumbnails** — já adicionado em `/admin/servicos` e já existia em
-  `/admin/conteudos`; ainda falta nos hubs `/admin/editor/servicos` e
-  `/admin/editor/materias` (listas secundárias, menor prioridade).
-- **"Adicionar página" genérica (em branco ou por modelo)** — **decisão
-  de arquitetura pendente, não uma tarefa mecânica**: hoje cada página
-  institucional fixa é uma rota `.astro` própria (`src/pages/*.astro`)
-  com conteúdo em uma linha da tabela `pages` (por `slug`). Não existe
-  mecanismo para o usuário criar uma página TOTALMENTE NOVA (ex.: "Nossa
-  História") sem um desenvolvedor adicionar um novo arquivo de rota.
-  Implementar isso de verdade exigiria um construtor de páginas genérico
-  (rota catch-all, ex. `src/pages/paginas/[slug].astro`, mais um modelo de
-  conteúdo em blocos e uma tabela própria de "páginas custom") — uma
-  escolha de design que molda tudo o que vem depois (itens 5, 8, 9). Isto
-  é candidato a ser tratado como "decisão que mudaria materialmente o
-  resultado" — vale confirmar com o usuário o formato desejado antes de
-  construir, em vez de adivinhar.
-
-Depois do item 5 (ou em paralelo, conforme prioridade), os itens ainda não
-iniciados são:
-
-- **Item 6** — biblioteca visual completa na barra lateral do Editor
-  Visual (Texto/Imagens/Vídeos/Uploads/Ícones/Formas/Fundos/Camadas/
-  Organogramas/Modelos). Hoje existe parcialmente (Adicionar
-  elemento: texto/imagem/vídeo/ícone/forma; uploads via `/admin/midia`)
-  mas sem os painéis dedicados de "Organogramas" e "Modelos".
-- **Item 7** — biblioteca de ícones de saúde pesquisável (hoje existe
-  `iconPaths`/`/admin/icones`, mas revisar cobertura completa da lista
-  pedida: médicos, enfermagem, pacientes, hospitais, UTI, ambulância,
-  telemedicina etc.).
-- **Item 8** — organogramas/fluxogramas (Fabric.js permitido só nesta
-  área livre, nunca nas páginas semânticas).
-- **Item 9** — modelos prontos (apresentação institucional, auditoria
-  concorrente, indicadores hospitalares, missão/visão/valores, equipe,
-  organograma, fluxo assistencial, etapas de auditoria, CTA).
-- **Item 10** (contínuo) — manter a disciplina de qualidade/segurança já
-  seguida até aqui em todo trabalho futuro.
+1. **Item 9 de verdade (modelos de seção de página)** — decidir com o
+   usuário o conteúdo exato de cada modelo antes de implementar (é texto
+   institucional em nome da empresa, não uma escolha técnica) e então
+   adicionar a aba "Modelos" ao painel "Adicionar elemento" de cada editor.
+2. **Decisão de arquitetura do item 5** ("adicionar página" genérica) —
+   confirmar com o usuário se vale construir um construtor de páginas
+   completo (rota catch-all + tabela própria) ou se o escopo atual (páginas
+   fixas + serviços/matérias dinâmicos) já atende.
+3. Itens menores do item 5: excluir de verdade com confirmação (avaliar se
+   necessário), reordenar os 5 itens fixos do cabeçalho, thumbnail nos hubs
+   secundários (`/admin/editor/servicos`, `/admin/editor/materias`).
+4. Item 3 continua bloqueado por credencial — só avança se o usuário liberar
+   acesso de leitura real à produção.
 
 ## Como continuar
 
-- Ambiente de teste isolado: `npm run test:ui:isolated:init` (cria cópia
-  em `.testing/isolated-wrangler-state`, porta 4322) →
-  `npm run dev:isolated` (ou usar `preview_start` com o nome
-  `essencial-saude-test` do `.claude/launch.json`) → criar um usuário
-  admin de teste com `node scripts/create-user.mjs` + `wrangler d1
-  execute ... --local --persist-to .testing/isolated-wrangler-state` →
-  ao terminar, `npm run test:ui:isolated:discard`.
+- Ambiente de teste isolado: `npm run test:ui:isolated:init` (cria cópia em
+  `.testing/isolated-wrangler-state`, porta 4322) → `npm run dev:isolated`
+  (ou `preview_start` com o nome `essencial-saude-test` do
+  `.claude/launch.json`) → criar um usuário admin de teste com
+  `node scripts/create-user.mjs` + `wrangler d1 execute ... --local
+  --persist-to .testing/isolated-wrangler-state` → ao terminar,
+  `npm run test:ui:isolated:discard`.
 - **Nunca** usar `--remote` em nenhum comando `wrangler d1`.
+- Antes de alterar uma tabela com dado real (ALTER TABLE numa coluna
+  existente), fazer backup: `wrangler d1 execute ... --local --command
+  "SELECT * FROM <tabela>" --json > .testing/db-snapshots/<nome>.json`.
 - QA completo: `npm run qa`.
 - Commits pequenos e coerentes, sempre `git push origin
   feature/editor-visual` — nunca mexer em `main`.
