@@ -20,3 +20,10 @@ public/vendor/
 
 # Backups locais de producao (D1/R2), nunca versionados.
 .backups/
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+.next/
+out/
+.vercel/

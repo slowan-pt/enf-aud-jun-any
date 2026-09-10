@@ -24,6 +24,7 @@ export interface SeoSettings {
 
 export interface BrandSettings {
   markUrl: string;
+  logoUrl: string;
 }
 
 /** Paleta global do site — poucas cores-chave que derivam o resto por CSS. */
@@ -51,6 +52,7 @@ const DEFAULT_SEO: SeoSettings = {
 
 const DEFAULT_BRAND: BrandSettings = {
   markUrl: '/logo/essencial-saude-mark.png',
+  logoUrl: '',
 };
 
 /** Mesmas cores já usadas em tokens.css (--c-brand-900, --c-accent-600, --bg, --text-strong). */

@@ -38,6 +38,8 @@
     '[data-section].is-edit-drop-target{outline:3px dashed #12a794;outline-offset:-3px;background-color:rgba(18,167,148,.06)}',
     '[data-section].is-edit-section-selected{outline:2px solid #7c3aed;outline-offset:-2px}',
     '.is-edit-cross-drag{opacity:.85;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35))}',
+    '.moveable-area{cursor:grab!important}',
+    '.moveable-area:active{cursor:grabbing!important}',
   ].join('');
   document.head.appendChild(style);
 
@@ -225,10 +227,16 @@
     // não depende de adivinhar quais áreas são "realmente vazias".
     var formHandle =
       kindOf(element) === 'form' ? element.querySelector('[data-form-handle]') : null;
+    var mediaDragArea = kindOf(element) === 'video' || kindOf(element) === 'image';
 
     moveable = new window.Moveable(document.body, {
       target: element,
       dragTarget: formHandle || undefined,
+      // O player nativo de <video> captura o mouse para play/volume/timeline.
+      // Quando a mídia está selecionada, a área do próprio Moveable fica por
+      // cima dela e transforma qualquer ponto visível numa alça de arraste.
+      dragArea: mediaDragArea,
+      passDragArea: false,
       draggable: true,
       resizable: true,
       rotatable: true,
@@ -344,6 +352,27 @@
     applyLayoutStyle(element, layout);
     reportLayout(element, layout);
     if (moveable) moveable.updateRect();
+  }
+
+  /** Move a seleção em pixels reais e grava na unidade responsiva do editor. */
+  function nudgeSelected(dx, dy) {
+    if (!selected || editingText || layoutFor(selected).locked) return false;
+
+    var section = sectionOf(selected);
+    if (!section) return false;
+    var box = section.getBoundingClientRect();
+    if (box.width <= 0) return false;
+
+    var layout = Object.assign({}, layoutFor(selected));
+    layout.v = 2;
+    layout.x = round(layout.x + (dx / box.width) * 100);
+    layout.y = round(layout.y + (dy / box.width) * 100);
+
+    translate = [0, 0];
+    applyLayoutStyle(selected, layout);
+    reportLayout(selected, layout);
+    if (moveable) moveable.updateRect();
+    return true;
   }
 
   function commitSize(element, overlay) {
@@ -819,14 +848,16 @@
     });
   });
 
-  document.addEventListener('keydown', function (event) {
+  function handleSelectionKeydown(event) {
     if (!selected) return;
 
     // Nunca intercepta setas dentro de um campo de formulário real (o
     // editor não tem inputs próprios no site, mas um formulário de contato
     // vive na mesma página, e pode estar sob o elemento selecionado).
-    var activeTag = document.activeElement && document.activeElement.tagName;
+    var active = event.target;
+    var activeTag = active && active.tagName;
     if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') return;
+    if (active && active.isContentEditable) return;
 
     if (editingText) {
       // Enter fecha a edição de um título de uma linha em vez de criar parágrafo.
@@ -851,6 +882,7 @@
     }
 
     // Setas movem o elemento selecionado, como em qualquer editor visual.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     var step = event.shiftKey ? 10 : 1;
     var delta = {
       ArrowLeft: [-step, 0],
@@ -858,14 +890,27 @@
       ArrowUp: [0, -step],
       ArrowDown: [0, step],
     }[event.key];
-    if (!delta || layoutFor(selected).locked) return;
+    if (!delta) return;
 
-    event.preventDefault();
-    var overlay = isOverlay(selected);
-    translate = [translate[0] + delta[0], translate[1] + delta[1]];
-    selected.style.transform = 'translate(' + translate[0] + 'px,' + translate[1] + 'px)';
-    commitPosition(selected, overlay);
-  });
+    if (nudgeSelected(delta[0], delta[1])) event.preventDefault();
+  }
+
+  document.addEventListener('keydown', handleSelectionKeydown);
+
+  // A seleção continua dentro do iframe, mas o foco costuma ir para o painel
+  // lateral depois de alterar tamanho, camada ou mídia. Como editor e preview
+  // têm a mesma origem, também ouvimos as setas no documento pai. Assim o
+  // teclado não "desliga" só porque o usuário tocou num controle do editor.
+  try {
+    if (parentWindow.document !== document) {
+      parentWindow.document.addEventListener('keydown', handleSelectionKeydown, true);
+      window.addEventListener('unload', function () {
+        parentWindow.document.removeEventListener('keydown', handleSelectionKeydown, true);
+      });
+    }
+  } catch {
+    // Defesa para uma futura pré-visualização em origem diferente.
+  }
 
   window.addEventListener(
     'scroll',
@@ -1247,6 +1292,13 @@
       case 'editor:select-key': {
         var byKey = elementForKey(data.key);
         if (byKey) select(byKey, { scroll: true });
+        break;
+      }
+
+      case 'editor:nudge': {
+        var dx = Number(data.dx);
+        var dy = Number(data.dy);
+        if (Number.isFinite(dx) && Number.isFinite(dy)) nudgeSelected(dx, dy);
         break;
       }
 

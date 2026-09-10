@@ -84,7 +84,7 @@ if (Astro.request.method === 'POST') {
   if (formName === 'marca') {
     const updated = {
       ...brand,
-      markUrl: text('marca-url', brand.markUrl),
+      logoUrl: text('marca-url', brand.logoUrl),
     };
     await updateSetting(db, 'brand', updated, userId);
     await writeAuditLog(db, {
@@ -396,8 +396,8 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         <div class="form-alert form-alert--info">
           <Icon name="info" size={18} />
           <span>
-            Logo para fundo escuro e favicon ainda não são editáveis por aqui — o ícone atual
-            usa uma placa branca por trás para manter contraste sobre fundos escuros.
+            Esta imagem substitui o logo completo no cabeçalho, menu móvel e rodapé. Prefira
+            PNG, WebP ou SVG com fundo transparente e formato horizontal.
           </span>
         </div>
 
@@ -406,7 +406,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
             <span class="label">Logo principal</span>
             <img
               id="marca-preview"
-              src={brand.markUrl}
+              src={brand.logoUrl || brand.markUrl}
               alt="Pré-visualização do logo"
               width="160"
               height="120"
@@ -423,7 +423,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
               />
             </div>
             <span class="hint" id="marca-status"></span>
-            <input type="hidden" name="marca-url" id="marca-url" value={brand.markUrl} />
+            <input type="hidden" name="marca-url" id="marca-url" value={brand.logoUrl} />
           </div>
         </div>
       </div>

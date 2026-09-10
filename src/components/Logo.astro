@@ -33,23 +33,37 @@ const { brand } = Astro.locals.settings;
 ---
 
 <span class={`logo logo--${variant} logo--${size} ${className}`.trim()}>
-  <span class="logo__plate">
-    <img
-      class="logo__mark"
-      src={brand.markUrl}
-      width="534"
-      height="403"
-      alt="Essencial Saúde Auditoria"
-      loading="eager"
-      decoding="async"
-    />
-  </span>
   {
-    !markOnly && (
-      <span class="logo__type">
-        <span class="logo__name">Essencial</span>
-        <span class="logo__sub">Saúde Auditoria</span>
+    brand.logoUrl && !markOnly ? (
+      <span class="logo__plate logo__plate--full">
+        <img
+          class="logo__image"
+          src={brand.logoUrl}
+          alt="Essencial Saúde Auditoria"
+          loading="eager"
+          decoding="async"
+        />
       </span>
+    ) : (
+      <>
+        <span class="logo__plate">
+          <img
+            class="logo__mark"
+            src={brand.markUrl}
+            width="534"
+            height="403"
+            alt="Essencial Saúde Auditoria"
+            loading="eager"
+            decoding="async"
+          />
+        </span>
+        {!markOnly && (
+          <span class="logo__type">
+            <span class="logo__name">Essencial</span>
+            <span class="logo__sub">Saúde Auditoria</span>
+          </span>
+        )}
+      </>
     )
   }
 </span>
@@ -79,6 +93,14 @@ const { brand } = Astro.locals.settings;
     display: block;
     width: 40px;
     height: auto;
+  }
+
+  .logo__image {
+    display: block;
+    width: auto;
+    max-width: 210px;
+    height: 44px;
+    object-fit: contain;
   }
 
   /* sobre fundo escuro (rodapé, sidebar do CMS, login) o ícone original —
@@ -126,6 +148,11 @@ const { brand } = Astro.locals.settings;
     width: 32px;
   }
 
+  .logo--sm .logo__image {
+    max-width: 175px;
+    height: 36px;
+  }
+
   .logo--sm .logo__name {
     font-size: 0.95rem;
   }
@@ -136,6 +163,11 @@ const { brand } = Astro.locals.settings;
 
   .logo--lg .logo__mark {
     width: 56px;
+  }
+
+  .logo--lg .logo__image {
+    max-width: 260px;
+    height: 58px;
   }
 
   .logo--lg .logo__name {
