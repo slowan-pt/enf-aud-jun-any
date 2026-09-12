@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { env } from 'cloudflare:workers';
 import { getDB, getSessionUser } from './lib/db';
 import { getSettings } from './lib/settings';
 import { listServices } from './lib/services';
@@ -11,6 +12,15 @@ const PUBLIC_ADMIN_PATHS = new Set(['/admin/login']);
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
+
+  // Site desativado (ver INACTIVE_REDIRECT_URL em env.d.ts): manda todo
+  // visitante público para o site novo, sem apagar nada aqui — o painel
+  // (/admin/*) continua acessível normalmente para quem já tem login, para
+  // consultar o que precisar no site antigo.
+  if (env.INACTIVE_REDIRECT_URL && !pathname.startsWith('/admin')) {
+    const target = new URL(pathname + context.url.search, env.INACTIVE_REDIRECT_URL);
+    return context.redirect(target.toString(), 301);
+  }
 
   // Defesa central contra CSRF em todas as mutacoes do painel, inclusive APIs
   // JSON. Navegadores modernos enviam Origin em POST; Sec-Fetch-Site cobre a

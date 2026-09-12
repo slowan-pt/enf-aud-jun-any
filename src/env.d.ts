@@ -10,6 +10,14 @@ type CloudflareEnv = {
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET_KEY?: string;
   SESSION_SECRET?: string;
+  /**
+   * Quando definida, todo visitante anônimo/público é redirecionado (301)
+   * para esta URL — usado para desativar um site antigo sem apagar seus
+   * dados: `/admin/*` continua funcionando normalmente aqui, só as rotas
+   * públicas saem. Defina só no wrangler.jsonc do site que deve ficar
+   * inativo (nunca no site novo nem localmente).
+   */
+  INACTIVE_REDIRECT_URL?: string;
 };
 
 declare module 'cloudflare:workers' {
