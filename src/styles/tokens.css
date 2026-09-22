@@ -6,25 +6,25 @@
 
 :root {
   /* ---------- Cor: azul institucional (marca) ---------- */
-  --c-brand-950: #041526;
-  --c-brand-900: #06203a;
-  --c-brand-800: #092c4e;
-  --c-brand-700: #0d3d69;
-  --c-brand-600: #12558e;
-  --c-brand-500: #1a6faf;
-  --c-brand-400: #2f8ecd;
-  --c-brand-300: #6cb2e0;
-  --c-brand-200: #a8d3ef;
-  --c-brand-100: #d7eaf8;
-  --c-brand-50: #eff7fd;
+  --c-brand-950: #1a2740;
+  --c-brand-900: #253550;
+  --c-brand-800: #344761;
+  --c-brand-700: #52627c;
+  --c-brand-600: #61728d;
+  --c-brand-500: #71849d;
+  --c-brand-400: #9aa9bb;
+  --c-brand-300: #c2ccd8;
+  --c-brand-200: #d9e0e8;
+  --c-brand-100: #e8edf3;
+  --c-brand-50: #f5f7fa;
 
   /* ---------- Cor: complementar discreta (cuidado/saúde) ---------- */
-  --c-accent-700: #0a6f65;
-  --c-accent-600: #0d8b7d;
-  --c-accent-500: #12a794;
-  --c-accent-300: #6fd0c2;
-  --c-accent-100: #d8f2ed;
-  --c-accent-50: #eefaf8;
+  --c-accent-700: #0f766e;
+  --c-accent-600: #138b82;
+  --c-accent-500: #26a69a;
+  --c-accent-300: #8fd4cb;
+  --c-accent-100: #d8f1ee;
+  --c-accent-50: #f0fbf9;
 
   /* ---------- Neutros ---------- */
   --c-ink-900: #0e1720;
@@ -88,7 +88,7 @@
   --lh-normal: 1.55;
   --lh-relaxed: 1.7;
 
-  --tracking-tight: -0.02em;
+  --tracking-tight: 0;
   --tracking-normal: 0;
   --tracking-wide: 0.08em;
   --tracking-caps: 0.14em;
@@ -114,8 +114,8 @@
   --sp-32: 8rem;
 
   /* ritmo vertical de seção (fluido) */
-  --section-y: clamp(3.5rem, 6vw, 7rem);
-  --section-y-sm: clamp(2.5rem, 4vw, 4.5rem);
+  --section-y: clamp(2.75rem, 5vw, 5.75rem);
+  --section-y-sm: clamp(2rem, 3.5vw, 3.75rem);
 
   /* ---------- Container / grid ---------- */
   --container-max: 1200px;
@@ -126,9 +126,9 @@
   /* ---------- Raio ---------- */
   --r-xs: 4px;
   --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 16px;
-  --r-xl: 24px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 18px;
   --r-pill: 999px;
 
   /* ---------- Sombra (discreta, corporativa) ---------- */

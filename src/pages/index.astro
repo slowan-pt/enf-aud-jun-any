@@ -1,512 +1,175 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
-import EloDiagram from '../components/EloDiagram.astro';
-import ProcessSteps from '../components/ProcessSteps.astro';
-import ServiceCard from '../components/ServiceCard.astro';
-import PostCard from '../components/PostCard.astro';
-import CtaBand from '../components/CtaBand.astro';
-import ContactForm from '../components/ContactForm.astro';
 
-import { publishedOnly as publishedServicesOnly, findBySlug } from '../lib/services';
-import { publishedOnly as publishedPostsOnly } from '../lib/posts';
-import { waLink } from '../data/site';
-import { safeHref, safeMediaUrl } from '../lib/urls';
+import { publishedOnly as publishedServicesOnly } from '../lib/services';
 import { getDB } from '../lib/db';
-import SectionOverlays from '../components/SectionOverlays.astro';
-import {
-  getHomeContent,
-  sectionStyleAttr,
-  layoutStylesheet,
-  HOME_EDITABLE_SLOTS,
-  pageStyleOverride,
-} from '../lib/pages';
-import type { SectionStyle } from '../lib/pages';
+import { getHomeContent } from '../lib/pages';
+import { waLink } from '../data/site';
 
-const { company, whatsapp, howWeWork, missionVisionValues, clientSegments } =
-  Astro.locals.settings;
-// Atributos usados só pelo editor não vão para o HTML de quem visita o site.
-// É limpeza de marcação, não controle de acesso — quem autoriza e valida é o
-// servidor, em toda requisição.
-const edit = Boolean(Astro.locals.editMode);
-const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
-
-const db = getDB();
+const { whatsapp } = Astro.locals.settings;
 const publishedServices = publishedServicesOnly(Astro.locals.services);
-const {
-  hero,
-  valueProposition,
-  elo,
-  benefits,
-  finalCta,
-  bands,
-  indicators,
-  promoVideo,
-  pageStyle,
-  sectionStyles,
-  sectionOrder,
-  hiddenSections,
-  layouts,
-  overlays,
-} = await getHomeContent(db);
+const { faqItems } = await getHomeContent(getDB());
 
-// Posições livres definidas no editor. Sai como folha de estilo para o HTML
-// continuar limpo e as regras de celular caberem num media query.
-const layoutCss = layoutStylesheet(layouts, overlays);
+const heroSlides = [
+  {
+    title: 'Presença Técnica onde o cuidado acontece',
+    text: 'Atua na rede prestadora, conectando a operadora de saúde à realidade assistencial e apoiando decisões mais assertivas.',
+    image: '/images/home/presenca-tecnica.png',
+    alt: 'Criança internada sendo acompanhada por profissionais de saúde diversos em ambiente hospitalar',
+  },
+  {
+    title: 'Gestão da Jornada do Paciente',
+    text: 'Coordena a transição entre níveis de atenção, assegurando o cuidado adequado, no momento certo e pelo tempo necessário.',
+    image: '/images/home/jornada-paciente.png',
+    alt: 'Paciente cadeirante sendo acompanhado por profissionais de saúde em ambiente domiciliar',
+  },
+  {
+    title: 'Eficiência Sustentável',
+    text: 'Transforma dados fragmentados e cenários imprevisíveis em informação integrada para ampliar a previsibilidade e otimizar custos.',
+    image: '/images/home/eficiencia-sustentavel.png',
+    alt: 'Gráfico de eficiência e custos representando otimização sustentável em saúde',
+  },
+  {
+    title: 'Inteligência em Saúde',
+    text: 'Tecnologia Carefy processa dados com agilidade e precisão, protegendo informações sensíveis e sinalizando riscos e oportunidades.',
+    image: '/images/home/inteligencia-saude.png',
+    alt: 'Profissional médico utilizando tecnologia para integrar informações de saúde',
+  },
+];
 
-// Modo de edição: a própria Home aberta dentro do iframe do editor visual, por
-// um usuário já autenticado (a sessão é resolvida no middleware).
-const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
-
-const slotOf = new Map<string, number>();
-sectionOrder.forEach((key, index) => {
-  const slot = HOME_EDITABLE_SLOTS[index];
-  if (slot !== undefined) slotOf.set(key, slot);
-});
-const orderStyle = (key: string) => `order:${slotOf.get(key) ?? 0}`;
-
-// Seção desligada no editor sai da página (display:none). Dentro do editor ela
-// continua visível, esmaecida, para poder ser religada.
-const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
-const secClass = (key: string) =>
-  isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
-
-/** Junta o fundo/cor da seção (se houver) com a posição definida no editor. */
-const secStyle = (key: string, style: SectionStyle) =>
-  [sectionStyleAttr(style), orderStyle(key)].filter(Boolean).join(';');
-const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
-const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
-const qualificacao = findBySlug(publishedServices, 'qualificacao-da-rede-prestadora')!;
-const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
-// A faixa de números só entra no ar quando houver dado real preenchido. Dentro
-// do editor ela aparece mesmo vazia, senão não haveria onde clicar para
-// preencher.
-const hasIndicators = indicators.items.some((item) => item.value.trim() !== '');
 ---
 
 <BaseLayout
-  description="Essencial Saúde Auditoria: auditoria concorrente, auditoria de contas hospitalares, gestão da jornada do paciente e gestão hospitalar, com foco na segurança do paciente e na sustentabilidade do sistema. Brasília - DF."
+  description="Essencial Saúde Auditoria: auditoria concorrente, gestão da jornada do paciente, auditoria de contas hospitalares e soluções técnicas para operadoras, prestadores e beneficiários."
   path="/"
   bodyClass="page-home"
-  colorOverride={pageStyleOverride(pageStyle)}
 >
-  <!-- ==================================================== HERO -->
-  <section
-    class:list={['hero', secClass('hero')]}
-    style={secStyle('hero', sectionStyles.hero)}
-    data-section="hero"
-    data-section-label={ed('Destaque principal')}
-  >
-    <div class="hero__media">
-      <img
-        src={safeMediaUrl(hero.image)}
-        alt={hero.imageAlt}
-        width="1600"
-        height="620"
-        fetchpriority="high"
-        decoding="async"
-        data-edit="hero.image"
-        data-edit-kind={ed('image')}
-        data-edit-label={ed('Imagem do topo')}
-      />
-    </div>
-
-    <div class="container hero__inner">
-      <div class:list={['hero__text', editMode ? 'hero__text--off-preview' : 'hero__text--off']}>
-        <p
-          class="hero__eyebrow-box"
-          data-edit="hero.eyebrow"
-          data-edit-label={ed('Selo do topo')}
-        >
-          {hero.eyebrow}
-        </p>
-        <h1 class="title-xl hero__title">
-          <span data-edit="hero.title" data-edit-label={ed('Título principal')}
-            >{hero.title}</span
-          >
-          <span
-            class="hero__highlight"
-            data-edit="hero.titleHighlight"
-            data-edit-label={ed('Complemento do título')}
-          >
-            {hero.titleHighlight}
-          </span>
-        </h1>
-        <p
-          class="hero__lead"
-          data-edit="hero.lead"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto de apoio')}
-        >
-          {hero.lead}
-        </p>
-        <div class="cluster hero__actions">
-          <a href={safeHref(hero.primaryCta.href)} class="hero__cta hero__cta--primary">
-            <span data-edit="hero.primaryCta.label" data-edit-label={ed('Botão principal')}>
-              {hero.primaryCta.label}
-            </span>
-            <Icon name="arrow-right" size={18} class="icon--arrow" />
-          </a>
-          <a
-            href={safeHref(hero.secondaryCta.href)}
-            class="hero__cta hero__cta--secondary"
-            data-edit="hero.secondaryCta.label"
-            data-edit-label={ed('Botão secundário')}
-          >
-            {hero.secondaryCta.label}
-          </a>
-        </div>
-        <ul class="hero__pillars" data-edit-list={ed('hero.pillars')}>
-          {
-            hero.pillars.map((pillar, index) => (
-              <li data-edit-item={ed(index)}>
-                <Icon name="check" size={15} />
-                <span data-edit={`hero.pillars.${index}`} data-edit-label={ed('Pilar')}>
-                  {pillar}
-                </span>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-
-      <SectionOverlays section="hero" overlays={overlays} />
-    </div>
-  </section>
-
-  {
-    promoVideo.url && (promoVideo.title || promoVideo.text) && (
-      <section
-        class:list={['section section--tight', secClass('promoVideo')]}
-        style={secStyle('promoVideo', sectionStyles.promoVideo)}
-        data-section="promoVideo"
-        data-section-label={ed('Vídeo promocional')}
-      >
-        <div class="container">
-          <SectionOverlays section="promoVideo" overlays={overlays} />
-          <div class="section-head section-head--center" data-reveal>
-            {promoVideo.title && (
-              <h2 class="title-lg" data-edit="promoVideo.title" data-edit-label={ed('Título')}>
-                {promoVideo.title}
-              </h2>
-            )}
-            {promoVideo.text && (
-              <p
-                class="lead"
-                data-edit="promoVideo.text"
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Texto')}
-              >
-                {promoVideo.text}
-              </p>
-            )}
-          </div>
-          <div class="promo-video" data-reveal>
-            <video
-              src={safeMediaUrl(promoVideo.url)}
-              controls
-              preload="metadata"
-              data-edit="promoVideo.url"
-              data-edit-kind={ed('video')}
-              data-edit-label={ed('Arquivo de vídeo')}
+  <section class="hero-carousel" aria-label="Destaques da Essencial Saúde">
+    <div class="hero-carousel__track">
+      {
+        heroSlides.map((slide, index) => (
+          <article class:list={['hero-slide', index === 0 && 'is-active']} data-slide>
+            <img
+              src={slide.image}
+              alt={slide.alt}
+              width="1400"
+              height="760"
+              fetchpriority={index === 0 ? 'high' : undefined}
+              loading={index === 0 ? undefined : 'lazy'}
+              decoding="async"
             />
-          </div>
-        </div>
-      </section>
-    )
-  }
+            <div class="hero-slide__shade" aria-hidden="true" />
+            <div class="container hero-slide__content">
+              <p class="hero-slide__kicker">Auditoria em saúde com presença técnica</p>
+              <h1>{slide.title}</h1>
+              <p>{slide.text}</p>
+              <div class="hero-slide__actions">
+                <a href="#servicos" class="btn">
+                  Conhecer serviços
+                </a>
+                <a
+                  href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+                  class="btn btn--on-brand"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Icon name="whatsapp" size={17} />
+                  Falar com especialista
+                </a>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
 
-  <!-- =========================================== PROPOSTA DE VALOR -->
-  <section
-    class:list={['section', secClass('proposta')]}
-    style={secStyle('proposta', sectionStyles.proposta)}
-    data-section="proposta"
-    data-section-label={ed('Proposta de valor')}
-  >
-    <div class="container split split--wide-text">
-      <SectionOverlays section="proposta" overlays={overlays} />
-      <div data-reveal>
-        <p
-          class="eyebrow"
-          data-edit="valueProposition.eyebrow"
-          data-edit-label={ed('Etiqueta')}
-        >
-          {valueProposition.eyebrow}
-        </p>
-        <h2 class="title-lg" data-edit="valueProposition.title" data-edit-label={ed('Título')}>
-          {valueProposition.title}
-        </h2>
-        <p
-          class="lead"
-          style="margin-top: var(--sp-4)"
-          data-edit="valueProposition.text"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto')}
-        >
-          {valueProposition.text}
-        </p>
-        <div class="value-points" data-edit-list={ed('valueProposition.points')}>
-          {
-            valueProposition.points.map((point, index) => (
-              <div class="value-point" data-edit-item={ed(index)}>
-                <span class="icon-badge icon-badge--sm">
-                  <Icon
-                    name={point.icon}
-                    size={20}
-                    data-edit={`valueProposition.points.${index}.icon`}
-                    data-edit-kind={ed('icon')}
-                    data-edit-value={point.icon}
-                    data-edit-label={ed('Ícone')}
-                  />
-                </span>
-                <div>
-                  <h3
-                    data-edit={`valueProposition.points.${index}.title`}
-                    data-edit-label={ed('Título do item')}
+    <div class="hero-carousel__controls container" aria-label="Selecionar destaque">
+      {
+        heroSlides.map((slide, index) => (
+          <button
+            type="button"
+            class:list={['hero-dot', index === 0 && 'is-active']}
+            aria-label={`Ver destaque: ${slide.title}`}
+            data-slide-button={index}
+          />
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="service-icons" id="servicos" aria-labelledby="servicos-title">
+    <div class="container">
+      <h2 class="sr-only" id="servicos-title">Serviços</h2>
+
+      <div class="service-icons__grid" data-reveal>
+        {
+          publishedServices.map((service, index) => (
+            <button
+              type="button"
+              class:list={['service-icon-card', index === 0 && 'is-active']}
+              id={`tab-${service.slug}`}
+              aria-controls={`panel-${service.slug}`}
+              aria-selected={index === 0 ? 'true' : 'false'}
+              data-service-tab={service.slug}
+            >
+              <Icon name={service.icon} size={36} strokeWidth={1.55} />
+              <span>{service.shortName || service.name}</span>
+            </button>
+          ))
+        }
+      </div>
+
+      <div class="service-tabs" aria-label="Conteúdo dos serviços" data-reveal>
+        {
+          publishedServices.map((service, index) => (
+            <article
+              class:list={['service-panel', index === 0 && 'is-active']}
+              id={`panel-${service.slug}`}
+              role="tabpanel"
+              aria-labelledby={`tab-${service.slug}`}
+              data-service-panel={service.slug}
+              hidden={index !== 0}
+            >
+              <div class="service-panel__media">
+                <img
+                  src={service.image}
+                  alt={service.imageAlt}
+                  width="900"
+                  height="680"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div class="service-panel__body">
+                <h2 class="title-md">{service.name}</h2>
+                <p class="lead">{service.summary}</p>
+                <ul class="service-panel__highlights">
+                  {service.highlights.slice(0, 3).map((item) => (
+                    <li>
+                      <Icon name={item.icon} size={18} />
+                      <span>
+                        <strong>{item.title}.</strong> {item.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div class="cluster">
+                  <a href={`/servicos/${service.slug}`} class="btn btn--secondary">
+                    Ver detalhes
+                    <Icon name="arrow-right" size={16} class="icon--arrow" />
+                  </a>
+                  <a
+                    href={waLink(whatsapp.number, service.whatsappMessage)}
+                    class="link-arrow"
+                    target="_blank"
+                    rel="noopener"
                   >
-                    {point.title}
-                  </h3>
-                  <p
-                    data-edit={`valueProposition.points.${index}.text`}
-                    data-edit-kind={ed('multiline')}
-                    data-edit-label={ed('Texto do item')}
-                  >
-                    {point.text}
-                  </p>
+                    Conversar sobre este serviço
+                    <Icon name="whatsapp" size={16} />
+                  </a>
                 </div>
               </div>
-            ))
-          }
-        </div>
-      </div>
-      <div class="media-frame" data-reveal>
-        <figure class="figure">
-          <img
-            src={safeMediaUrl(valueProposition.image)}
-            alt={valueProposition.imageAlt}
-            width="1200"
-            height="900"
-            loading="lazy"
-            decoding="async"
-            data-edit="valueProposition.image"
-            data-edit-kind={ed('image')}
-            data-edit-label={ed('Imagem da seção')}
-          />
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================ ELO / MODELO -->
-  <section
-    class:list={['section section--brand elo-section', secClass('elo')]}
-    style={secStyle('elo', sectionStyles.elo)}
-    data-section="elo"
-    data-section-label={ed('O modelo Essencial')}
-  >
-    <div class="container">
-      <SectionOverlays section="elo" overlays={overlays} />
-      <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="elo.eyebrow" data-edit-label={ed('Etiqueta')}>
-          {elo.eyebrow}
-        </p>
-        <h2 class="title-lg" data-edit="elo.title" data-edit-label={ed('Título')}>
-          {elo.title}
-        </h2>
-        <p
-          class="lead"
-          data-edit="elo.text"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto')}
-        >
-          {elo.text}
-        </p>
-      </div>
-      <div data-reveal>
-        <EloDiagram elo={elo} />
-      </div>
-    </div>
-  </section>
-
-  <!-- ==================================================== SERVIÇOS -->
-  <section class="section section--subtle" style="order:4">
-    <div class="container">
-      <div class="section-head" data-reveal>
-        <p class="eyebrow" data-edit="bands.servicesEyebrow" data-edit-label={ed('Etiqueta')}>
-          {bands.servicesEyebrow}
-        </p>
-        <h2 class="title-lg" data-edit="bands.servicesTitle" data-edit-label={ed('Título')}>
-          {bands.servicesTitle}
-        </h2>
-        <p
-          class="lead"
-          data-edit="bands.servicesText"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto de apoio')}
-        >
-          {bands.servicesText}
-        </p>
-      </div>
-      <div class="grid grid--3">
-        {publishedServices.map((service) => <ServiceCard service={service} />)}
-      </div>
-      <div class="text-center" style="margin-top: var(--sp-8)">
-        <a href="/servicos" class="btn btn--secondary">
-          <span data-edit="bands.servicesCta" data-edit-label={ed('Botão')}>
-            {bands.servicesCta}
-          </span>
-          <Icon name="arrow-right" size={16} class="icon--arrow" />
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <!-- ====================================== AUDITORIA CONCORRENTE -->
-  <section class="section" style="order:5">
-    <div class="container split split--media-first">
-      <div class="media-frame" data-reveal>
-        <figure class="figure">
-          <img
-            src={concorrente.image}
-            alt={concorrente.imageAlt}
-            width="1200"
-            height="900"
-            loading="lazy"
-            decoding="async"
-          />
-        </figure>
-      </div>
-      <div data-reveal>
-        <p class="eyebrow" data-edit="bands.concorrenteEyebrow" data-edit-label={ed('Etiqueta')}>
-          {bands.concorrenteEyebrow}
-        </p>
-        <h2 class="title-lg">{concorrente.name}</h2>
-        <p class="lead" style="margin-top: var(--sp-4)">{concorrente.summary}</p>
-        <ul class="check-list" style="margin-top: var(--sp-6)">
-          {
-            concorrente.highlights.map((item) => (
-              <li>
-                <Icon name="check-circle" size={18} />
-                <span>
-                  <strong>{item.title}.</strong> {item.text}
-                </span>
-              </li>
-            ))
-          }
-        </ul>
-        <div class="cluster" style="margin-top: var(--sp-8)">
-          <a href={`/servicos/${concorrente.slug}`} class="btn">
-            Conhecer o serviço
-            <Icon name="arrow-right" size={16} class="icon--arrow" />
-          </a>
-          <a
-            href={waLink(whatsapp.number, concorrente.whatsappMessage)}
-            class="btn btn--secondary"
-            target="_blank"
-            rel="noopener"
-          >
-            <Icon name="whatsapp" size={16} />
-            Falar sobre auditoria concorrente
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============================================ GESTÃO HOSPITALAR -->
-  <section class="section section--brand-soft" style="order:6">
-    <div class="container split">
-      <div data-reveal>
-        <p class="eyebrow" data-edit="bands.gestaoEyebrow" data-edit-label={ed('Etiqueta')}>
-          {bands.gestaoEyebrow}
-        </p>
-        <h2 class="title-lg">{gestao.name}</h2>
-        <p class="lead" style="margin-top: var(--sp-4)">{gestao.summary}</p>
-        <div class="mini-grid">
-          {
-            gestao.highlights.map((item) => (
-              <div class="mini-card">
-                <span class="icon-badge icon-badge--accent icon-badge--sm">
-                  <Icon name={item.icon} size={18} />
-                </span>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </div>
-            ))
-          }
-        </div>
-        <a href={`/servicos/${gestao.slug}`} class="btn" style="margin-top: var(--sp-6)">
-          Conhecer gestão hospitalar
-          <Icon name="arrow-right" size={16} class="icon--arrow" />
-        </a>
-      </div>
-      <div class="media-frame" data-reveal>
-        <figure class="figure">
-          <img
-            src={gestao.image}
-            alt={gestao.imageAlt}
-            width="1200"
-            height="900"
-            loading="lazy"
-            decoding="async"
-          />
-        </figure>
-      </div>
-    </div>
-  </section>
-
-  <!-- =================================================== BENEFÍCIOS -->
-  <section
-    class:list={['section', secClass('beneficios')]}
-    style={secStyle('beneficios', sectionStyles.beneficios)}
-    data-section="beneficios"
-    data-section-label={ed('Benefícios')}
-  >
-    <div class="container">
-      <SectionOverlays section="beneficios" overlays={overlays} />
-      <div class="section-head" data-reveal>
-        <p class="eyebrow" data-edit="benefits.eyebrow" data-edit-label={ed('Etiqueta')}>
-          {benefits.eyebrow}
-        </p>
-        <h2 class="title-lg" data-edit="benefits.title" data-edit-label={ed('Título')}>
-          {benefits.title}
-        </h2>
-        <p
-          class="lead"
-          data-edit="benefits.text"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto')}
-        >
-          {benefits.text}
-        </p>
-      </div>
-      <div class="grid grid--3" data-edit-list={ed('benefits.items')}>
-        {
-          benefits.items.map((item, index) => (
-            <article class="card benefit" data-reveal data-edit-item={ed(index)}>
-              <span class="icon-badge icon-badge--accent">
-                <Icon
-                  name={item.icon}
-                  size={22}
-                  data-edit={`benefits.items.${index}.icon`}
-                  data-edit-kind={ed('icon')}
-                  data-edit-value={item.icon}
-                  data-edit-label={ed('Ícone')}
-                />
-              </span>
-              <h3
-                data-edit={`benefits.items.${index}.title`}
-                data-edit-label={ed('Título do item')}
-              >
-                {item.title}
-              </h3>
-              <p
-                data-edit={`benefits.items.${index}.text`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Texto do item')}
-              >
-                {item.text}
-              </p>
             </article>
           ))
         }
@@ -514,1024 +177,524 @@ const hasIndicators = indicators.items.some((item) => item.value.trim() !== '');
     </div>
   </section>
 
-  <!-- ================================================ COMO ATUAMOS -->
-  <section
-    class:list={['section section--subtle', secClass('comoAtuamos')]}
-    style={secStyle('comoAtuamos', sectionStyles.comoAtuamos)}
-    data-section="comoAtuamos"
-    data-section-label={ed('Como atuamos')}
-  >
+  <section class="section faq" aria-labelledby="faq-title">
     <div class="container">
-      <SectionOverlays section="comoAtuamos" overlays={overlays} />
       <div class="section-head" data-reveal>
-        <p class="eyebrow" data-edit="howWeWork.eyebrow" data-edit-label={ed('Etiqueta')}>
-          {howWeWork.eyebrow}
-        </p>
-        <h2 class="title-lg" data-edit="howWeWork.title" data-edit-label={ed('Título')}>
-          {howWeWork.title}
-        </h2>
-        <p
-          class="lead"
-          data-edit="howWeWork.text"
-          data-edit-kind={ed('multiline')}
-          data-edit-label={ed('Texto')}
-        >
-          {howWeWork.text}
-        </p>
+        <h2 class="title-lg" id="faq-title">Perguntas frequentes</h2>
       </div>
-      <ProcessSteps steps={howWeWork.steps} editPath="howWeWork.steps" />
-    </div>
-  </section>
-
-  <!-- ======================================== QUALIFICAÇÃO DA REDE -->
-  <section class="section" style="order:9">
-    <div class="container">
-      <div class="net-band" data-reveal>
-        <div class="net-band__text">
-          <p class="eyebrow" data-edit="bands.qualificacaoEyebrow" data-edit-label={ed('Etiqueta')}>
-            {bands.qualificacaoEyebrow}
-          </p>
-          <h2 class="title-md">{qualificacao.name}</h2>
-          <p>{qualificacao.summary}</p>
-          <a
-            href={`/servicos/${qualificacao.slug}`}
-            class="link-arrow"
-            style="margin-top: var(--sp-4)"
-          >
-            <span data-edit="bands.qualificacaoCta" data-edit-label={ed('Link')}>
-              {bands.qualificacaoCta}
-            </span>
-            <Icon name="arrow-right" size={16} />
-          </a>
-        </div>
-        <ul class="net-band__list">
-          {
-            qualificacao.highlights.map((item) => (
-              <li>
-                <span class="icon-badge icon-badge--sm">
-                  <Icon name={item.icon} size={18} />
-                </span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <span>{item.text}</span>
-                </div>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- =================================== MISSÃO, VISÃO E VALORES -->
-  <section
-    class:list={['section section--brand', secClass('mvv')]}
-    style={secStyle('mvv', sectionStyles.mvv)}
-    data-section="mvv"
-    data-section-label={ed('Missão, visão e valores')}
-  >
-    <div class="container">
-      <SectionOverlays section="mvv" overlays={overlays} />
-      <div class="section-head section-head--center" data-reveal>
-        <p
-          class="eyebrow"
-          data-edit="missionVisionValues.eyebrow"
-          data-edit-label={ed('Etiqueta')}
-        >
-          {missionVisionValues.eyebrow}
-        </p>
-        <h2
-          class="title-lg"
-          data-edit="missionVisionValues.title"
-          data-edit-label={ed('Título')}
-        >
-          {missionVisionValues.title}
-        </h2>
-      </div>
-
-      <div class="mvv" data-reveal>
+      <div class="faq__list" data-faq-list data-reveal>
         {
-          (
-            [
-              ['mission', missionVisionValues.mission],
-              ['vision', missionVisionValues.vision],
-            ] as const
-          ).map(([key, item]) => (
-            <article class="mvv__card">
-              <span class="icon-badge icon-badge--on-brand">
-                <Icon
-                  name={item.icon}
-                  size={22}
-                  data-edit={`missionVisionValues.${key}.icon`}
-                  data-edit-kind={ed('icon')}
-                  data-edit-value={item.icon}
-                  data-edit-label={ed('Ícone')}
-                />
-              </span>
-              <h3 data-edit={`missionVisionValues.${key}.title`} data-edit-label={ed('Título')}>
-                {item.title}
-              </h3>
-              <p
-                data-edit={`missionVisionValues.${key}.text`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Texto')}
-              >
-                {item.text}
-              </p>
-            </article>
-          ))
-        }
-      </div>
-
-      <div class="values" data-reveal data-edit-list={ed('missionVisionValues.values')}>
-        {
-          missionVisionValues.values.map((value, index) => (
-            <article class="value" data-edit-item={ed(index)}>
-              <span class="value__icon">
-                <Icon
-                  name={value.icon}
-                  size={20}
-                  data-edit={`missionVisionValues.values.${index}.icon`}
-                  data-edit-kind={ed('icon')}
-                  data-edit-value={value.icon}
-                  data-edit-label={ed('Ícone')}
-                />
-              </span>
-              <h3
-                data-edit={`missionVisionValues.values.${index}.title`}
-                data-edit-label={ed('Título do valor')}
-              >
-                {value.title}
-              </h3>
-              <p
-                data-edit={`missionVisionValues.values.${index}.text`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Texto do valor')}
-              >
-                {value.text}
-              </p>
-            </article>
+          faqItems.map((item, index) => (
+            <details class="faq__item" data-faq-item>
+              <summary>
+                <span>{item.question}</span>
+                <Icon name="chevron-down" size={18} />
+              </summary>
+              <p>{item.answer}</p>
+            </details>
           ))
         }
       </div>
     </div>
   </section>
 
-  <!-- ================================================ PARA QUEM -->
-  <section
-    class:list={['section section--tight', secClass('segmentos')]}
-    style={secStyle('segmentos', sectionStyles.segmentos)}
-    data-section="segmentos"
-    data-section-label={ed('Para quem atuamos')}
-  >
-    <div class="container">
-      <SectionOverlays section="segmentos" overlays={overlays} />
-      <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="clientSegments.eyebrow" data-edit-label={ed('Etiqueta')}>
-          {clientSegments.eyebrow}
-        </p>
-        <h2 class="title-md" data-edit="clientSegments.title" data-edit-label={ed('Título')}>
-          {clientSegments.title}
-        </h2>
-      </div>
-      <ul class="audience" data-reveal data-edit-list={ed('clientSegments.items')}>
-        {
-          clientSegments.items.map((item, index) => (
-            <li data-edit-item={ed(index)}>
-              <Icon
-                name={item.icon}
-                size={20}
-                data-edit={`clientSegments.items.${index}.icon`}
-                data-edit-kind={ed('icon')}
-                data-edit-value={item.icon}
-                data-edit-label={ed('Ícone')}
-              />
-              <span
-                data-edit={`clientSegments.items.${index}.label`}
-                data-edit-label={ed('Nome do segmento')}
-              >
-                {item.label}
-              </span>
-            </li>
-          ))
-        }
-      </ul>
+  <section class="section section--tight contact-home" id="contato">
+    <div class="container contact-home__inner" data-reveal>
+      <p class="eyebrow">Contato</p>
+      <h2 class="title-lg">Solicite uma apresentação</h2>
+      <p class="lead">
+        Fale com um especialista e informe seus dados para receber uma conversa técnica sobre o
+        escopo mais adequado para sua operação.
+      </p>
+
+      <a href="/contato#form-contato" class="btn contact-home__button">
+        Fale com um especialista
+        <Icon name="arrow-right" size={16} class="icon--arrow" />
+      </a>
     </div>
   </section>
-
-  <!-- ============================================== CONTEÚDOS -->
-  <section class="section section--subtle" style="order:12">
-    <div class="container">
-      <div class="section-head section-head--split" data-reveal>
-        <div>
-          <p class="eyebrow" data-edit="bands.postsEyebrow" data-edit-label={ed('Etiqueta')}>
-            {bands.postsEyebrow}
-          </p>
-          <h2 class="title-lg" data-edit="bands.postsTitle" data-edit-label={ed('Título')}>
-            {bands.postsTitle}
-          </h2>
-        </div>
-        <a href="/conteudos" class="btn btn--secondary btn--sm">
-          Ver todos
-          <Icon name="arrow-right" size={16} class="icon--arrow" />
-        </a>
-      </div>
-      <div class="grid grid--3">
-        {latestPosts.map((post) => <PostCard post={post} />)}
-      </div>
-    </div>
-  </section>
-
-  <!-- ================================================== CTA FINAL -->
-  <CtaBand
-    eyebrow={finalCta.eyebrow}
-    title={finalCta.title}
-    text={finalCta.text}
-    primaryLabel={finalCta.primary.label}
-    primaryHref={safeHref(finalCta.primary.href)}
-    style={sectionStyleAttr(sectionStyles.cta)}
-    editPath="finalCta"
-    sectionKey="cta"
-    sectionLabel="Chamada final"
-    sectionStyle={orderStyle('cta')}
-    sectionClass={secClass('cta')}
-  >
-    <SectionOverlays section="cta" overlays={overlays} />
-  </CtaBand>
-
-  <!-- ================================================ INDICADORES -->
-  {
-    (hasIndicators || editMode) && (
-      <section class="indicators" style="order:14">
-        <div class="container">
-          <div class="indicators__head" data-reveal>
-            <p class="eyebrow" data-edit="indicators.eyebrow" data-edit-label={ed('Etiqueta')}>
-              {indicators.eyebrow}
-            </p>
-            <h2 class="title-md" data-edit="indicators.title" data-edit-label={ed('Título')}>
-              {indicators.title}
-            </h2>
-          </div>
-          <div class="indicators__grid" data-edit-list={ed('indicators.items')}>
-            {indicators.items.map((item, index) => (
-              <div class="indicator" data-reveal data-edit-item={ed(index)}>
-                <span class="indicator__icon">
-                  <Icon
-                    name={item.icon}
-                    size={30}
-                    data-edit={`indicators.items.${index}.icon`}
-                    data-edit-kind={ed('icon')}
-                    data-edit-value={item.icon}
-                    data-edit-label={ed('Ícone')}
-                  />
-                </span>
-                <div>
-                  <p class="indicator__value">
-                    <span
-                      class="indicator__num"
-                      data-edit={`indicators.items.${index}.value`}
-                      data-edit-label={ed('Número')}
-                    >
-                      {item.value || (editMode ? '00' : '')}
-                    </span>
-                    <span
-                      class="indicator__unit"
-                      data-edit={`indicators.items.${index}.unit`}
-                      data-edit-label={ed('Unidade')}
-                    >
-                      {item.unit}
-                    </span>
-                  </p>
-                  <p
-                    class="indicator__text"
-                    data-edit={`indicators.items.${index}.text`}
-                    data-edit-kind={ed('multiline')}
-                    data-edit-label={ed('Descrição do indicador')}
-                  >
-                    {item.text || (editMode ? 'Descreva este indicador' : '')}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  <!-- ================================================= FORMULÁRIO -->
-  <section class="section section--tight" id="contato" style="order:15">
-    <div class="container split split--wide-text">
-      <div data-reveal>
-        <p class="eyebrow">Contato</p>
-        <h2 class="title-lg">Solicite uma apresentação</h2>
-        <p class="lead" style="margin-top: var(--sp-4)">
-          Preencha o formulário e nossa equipe retornará com uma proposta de conversa técnica.
-          Se preferir, fale diretamente pelos canais abaixo.
-        </p>
-
-        <ul class="contact-list">
-          <li>
-            <span class="icon-badge icon-badge--sm"><Icon name="whatsapp" size={18} /></span>
-            <div>
-              <strong>WhatsApp e telefone</strong>
-              <a
-                href={waLink(whatsapp.number, whatsapp.defaultMessage)}
-                target="_blank"
-                rel="noopener"
-              >
-                {company.phoneDisplay}
-              </a>
-            </div>
-          </li>
-          <li>
-            <span class="icon-badge icon-badge--sm"><Icon name="mail" size={18} /></span>
-            <div>
-              <strong>E-mail</strong>
-              <a href={`mailto:${company.email}`}>{company.email}</a>
-            </div>
-          </li>
-          <li>
-            <span class="icon-badge icon-badge--sm"><Icon name="map-pin" size={18} /></span>
-            <div>
-              <strong>Endereço</strong>
-              <address>
-                {company.address.line1}, {company.address.line2}<br />
-                {company.address.district} — {company.address.city} - {company.address.state},
-                CEP {company.address.zip}
-              </address>
-            </div>
-          </li>
-          <li>
-            <span class="icon-badge icon-badge--sm"><Icon name="clock" size={18} /></span>
-            <div>
-              <strong>Atendimento</strong>
-              <span>{company.hours}</span>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <div data-reveal>
-        <ContactForm
-          variant="commercial"
-          id="form-home"
-          title="Fale com um especialista"
-          description="Retornamos por e-mail ou WhatsApp, conforme sua preferência."
-          origin="Home"
-        />
-      </div>
-    </div>
-  </section>
-
-  {layoutCss && <style is:inline set:html={layoutCss} />}
-
-  {
-    editMode && (
-      <>
-        <script is:inline src="/vendor/moveable.min.js" />
-        <script is:inline src="/editor-runtime.js" />
-      </>
-    )
-  }
 </BaseLayout>
 
-<style is:global>
-  /* A ordem das seções da Home é definida no editor visual; `order` reposiciona
-     sem alterar o HTML, então cada seção continua responsiva como está. */
-  body.page-home main {
+<style>
+  .hero-carousel {
+    position: relative;
+    background: var(--c-brand-900);
+    overflow: hidden;
+  }
+
+  .hero-carousel__track {
+    position: relative;
+    min-height: clamp(460px, 68vw, 690px);
+  }
+
+  .hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 720ms var(--ease-out),
+      visibility 720ms var(--ease-out);
+  }
+
+  .hero-slide.is-active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .hero-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .hero-slide__shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(6, 32, 58, 0.78),
+        rgba(6, 32, 58, 0.36) 48%,
+        rgba(6, 32, 58, 0.04)
+      ),
+      linear-gradient(0deg, rgba(6, 32, 58, 0.22), rgba(6, 32, 58, 0.08));
+  }
+
+  .hero-slide__content {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  /* A seção é a referência do posicionamento livre: `position` ancora os
-     elementos sobrepostos e `container-type` faz `cqw` valer 1% da largura
-     DESTA seção — é o que mantém a posição estável quando o elemento muda de
-     tamanho, de texto ou de fonte. */
-  body.page-home main > section {
-    position: relative;
-    container-type: inline-size;
-  }
-
-  .is-section-off {
-    display: none;
-  }
-
-  /* Dentro do editor a seção desligada continua à vista, para poder voltar. */
-  .is-section-off-preview {
-    opacity: 0.35;
-    filter: grayscale(0.6);
-  }
-</style>
-
-<style>
-  /* ---------------------------------------------------- vídeo promo */
-  .promo-video {
-    max-width: 860px;
-    margin: 0 auto;
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .promo-video video {
-    width: 100%;
-    display: block;
-    aspect-ratio: 16 / 9;
-    background: #000;
-  }
-
-  /* ---------------------------------------------------------- hero */
-  .hero {
-    position: relative;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    padding-block: 0 clamp(2rem, 4vw, 3.5rem);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .hero__inner {
-    position: relative;
-    display: block;
-    max-width: 1040px;
-    margin-inline: auto;
-    padding-top: clamp(1.75rem, 4vw, 3rem);
-  }
-
-  .hero__text {
-    max-width: 62ch;
-  }
-
-  /* Escondido no site publicado a pedido do cliente — o hero agora é só a
-     foto. Continua no editor visual (esmaecido) porque os campos ainda
-     existem e podem voltar a ser exibidos depois, se for o caso. */
-  .hero__text--off {
-    display: none;
-  }
-
-  .hero__text--off-preview {
-    opacity: 0.35;
-    filter: grayscale(0.6);
-  }
-
-  .hero__eyebrow-box {
-    display: inline-block;
-    padding: 0.4rem 0.85rem;
-    border-radius: var(--r-md);
-    background: var(--c-brand-800);
+    justify-content: center;
+    align-items: flex-start;
     color: #fff;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    padding-block: clamp(3rem, 8vw, 6rem);
   }
 
-  .hero__title {
-    margin-top: var(--sp-3);
-    color: var(--text-strong);
-    font-size: clamp(1.5rem, 1.3vw + 1rem, 2rem);
-    line-height: 1.18;
-  }
-
-  .hero__highlight {
-    display: block;
-    color: var(--c-accent-600);
-  }
-
-  .hero__lead {
-    margin-top: var(--sp-4);
-    font-size: var(--fs-sm);
-    color: var(--text-muted);
-    max-width: 38ch;
-    white-space: pre-line;
-  }
-
-  .hero__actions {
-    margin-top: var(--sp-5);
-  }
-
-  .hero__cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.25rem;
-    border-radius: var(--r-pill);
-    font-weight: 600;
+  .hero-slide__kicker {
     font-size: var(--fs-xs);
-    text-decoration: none;
-    transition:
-      transform var(--dur) var(--ease),
-      opacity var(--dur) var(--ease);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: rgba(234, 243, 251, 0.86);
   }
 
-  .hero__cta:hover {
-    transform: translateY(-1px);
-    opacity: 0.92;
-  }
-
-  .hero__cta--primary {
-    background: var(--c-accent-600);
+  .hero-slide h1 {
+    max-width: 12ch;
+    margin-top: var(--sp-3);
     color: #fff;
+    font-size: clamp(2rem, 4.8vw, 4.2rem);
+    line-height: 1.05;
+    letter-spacing: 0;
   }
 
-  .hero__cta--secondary {
-    background: var(--c-brand-900);
-    color: #fff;
+  .hero-slide__content > p:not(.hero-slide__kicker) {
+    max-width: 44rem;
+    margin-top: var(--sp-4);
+    color: rgba(234, 243, 251, 0.9);
+    font-size: var(--fs-lg);
   }
 
-  @media (max-width: 480px) {
-    .hero__actions .hero__cta {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .hero__pillars {
+  .hero-slide__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--sp-2) var(--sp-5);
-    list-style: none;
-    margin: var(--sp-5) 0 0;
-    padding: var(--sp-4) 0 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .hero__pillars li {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.75rem;
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.02em;
-    color: var(--text-muted);
-  }
-
-  .hero__pillars :global(.icon) {
-    color: var(--c-accent-600);
-  }
-
-  .hero__media {
-    position: relative;
-    width: 100%;
-  }
-
-  .hero__media img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 2.4 / 1;
-    object-fit: cover;
-    object-position: center 30%;
-    background: var(--c-ink-100);
-  }
-
-  @media (min-width: 1000px) {
-    .hero__media img {
-      aspect-ratio: 2.5 / 1;
-      object-position: center;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .hero__card {
-      position: static;
-      width: 100%;
-      margin-top: var(--sp-4);
-    }
-  }
-
-  /* ------------------------------------------------ proposta valor */
-  .value-points {
-    display: grid;
-    gap: var(--sp-5);
+    gap: var(--sp-3);
     margin-top: var(--sp-8);
   }
 
-  @media (min-width: 600px) {
-    .value-points {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .value-point {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--sp-3);
-    align-items: start;
-  }
-
-  .value-point h3 {
-    font-size: var(--fs-base);
-    margin-bottom: 0.25rem;
-  }
-
-  .value-point p {
-    font-size: var(--fs-sm);
-    color: var(--text-muted);
-    line-height: var(--lh-relaxed);
-    white-space: pre-line;
-  }
-
-  /* ------------------------------------------------ gestão hospitalar */
-  .mini-grid {
-    display: grid;
-    gap: var(--sp-4);
-    margin-top: var(--sp-6);
-  }
-
-  @media (min-width: 560px) {
-    .mini-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .mini-card {
-    padding: var(--sp-4);
-    background: var(--c-white);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-  }
-
-  .mini-card h3 {
-    font-size: var(--fs-sm);
-    margin: var(--sp-3) 0 0.25rem;
-  }
-
-  .mini-card p {
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    line-height: var(--lh-relaxed);
-  }
-
-  /* -------------------------------------------------- qualificação */
-  .net-band {
-    display: grid;
-    gap: clamp(1.5rem, 4vw, 3rem);
-    padding: clamp(1.5rem, 4vw, 3rem);
-    border: 1px solid var(--line);
-    border-radius: var(--r-xl);
-    background: linear-gradient(140deg, var(--c-ink-50), var(--c-white));
-  }
-
-  /* --------------------------------------------------- indicadores */
-  .indicators {
-    padding-block: clamp(2.5rem, 5vw, 4rem);
-    background: var(--c-brand-900);
-    color: #fff;
-  }
-
-  .indicators__head {
-    text-align: center;
-    margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
-  }
-
-  .indicators__head .eyebrow {
-    color: var(--c-brand-300);
-  }
-
-  .indicators__head .title-md {
-    color: #fff;
-  }
-
-  .indicators__grid {
-    display: grid;
-    gap: clamp(1.5rem, 3vw, 2.5rem);
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  }
-
-  .indicator {
+  .hero-carousel__controls {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    bottom: var(--sp-6);
+    transform: translateX(-50%);
     display: flex;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.75rem;
-    margin: -0.75rem;
-    border-radius: var(--r-lg);
+    gap: var(--sp-2);
+  }
+
+  .hero-dot {
+    width: 42px;
+    height: 4px;
+    border-radius: var(--r-pill);
+    background: rgba(255, 255, 255, 0.42);
+    transition:
+      background var(--dur) var(--ease),
+      width var(--dur) var(--ease);
+  }
+
+  .hero-dot.is-active {
+    width: 64px;
+    background: #fff;
+  }
+
+  .service-icons {
+    padding-block: clamp(1.1rem, 3vw, 2rem);
+    background: var(--bg-subtle);
+  }
+
+  .service-icons__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    gap: var(--sp-3);
+    scroll-margin-top: 92px;
+  }
+
+  .service-icon-card {
+    appearance: none;
+    position: relative;
+    min-height: 132px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border-radius: 8px;
+    background: var(--c-white);
+    color: var(--c-brand-800);
+    border: 1px solid rgba(183, 193, 205, 0.42);
+    box-shadow: 0 18px 32px -26px rgba(9, 44, 78, 0.42);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
     transition:
       transform var(--dur) var(--ease),
-      background var(--dur) var(--ease);
+      box-shadow var(--dur) var(--ease),
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
   }
 
-  .indicator:hover,
-  .indicator:focus-within {
-    transform: scale(1.08);
-    background: rgba(255, 255, 255, 0.06);
+  .service-icon-card:hover,
+  .service-icon-card:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 36px -24px rgba(9, 44, 78, 0.38);
   }
 
-  .indicator__icon {
-    display: inline-grid;
-    place-items: center;
-    flex: none;
-    width: 3.25rem;
-    height: 3.25rem;
-    border-radius: var(--r-md);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: var(--c-brand-300);
-    transition: color var(--dur) var(--ease);
+  .service-icon-card.is-active {
+    background: var(--c-brand-700);
+    color: rgba(255, 255, 255, 0.86);
+    border-color: var(--c-brand-700);
+    box-shadow: 0 24px 38px -24px rgba(37, 53, 80, 0.48);
+    transform: translateY(-3px);
   }
 
-  .indicator:hover .indicator__icon {
-    color: #fff;
-    border-color: var(--c-brand-300);
+  .service-icon-card.is-active::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -14px;
+    width: 28px;
+    height: 28px;
+    background: var(--c-brand-700);
+    border-radius: 4px;
+    transform: translateX(-50%) rotate(45deg);
+    z-index: 1;
+    pointer-events: none;
   }
 
-  .indicator__value {
+  .service-icon-card span {
+    max-width: 13ch;
     font-family: var(--font-display);
-    font-size: clamp(1.75rem, 3.5vw, 2.25rem);
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--c-brand-300);
+    font-size: var(--fs-base);
+    line-height: 1.15;
   }
 
-  .indicator__unit {
-    font-size: 0.875em;
+  .service-tabs {
+    margin-top: 0.65rem;
+    border-radius: 8px;
+    background: var(--c-white);
+    border: 1px solid color-mix(in srgb, var(--c-brand-700) 28%, var(--line));
+    border-top: 4px solid var(--c-brand-700);
+    box-shadow: 0 26px 48px -34px rgba(9, 44, 78, 0.38);
+    overflow: hidden;
   }
 
-  .indicator__text {
-    margin-top: 0.25rem;
-    font-size: var(--fs-sm);
-    line-height: 1.4;
-    color: rgba(234, 243, 251, 0.82);
-    white-space: pre-line;
+  .service-panel {
+    display: none;
+    gap: clamp(1rem, 3vw, 2.2rem);
+    align-items: center;
+    padding: clamp(0.85rem, 2vw, 1.45rem);
+    scroll-margin-top: 120px;
+  }
+
+  .service-panel.is-active {
+    display: grid;
+    animation: service-panel-in 280ms var(--ease-out);
+  }
+
+  @keyframes service-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @media (min-width: 900px) {
-    .net-band {
-      grid-template-columns: 0.9fr 1.1fr;
-      align-items: center;
+    .service-panel {
+      grid-template-columns: 0.86fr 1.14fr;
     }
   }
 
-  .net-band__text p {
-    margin-top: var(--sp-3);
-    color: var(--text-muted);
-    font-size: var(--fs-sm);
-    line-height: var(--lh-relaxed);
+  .service-panel__media {
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--c-brand-50);
+    border: 1px solid var(--line);
   }
 
-  .net-band__list {
+  .service-panel__media img {
+    width: 100%;
+    aspect-ratio: 4.5 / 3;
+    object-fit: cover;
+  }
+
+  .service-panel__body {
+    max-width: 660px;
+    scroll-margin-top: 96px;
+  }
+
+  .service-panel__highlights {
     display: grid;
-    gap: var(--sp-4);
-    list-style: none;
-    margin: 0;
+    gap: var(--sp-3);
+    margin: var(--sp-4) 0 var(--sp-6);
     padding: 0;
+    list-style: none;
   }
 
-  @media (min-width: 620px) {
-    .net-band__list {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .net-band__list li {
+  .service-panel__highlights li {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: var(--sp-3);
-    align-items: start;
-  }
-
-  .net-band__list strong {
-    display: block;
-    font-size: var(--fs-sm);
-    color: var(--text-strong);
-    margin-bottom: 0.15rem;
-  }
-
-  .net-band__list span {
-    font-size: var(--fs-xs);
     color: var(--text-muted);
-    line-height: var(--lh-relaxed);
-  }
-
-  /* --------------------------------------------------------- MVV */
-  .mvv {
-    display: grid;
-    gap: var(--sp-5);
-    margin-bottom: var(--sp-10);
-  }
-
-  @media (min-width: 760px) {
-    .mvv {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  .mvv__card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-    padding: clamp(1.35rem, 2.5vw, 2rem);
-    border-radius: var(--r-lg);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-  }
-
-  .mvv__card h3 {
-    font-size: var(--fs-xl);
-  }
-
-  .mvv__card p {
     font-size: var(--fs-sm);
     line-height: var(--lh-relaxed);
-    white-space: pre-line;
   }
 
-  .values {
+  .service-panel__highlights :global(.icon) {
+    color: var(--c-brand-500);
+    margin-top: 3px;
+  }
+
+  .service-panel__highlights strong {
+    color: var(--text-strong);
+  }
+
+  .faq {
+    background: linear-gradient(180deg, var(--c-ink-50), var(--c-white));
+  }
+
+  .faq .section-head {
+    max-width: none;
+    margin-bottom: var(--sp-5);
+  }
+
+  .faq__list {
     display: grid;
-    gap: var(--sp-5);
+    width: 100%;
+    gap: var(--sp-2);
   }
 
-  @media (min-width: 620px) {
-    .values {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .faq__item {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--c-white);
+    box-shadow: var(--shadow-xs);
   }
 
-  @media (min-width: 1000px) {
-    .values {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .value {
-    padding-top: var(--sp-4);
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
-  }
-
-  .value__icon {
-    display: inline-grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    border-radius: var(--r-sm);
-    background: rgba(18, 167, 148, 0.18);
-    color: var(--c-accent-300);
-    margin-bottom: var(--sp-3);
-  }
-
-  .value h3 {
-    font-size: var(--fs-base);
-    margin-bottom: 0.35rem;
-  }
-
-  .value p {
-    font-size: var(--fs-xs);
-    line-height: var(--lh-relaxed);
-    white-space: pre-line;
-  }
-
-  /* ----------------------------------------------------- audiência */
-  .audience {
-    display: grid;
-    gap: var(--sp-3);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  @media (min-width: 600px) {
-    .audience {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 940px) {
-    .audience {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .audience li {
+  .faq__item summary {
     display: flex;
     align-items: center;
-    gap: var(--sp-3);
-    padding: var(--sp-4);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: var(--c-white);
-    font-size: var(--fs-sm);
-    font-weight: var(--fw-medium);
-    color: var(--text-strong);
-  }
-
-  .audience :global(.icon) {
-    color: var(--c-brand-500);
-  }
-
-  /* ------------------------------------------------------- diversos */
-  .section-head--split {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
     justify-content: space-between;
     gap: var(--sp-4);
-    max-width: none;
-  }
-
-  .benefit {
-    gap: var(--sp-3);
-  }
-
-  .contact-list {
-    display: grid;
-    gap: var(--sp-5);
-    list-style: none;
-    margin: var(--sp-8) 0 0;
-    padding: 0;
-  }
-
-  .contact-list li {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--sp-3);
-    align-items: start;
-  }
-
-  .contact-list strong {
-    display: block;
-    font-size: var(--fs-sm);
+    width: 100%;
+    min-height: 64px;
+    padding: var(--sp-4) clamp(1rem, 3vw, 1.6rem);
     color: var(--text-strong);
-    margin-bottom: 0.15rem;
+    font-weight: var(--fw-semibold);
+    cursor: pointer;
   }
 
-  .contact-list a,
-  .contact-list span,
-  .contact-list address {
-    font-size: var(--fs-sm);
+  .faq__item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__item summary :global(.icon) {
+    color: var(--c-brand-500);
+    transition: transform var(--dur) var(--ease);
+  }
+
+  .faq__item[open] summary :global(.icon) {
+    transform: rotate(180deg);
+  }
+
+  .faq__item p {
+    max-width: 76rem;
+    padding: 0 clamp(1rem, 3vw, 1.6rem) var(--sp-5);
     color: var(--text-muted);
-    font-style: normal;
+    font-size: var(--fs-base);
     line-height: var(--lh-relaxed);
-    text-decoration: none;
   }
 
-  .contact-list a:hover {
-    color: var(--c-brand-600);
-    text-decoration: underline;
+  .contact-home {
+    background: var(--c-white);
+  }
+
+  .contact-home__inner {
+    display: grid;
+    justify-items: center;
+    max-width: 760px;
+    text-align: center;
+  }
+
+  .contact-home__button {
+    margin-top: var(--sp-6);
+  }
+
+  @media (max-width: 700px) {
+    .hero-carousel__track {
+      min-height: 560px;
+    }
+
+    .hero-slide__shade {
+      background: linear-gradient(0deg, rgba(6, 32, 58, 0.78), rgba(6, 32, 58, 0.28));
+    }
+
+    .hero-slide__content {
+      justify-content: flex-end;
+      padding-bottom: 5.5rem;
+    }
+
+    .hero-slide h1 {
+      max-width: 14ch;
+    }
+
+    .hero-slide__actions .btn {
+      width: 100%;
+    }
+
+    .service-icons__grid {
+      display: flex;
+      gap: var(--sp-3);
+      margin-inline: calc(var(--sp-4) * -1);
+      padding: 0 var(--sp-4) var(--sp-2);
+      overflow-x: auto;
+      scroll-margin-top: 78px;
+      scroll-padding-inline: var(--sp-4);
+      scroll-snap-type: x mandatory;
+      scrollbar-width: thin;
+    }
+
+    .service-icon-card {
+      flex: 0 0 min(38vw, 126px);
+      min-height: 118px;
+      scroll-snap-align: center;
+    }
+
+    .service-panel {
+      padding: var(--sp-4);
+    }
+
+    .service-panel__body {
+      scroll-margin-top: 84px;
+    }
   }
 </style>
 
 <script>
-  /**
-   * Contagem dos números da faixa de indicadores: toda vez que a seção
-   * entra na tela, cada valor sobe de 0 até o número real (mantendo o sinal
-   * "+" e qualquer texto que não seja dígito). Não desliga o observer —
-   * passar pela seção de novo repete a animação, como pedido.
-   */
-  const nums = document.querySelectorAll<HTMLElement>('.indicator__num');
-  if (nums.length) {
-    const parsed = new Map<HTMLElement, { prefix: string; target: number; suffix: string }>();
-    nums.forEach((el) => {
-      const match = el.textContent?.trim().match(/^(\D*)(\d+)(\D*)$/);
-      if (match) {
-        parsed.set(el, { prefix: match[1], target: Number(match[2]), suffix: match[3] });
-      }
+  const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-slide]'));
+  const buttons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[data-slide-button]')
+  );
+  let activeSlide = 0;
+  let timer = 0;
+
+  const showSlide = (index: number) => {
+    activeSlide = (index + slides.length) % slides.length;
+    slides.forEach((slide, current) =>
+      slide.classList.toggle('is-active', current === activeSlide)
+    );
+    buttons.forEach((button, current) =>
+      button.classList.toggle('is-active', current === activeSlide)
+    );
+  };
+
+  const startCarousel = () => {
+    window.clearInterval(timer);
+    if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      timer = window.setInterval(() => showSlide(activeSlide + 1), 5600);
+    }
+  };
+
+  buttons.forEach((button, index) => {
+    button.addEventListener('click', () => {
+      showSlide(index);
+      startCarousel();
+    });
+  });
+
+  startCarousel();
+
+  const serviceTabs = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('[data-service-tab]')
+  );
+  const servicePanels = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-service-panel]')
+  );
+  const serviceMenu = document.querySelector<HTMLElement>('.service-icons__grid');
+
+  const showService = (slug: string) => {
+    let activePanel: HTMLElement | undefined;
+    let activeTab: HTMLButtonElement | undefined;
+
+    serviceTabs.forEach((tab) => {
+      const active = tab.dataset.serviceTab === slug;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+      if (active) activeTab = tab;
+    });
+
+    servicePanels.forEach((panel) => {
+      const active = panel.dataset.servicePanel === slug;
+      panel.classList.toggle('is-active', active);
+      panel.hidden = !active;
+      if (active) activePanel = panel;
     });
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const timers = new WeakMap<HTMLElement, number>();
-
-    const animate = (el: HTMLElement) => {
-      const info = parsed.get(el);
-      if (!info) return;
-      const running = timers.get(el);
-      if (running) cancelAnimationFrame(running);
-
-      const duration = 1100;
-      const start = performance.now();
-      const step = (now: number) => {
-        const progress = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const value = Math.round(info.target * eased);
-        el.textContent = `${info.prefix}${value}${info.suffix}`;
-        if (progress < 1) {
-          timers.set(el, requestAnimationFrame(step));
-        } else {
-          el.textContent = `${info.prefix}${info.target}${info.suffix}`;
-        }
-      };
-      timers.set(el, requestAnimationFrame(step));
-    };
-
-    if (reduce || !('IntersectionObserver' in window)) {
-      parsed.forEach((info, el) => {
-        el.textContent = `${info.prefix}${info.target}${info.suffix}`;
+    window.requestAnimationFrame(() => {
+      serviceMenu?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'start',
       });
-    } else {
-      const section = document.querySelector('.indicators');
-      if (section) {
-        const observer = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((entry) => {
-              if (entry.isIntersecting) {
-                parsed.forEach((_info, el) => animate(el));
-              }
-            });
-          },
-          { threshold: 0.35 }
-        );
-        observer.observe(section);
-      }
-    }
-  }
+      activeTab?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    });
+  };
+
+  serviceTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const slug = tab.dataset.serviceTab;
+      if (slug) showService(slug);
+    });
+  });
+
+  const faqItems = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-faq-item]'));
+
+  faqItems.forEach((item) => {
+    item.addEventListener('toggle', () => {
+      if (!item.open) return;
+      faqItems.forEach((other) => {
+        if (other !== item) other.open = false;
+      });
+    });
+  });
 </script>

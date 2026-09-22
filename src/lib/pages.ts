@@ -15,6 +15,7 @@ import {
   finalCta as defaultFinalCta,
   bands as defaultBands,
   indicators as defaultIndicators,
+  faqItems as defaultFaqItems,
 } from '../data/institutional';
 import type { D1Database } from './cf-types';
 import { safeHref } from './urls';
@@ -23,6 +24,11 @@ export interface PromoVideo {
   title: string;
   text: string;
   url: string;
+}
+
+export interface FaqItem {
+  question: string;
+  answer: string;
 }
 
 /**
@@ -239,6 +245,8 @@ export interface HomeContent {
   bands: typeof defaultBands;
   /** Faixa de indicadores — fica fora do ar enquanto nenhum número for preenchido. */
   indicators: typeof defaultIndicators;
+  /** Perguntas frequentes exibidas no fim da Home. */
+  faqItems: FaqItem[];
   /** Vídeo institucional/promocional — some da Home enquanto `url` estiver vazia. */
   promoVideo: PromoVideo;
   /** Sobrescrita da paleta global só para esta página (opcional) — ver PageStyle. */
@@ -290,6 +298,7 @@ const DEFAULT_HOME: HomeContent = {
   finalCta: defaultFinalCta,
   bands: defaultBands,
   indicators: defaultIndicators,
+  faqItems: defaultFaqItems,
   promoVideo: DEFAULT_PROMO_VIDEO,
   pageStyle: { ...EMPTY_PAGE_STYLE },
   sectionStyles: DEFAULT_SECTION_STYLES,
@@ -447,6 +456,22 @@ export function normalizeOverlays(
     });
   }
   return out;
+}
+
+function normalizeFaqItems(value: unknown): FaqItem[] {
+  if (!Array.isArray(value)) return DEFAULT_HOME.faqItems;
+  const items = value
+    .slice(0, 24)
+    .map((item) => {
+      const raw = (item ?? {}) as Record<string, unknown>;
+      return {
+        question: String(raw.question ?? '').trim().slice(0, 220),
+        answer: String(raw.answer ?? '').trim().slice(0, 1400),
+      };
+    })
+    .filter((item) => item.question && item.answer);
+
+  return items.length ? items : DEFAULT_HOME.faqItems;
 }
 
 /**
@@ -706,6 +731,7 @@ export async function getHomeContent(
           ...item,
         })),
       },
+      faqItems: normalizeFaqItems(stored.faqItems),
       promoVideo: { ...DEFAULT_HOME.promoVideo, ...stored.promoVideo },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {

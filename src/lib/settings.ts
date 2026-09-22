@@ -72,10 +72,10 @@ const DEFAULT_BRAND: BrandSettings = {
 
 /** Mesmas cores já usadas em tokens.css (--c-brand-900, --c-accent-600, --bg, --text-strong). */
 const DEFAULT_THEME: ThemeSettings = {
-  brandColor: '#06203a',
-  accentColor: '#0d8b7d',
+  brandColor: '#253550',
+  accentColor: '#138b82',
   backgroundColor: '#ffffff',
-  headingColor: '#06203a',
+  headingColor: '#253550',
 };
 
 const DEFAULTS: SiteSettings = {

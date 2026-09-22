@@ -359,3 +359,47 @@ export const indicators = {
     { icon: 'network', value: '', unit: '', text: '' },
   ],
 };
+
+export const faqItems = [
+  {
+    question: 'Qual a diferença entre auditoria concorrente e retrospectiva?',
+    answer:
+      'A auditoria concorrente acompanha o paciente durante a internação, permitindo identificar e tratar situações em tempo oportuno. A retrospectiva analisa o atendimento após sua realização ou no fechamento da parcial.',
+  },
+  {
+    question: 'O que o enfermeiro auditor acompanha durante a internação?',
+    answer:
+      'Mapeia a evolução do paciente, riscos assistenciais, permanência e utilização de recursos, identificando oportunidades para um cuidado mais seguro e eficiente.',
+  },
+  {
+    question: 'A auditoria concorrente interfere na assistência prestada?',
+    answer:
+      'Não. O auditor atua de forma colaborativa, dialogando com a equipe assistencial e o médico assistente, agregando uma análise técnica ao cuidado.',
+  },
+  {
+    question:
+      'Como a auditoria contribui para a gestão da permanência e dos custos assistenciais?',
+    answer:
+      'O acompanhamento durante a internação permite antecipar situações que podem prolongar a permanência e identificar oportunidades para o uso adequado dos recursos.',
+  },
+  {
+    question: 'Que informações a operadora recebe durante a internação?',
+    answer:
+      'Informações técnicas e atualizadas sobre a evolução do paciente, riscos, permanência e utilização de recursos, apoiando decisões mais seguras e assertivas.',
+  },
+  {
+    question: 'Como a tecnologia e a expertise profissional contribuem para a auditoria?',
+    answer:
+      'Profissionais tecnicamente capacitados atuam no prestador, coletando e inserindo dados confiáveis e validados na plataforma. A tecnologia organiza essas informações, enquanto a expertise profissional permite interpretar os dados e identificar riscos e oportunidades.',
+  },
+  {
+    question: 'Como funciona a relação entre auditor e prestador?',
+    answer:
+      'Com diálogo e colaboração. A proximidade com a equipe assistencial favorece a identificação de situações e a construção conjunta de soluções.',
+  },
+  {
+    question: 'Qual o valor de contratar uma auditoria concorrente?',
+    answer:
+      'O investimento é definido conforme o perfil da operação e o escopo do serviço. A atuação agrega qualidade e segurança à assistência, aproxima a operadora do prestador e beneficiário contribuindo para sua satisfação.',
+  },
+];

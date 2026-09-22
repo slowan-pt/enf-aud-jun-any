@@ -24,6 +24,15 @@ if (Astro.request.method === 'POST') {
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
+  const faqQuestions = form.getAll('faq_question').map((value) => String(value).trim());
+  const faqAnswers = form.getAll('faq_answer').map((value) => String(value).trim());
+  const updatedFaqItems = faqQuestions
+    .map((question, index) => ({
+      question,
+      answer: faqAnswers[index] ?? '',
+    }))
+    .filter((item) => item.question && item.answer)
+    .slice(0, 24);
 
   const updatedBenefits = current.benefits.items.map((item, index) => ({
     ...item,
@@ -176,6 +185,7 @@ if (Astro.request.method === 'POST') {
     overlays: current.overlays,
     bands: current.bands,
     indicators: current.indicators,
+    faqItems: updatedFaqItems.length ? updatedFaqItems : current.faqItems,
   };
 
   await updateHomeContent(db, updated, Astro.locals.user?.id);
@@ -200,6 +210,7 @@ const {
   benefits,
   finalCta,
   promoVideo,
+  faqItems,
   sectionStyles,
   updatedAt,
 } = await getHomeContent(db);
@@ -848,6 +859,49 @@ function formatDate(iso: string): string {
         </div>
       </section>
 
+      <!-- perguntas frequentes -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Perguntas frequentes</h2>
+          <span class="badge badge--brand">Em edição</span>
+        </div>
+        <div class="panel__body">
+          <div class="form-section">
+            <p class="hint">
+              Estas perguntas aparecem na Home em formato sanfona. No site público, apenas uma
+              resposta fica aberta por vez.
+            </p>
+            <div class="faq-editor" data-faq-editor>
+              {
+                faqItems.map((item, index) => (
+                  <div class="faq-editor__item" data-faq-row>
+                    <div class="faq-editor__head">
+                      <strong>Pergunta {index + 1}</strong>
+                      <button type="button" class="row-btn row-btn--danger" data-faq-remove>
+                        Excluir
+                      </button>
+                    </div>
+                    <div class="field">
+                      <label class="label">Pergunta</label>
+                      <input class="input" name="faq_question" value={item.question} />
+                    </div>
+                    <div class="field">
+                      <label class="label">Resposta</label>
+                      {/* prettier-ignore */}
+                      <textarea class="textarea faq-editor__answer" name="faq_answer">{item.answer}</textarea>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+            <button type="button" class="btn btn--secondary btn--sm" data-faq-add>
+              <Icon name="plus" size={16} />
+              Adicionar pergunta
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div class="panel__foot standalone-foot">
         <span class="muted small">Última atualização: {formatDate(updatedAt)}</span>
         <button type="submit" class="btn">
@@ -980,6 +1034,31 @@ function formatDate(iso: string): string {
     border-radius: var(--r-sm);
     border: 1px solid var(--line);
   }
+
+  .faq-editor {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .faq-editor__item {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .faq-editor__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  .faq-editor__answer {
+    min-height: 110px;
+  }
 </style>
 
 <script>
@@ -1007,5 +1086,55 @@ function formatDate(iso: string): string {
     } catch {
       if (videoStatus) videoStatus.textContent = 'Falha no envio. Tente novamente.';
     }
+  });
+
+  const faqEditor = document.querySelector<HTMLElement>('[data-faq-editor]');
+  const faqAdd = document.querySelector<HTMLButtonElement>('[data-faq-add]');
+
+  const renumberFaqRows = () => {
+    faqEditor?.querySelectorAll<HTMLElement>('[data-faq-row]').forEach((row, index) => {
+      const label = row.querySelector('strong');
+      if (label) label.textContent = `Pergunta ${index + 1}`;
+    });
+  };
+
+  const wireFaqRow = (row: HTMLElement) => {
+    row.querySelector<HTMLButtonElement>('[data-faq-remove]')?.addEventListener('click', () => {
+      const rows = faqEditor?.querySelectorAll('[data-faq-row]').length ?? 0;
+      if (rows <= 1) {
+        row.querySelector<HTMLInputElement>('input[name="faq_question"]')!.value = '';
+        row.querySelector<HTMLTextAreaElement>('textarea[name="faq_answer"]')!.value = '';
+      } else {
+        row.remove();
+      }
+      renumberFaqRows();
+    });
+  };
+
+  faqEditor?.querySelectorAll<HTMLElement>('[data-faq-row]').forEach(wireFaqRow);
+
+  faqAdd?.addEventListener('click', () => {
+    if (!faqEditor) return;
+    const row = document.createElement('div');
+    row.className = 'faq-editor__item';
+    row.dataset.faqRow = '';
+    row.innerHTML = `
+      <div class="faq-editor__head">
+        <strong>Pergunta</strong>
+        <button type="button" class="row-btn row-btn--danger" data-faq-remove>Excluir</button>
+      </div>
+      <div class="field">
+        <label class="label">Pergunta</label>
+        <input class="input" name="faq_question" value="" />
+      </div>
+      <div class="field">
+        <label class="label">Resposta</label>
+        <textarea class="textarea faq-editor__answer" name="faq_answer"></textarea>
+      </div>
+    `;
+    faqEditor.appendChild(row);
+    wireFaqRow(row);
+    renumberFaqRows();
+    row.querySelector<HTMLInputElement>('input[name="faq_question"]')?.focus();
   });
 </script>

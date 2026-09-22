@@ -95,10 +95,7 @@ const safeHex = (value: string | undefined, fallback: string) =>
   value && HEX.test(value) ? value : fallback;
 const brand = safeHex(colorOverride?.brandColor, safeHex(theme.brandColor, '#06203a'));
 const accent = safeHex(colorOverride?.accentColor, safeHex(theme.accentColor, '#0d8b7d'));
-const background = safeHex(
-  colorOverride?.backgroundColor,
-  safeHex(theme.backgroundColor, '#ffffff')
-);
+const background = safeHex(colorOverride?.backgroundColor, '#ffffff');
 const heading = safeHex(colorOverride?.headingColor, safeHex(theme.headingColor, '#06203a'));
 ---
 
@@ -131,7 +128,7 @@ const heading = safeHex(colorOverride?.headingColor, safeHex(theme.headingColor,
   --c-accent-300: color-mix(in srgb, ${accent} 45%, white) !important;
   --c-accent-100: color-mix(in srgb, ${accent} 15%, white) !important;
   --c-accent-50: color-mix(in srgb, ${accent} 6%, white) !important;
-  --c-white: ${background} !important;
+  --c-white: #ffffff !important;
   --bg: ${background} !important;
   --bg-subtle: color-mix(in srgb, ${background} 96%, ${brand}) !important;
   --bg-muted: color-mix(in srgb, ${background} 90%, ${brand}) !important;
