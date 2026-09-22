@@ -127,6 +127,9 @@ const channels = [
       crumbs={[{ label: 'Contato' }]}
       image="/images/contato.svg"
       imageAlt="Composição gráfica representando os canais de contato da Essencial Saúde"
+      eyebrowEditPath={ed('hero.eyebrow')}
+      titleEditPath={ed('hero.title')}
+      leadEditPath={ed('hero.lead')}
     />
   </div>
 
@@ -404,6 +407,7 @@ const channels = [
     font-size: var(--fs-sm);
     color: var(--text-muted);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .aside-card p + p {

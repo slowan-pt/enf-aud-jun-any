@@ -8,11 +8,15 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getServicosContent, updateServicosContent } from '../../../lib/documents';
+import { getSettings, updateSetting } from '../../../lib/settings';
 
 const db = getDB();
 
 if (Astro.request.method === 'POST') {
   const current = await getServicosContent(db);
+  // "Como atuamos" e "Para quem atuamos" são compartilhados com
+  // Home/Quem Somos (ver src/lib/settings.ts).
+  const currentSettings = await getSettings(db);
   const form = await Astro.request.formData();
   const text = (key: string, fallback: string) => String(form.get(key) ?? fallback);
 
@@ -23,17 +27,6 @@ if (Astro.request.method === 'POST') {
       title: text('hero_title', current.hero.title),
       lead: text('hero_lead', current.hero.lead),
     },
-    howWeWork: {
-      ...current.howWeWork,
-      eyebrow: text('how_eyebrow', current.howWeWork.eyebrow),
-      title: text('how_title', current.howWeWork.title),
-      text: text('how_text', current.howWeWork.text),
-    },
-    clientSegments: {
-      ...current.clientSegments,
-      eyebrow: text('segments_eyebrow', current.clientSegments.eyebrow),
-      title: text('segments_title', current.clientSegments.title),
-    },
     cta: {
       eyebrow: text('cta_eyebrow', current.cta.eyebrow),
       title: text('cta_title', current.cta.title),
@@ -41,7 +34,21 @@ if (Astro.request.method === 'POST') {
     },
   };
 
+  const updatedHowWeWork = {
+    ...currentSettings.howWeWork,
+    eyebrow: text('how_eyebrow', currentSettings.howWeWork.eyebrow),
+    title: text('how_title', currentSettings.howWeWork.title),
+    text: text('how_text', currentSettings.howWeWork.text),
+  };
+  const updatedClientSegments = {
+    ...currentSettings.clientSegments,
+    eyebrow: text('segments_eyebrow', currentSettings.clientSegments.eyebrow),
+    title: text('segments_title', currentSettings.clientSegments.title),
+  };
+
   await updateServicosContent(db, updated, Astro.locals.user?.id);
+  await updateSetting(db, 'howWeWork', updatedHowWeWork, Astro.locals.user?.id);
+  await updateSetting(db, 'clientSegments', updatedClientSegments, Astro.locals.user?.id);
   await writeAuditLog(db, {
     userId: Astro.locals.user?.id,
     userName: Astro.locals.user?.name ?? '',
@@ -54,7 +61,8 @@ if (Astro.request.method === 'POST') {
 }
 
 const content = await getServicosContent(db);
-const { hero, howWeWork, clientSegments, cta } = content;
+const { hero, cta } = content;
+const { howWeWork, clientSegments } = await getSettings(db);
 const justSaved = Astro.url.searchParams.get('saved') === '1';
 ---
 

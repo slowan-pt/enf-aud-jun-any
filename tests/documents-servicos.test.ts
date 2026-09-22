@@ -64,7 +64,6 @@ describe('getServicosContent — fallback sem registro salvo', () => {
     expect(content.sectionOrder).toEqual([...SERVICOS_SECTION_KEYS]);
     expect(content.hiddenSections).toEqual([]);
     expect(content.hero.title.length).toBeGreaterThan(0);
-    expect(content.howWeWork.eyebrow.length).toBeGreaterThan(0);
   });
 
   it('JSON corrompido não derruba a página — cai no padrão', async () => {
@@ -82,7 +81,6 @@ describe('getServicosContent — normalização do conteúdo salvo', () => {
 
     expect(content.hero.title).toBe('Título editado');
     expect(content.hero.eyebrow.length).toBeGreaterThan(0); // preenchido pelo padrão
-    expect(content.howWeWork.steps.length).toBeGreaterThan(0);
   });
 
   it('descarta chave de seção desconhecida e completa as que faltam', async () => {
@@ -259,14 +257,14 @@ describe('formulário de conteúdo — preserva Aparência, layouts e overlays a
     const { db, rows } = fakeDb({ [SERVICOS_SLUG]: salvo });
 
     // Reproduz exatamente o que o handler POST de admin/paginas/servicos.astro
-    // faz: parte do conteúdo atual e sobrescreve só os 4 blocos de texto.
+    // faz: parte do conteúdo atual e sobrescreve só os 2 blocos de texto
+    // próprios desta página ("como atuamos"/"para quem atuamos" são
+    // compartilhados — ver src/lib/settings.ts — e saem por outro caminho).
     const current = await getServicosContent(db);
     const { updatedAt: _ignored, ...base } = current;
     const atualizado: ServicosContent = {
       ...base,
       hero: { ...base.hero, title: 'Novo título de abertura' },
-      howWeWork: { ...base.howWeWork, title: 'Novo título de Como atuamos' },
-      clientSegments: { ...base.clientSegments, title: 'Novo título de Para quem atuamos' },
       cta: { ...base.cta, title: 'Nova chamada final' },
     };
     await updateServicosContent(db, atualizado);
@@ -291,9 +289,9 @@ describe('validação de caminhos editáveis (setByPath) sobre ServicosContent',
     const { db } = fakeDb();
     const { updatedAt: _ignored, ...content } = await getServicosContent(db);
 
-    expect(setByPath(content, 'howWeWork.eyebrow', 'Novo selo')).toBe(true);
-    expect(setByPath(content, 'clientSegments.title', 'Novo título')).toBe(true);
-    expect((content as unknown as ServicosContent).howWeWork.eyebrow).toBe('Novo selo');
+    expect(setByPath(content, 'hero.eyebrow', 'Novo selo')).toBe(true);
+    expect(setByPath(content, 'cta.title', 'Novo título')).toBe(true);
+    expect((content as unknown as ServicosContent).hero.eyebrow).toBe('Novo selo');
   });
 
   it('recusa caminho para chave que não existe no documento', async () => {

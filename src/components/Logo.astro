@@ -126,12 +126,12 @@ const { brand } = Astro.locals.settings;
   }
 
   .logo__sub {
-    font-family: var(--font-text);
+    font-family: var(--font-display);
     font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--c-ink-500);
+    color: var(--c-brand-900);
   }
 
   /* variante para fundos escuros (rodapé, sidebar do CMS) */
@@ -140,7 +140,7 @@ const { brand } = Astro.locals.settings;
   }
 
   .logo--inverse .logo__sub {
-    color: rgba(234, 243, 251, 0.7);
+    color: #fff;
   }
 
   /* tamanhos */

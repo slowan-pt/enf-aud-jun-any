@@ -12,6 +12,11 @@ import { getConteudosContent } from '../../lib/documents';
 import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib/pages';
 import type { SectionStyle } from '../../lib/pages';
 
+// Atributos usados só pelo editor não vão para o HTML de quem visita o site
+// — mesma regra da Home (ver src/pages/index.astro).
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
 const categories = await listCategories(getDB());
 const publishedPosts = publishedOnly(Astro.locals.posts);
 const [featured, ...rest] = publishedPosts;
@@ -22,8 +27,17 @@ const countByCategory = (slug: string) =>
 const usedCategories = categories.filter((category) => countByCategory(category.slug) > 0);
 
 const db = getDB();
-const { hero, cta, pageStyle, sectionStyles, sectionOrder, hiddenSections, layouts, overlays } =
-  await getConteudosContent(db);
+const {
+  hero,
+  featuredEyebrow,
+  cta,
+  pageStyle,
+  sectionStyles,
+  sectionOrder,
+  hiddenSections,
+  layouts,
+  overlays,
+} = await getConteudosContent(db);
 
 const layoutCss = layoutStylesheet(layouts, overlays);
 const editMode = Astro.url.searchParams.get('__edit') === '1' && Boolean(Astro.locals.user);
@@ -56,6 +70,9 @@ const secStyle = (key: string, style: SectionStyle) =>
       lead={hero.lead}
       crumbs={[{ label: 'Conteúdos' }]}
       align="center"
+      eyebrowEditPath={ed('hero.eyebrow')}
+      titleEditPath={ed('hero.title')}
+      leadEditPath={ed('hero.lead')}
     />
   </div>
 
@@ -68,8 +85,13 @@ const secStyle = (key: string, style: SectionStyle) =>
         data-featured
       >
         <div class="container">
-          <p class="eyebrow" data-reveal>
-            Em destaque
+          <p
+            class="eyebrow"
+            data-reveal
+            data-edit="featuredEyebrow"
+            data-edit-label={ed('Etiqueta do destaque')}
+          >
+            {featuredEyebrow}
           </p>
           <PostCard post={featured} featured />
           <SectionOverlays overlays={overlays} section="destaque" />

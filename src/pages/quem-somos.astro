@@ -19,13 +19,13 @@ const publishedServices = publishedOnly(Astro.locals.services);
 const edit = Boolean(Astro.locals.editMode);
 const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
+const { howWeWork, missionVisionValues, clientSegments } = Astro.locals.settings;
+
 const db = getDB();
 const {
   about,
   elo,
-  howWeWork,
-  missionVisionValues,
-  clientSegments,
+  finalCta,
   pageStyle,
   sectionStyles,
   sectionOrder,
@@ -64,6 +64,10 @@ const secStyle = (key: string, style: SectionStyle) =>
       crumbs={[{ label: 'Quem Somos' }]}
       image={about.image}
       imageAlt={about.imageAlt}
+      imageEditPath={ed('about.image')}
+      eyebrowEditPath={ed('about.eyebrow')}
+      titleEditPath={ed('about.title')}
+      leadEditPath={ed('about.lead')}
     />
   </div>
 
@@ -75,8 +79,12 @@ const secStyle = (key: string, style: SectionStyle) =>
   >
     <div class="container split split--wide-text">
       <div data-reveal>
-        <p class="eyebrow">Nossa atuação</p>
-        <h2 class="title-md">Técnica, presente e orientada por evidência</h2>
+        <p class="eyebrow" data-edit="about.bodyEyebrow" data-edit-label={ed('Etiqueta')}>
+          {about.bodyEyebrow}
+        </p>
+        <h2 class="title-md" data-edit="about.bodyTitle" data-edit-label={ed('Título')}>
+          {about.bodyTitle}
+        </h2>
         <div
           class="stack"
           style="margin-top: var(--sp-5)"
@@ -102,13 +110,26 @@ const secStyle = (key: string, style: SectionStyle) =>
           about.principles.map((item, index) => (
             <article class="principle" data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--sm">
-                <Icon name={item.icon} size={20} />
+                <Icon
+                  name={item.icon}
+                  size={20}
+                  data-edit={`about.principles.${index}.icon`}
+                  data-edit-kind={ed('icon')}
+                  data-edit-value={item.icon}
+                  data-edit-label={ed('Ícone')}
+                />
               </span>
               <div>
-                <h3 data-edit={`about.principles.${index}.title`}>{item.title}</h3>
+                <h3
+                  data-edit={`about.principles.${index}.title`}
+                  data-edit-label={ed('Título')}
+                >
+                  {item.title}
+                </h3>
                 <p
                   data-edit={`about.principles.${index}.text`}
                   data-edit-kind={ed('multiline')}
+                  data-edit-label={ed('Texto')}
                 >
                   {item.text}
                 </p>
@@ -137,7 +158,7 @@ const secStyle = (key: string, style: SectionStyle) =>
         </p>
       </div>
       <div data-reveal>
-        <EloDiagram />
+        <EloDiagram elo={elo} />
       </div>
       <SectionOverlays section="elo" overlays={overlays} />
     </div>
@@ -157,7 +178,7 @@ const secStyle = (key: string, style: SectionStyle) =>
           {howWeWork.text}
         </p>
       </div>
-      <ProcessSteps />
+      <ProcessSteps steps={howWeWork.steps} editPath="howWeWork.steps" />
       <SectionOverlays section="howWeWork" overlays={overlays} />
     </div>
   </section>
@@ -188,10 +209,23 @@ const secStyle = (key: string, style: SectionStyle) =>
           ).map(([key, item]) => (
             <article class="mvv__card">
               <span class="icon-badge">
-                <Icon name={item.icon} size={22} />
+                <Icon
+                  name={item.icon}
+                  size={22}
+                  data-edit={`missionVisionValues.${key}.icon`}
+                  data-edit-kind={ed('icon')}
+                  data-edit-value={item.icon}
+                  data-edit-label={ed('Ícone')}
+                />
               </span>
-              <h3 data-edit={`missionVisionValues.${key}.title`}>{item.title}</h3>
-              <p data-edit={`missionVisionValues.${key}.text`} data-edit-kind={ed('multiline')}>
+              <h3 data-edit={`missionVisionValues.${key}.title`} data-edit-label={ed('Título')}>
+                {item.title}
+              </h3>
+              <p
+                data-edit={`missionVisionValues.${key}.text`}
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto')}
+              >
                 {item.text}
               </p>
             </article>
@@ -208,12 +242,25 @@ const secStyle = (key: string, style: SectionStyle) =>
           missionVisionValues.values.map((value, index) => (
             <article class="card" data-reveal data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--accent icon-badge--sm">
-                <Icon name={value.icon} size={18} />
+                <Icon
+                  name={value.icon}
+                  size={18}
+                  data-edit={`missionVisionValues.values.${index}.icon`}
+                  data-edit-kind={ed('icon')}
+                  data-edit-value={value.icon}
+                  data-edit-label={ed('Ícone')}
+                />
               </span>
-              <h3 data-edit={`missionVisionValues.values.${index}.title`}>{value.title}</h3>
+              <h3
+                data-edit={`missionVisionValues.values.${index}.title`}
+                data-edit-label={ed('Título')}
+              >
+                {value.title}
+              </h3>
               <p
                 data-edit={`missionVisionValues.values.${index}.text`}
                 data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto')}
               >
                 {value.text}
               </p>
@@ -245,13 +292,26 @@ const secStyle = (key: string, style: SectionStyle) =>
           clientSegments.items.map((item, index) => (
             <article class="segment" data-edit-item={ed(index)}>
               <span class="icon-badge icon-badge--sm">
-                <Icon name={item.icon} size={18} />
+                <Icon
+                  name={item.icon}
+                  size={18}
+                  data-edit={`clientSegments.items.${index}.icon`}
+                  data-edit-kind={ed('icon')}
+                  data-edit-value={item.icon}
+                  data-edit-label={ed('Ícone')}
+                />
               </span>
-              <h3 data-edit={`clientSegments.items.${index}.label`}>{item.label}</h3>
+              <h3
+                data-edit={`clientSegments.items.${index}.label`}
+                data-edit-label={ed('Nome do segmento')}
+              >
+                {item.label}
+              </h3>
               <p
                 class="segment__detail"
                 data-edit={`clientSegments.items.${index}.detail`}
                 data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Detalhe')}
               >
                 {item.detail}
               </p>
@@ -259,6 +319,7 @@ const secStyle = (key: string, style: SectionStyle) =>
                 class="segment__behavior"
                 data-edit={`clientSegments.items.${index}.behavior`}
                 data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Comportamento')}
               >
                 {item.behavior}
               </p>
@@ -288,9 +349,12 @@ const secStyle = (key: string, style: SectionStyle) =>
 
   <div style="order:99">
     <CtaBand
-      eyebrow="Fale com a Essencial"
-      title="Quer entender como aplicamos isso na sua operação?"
-      text="Nossa equipe apresenta o método, o escopo e os indicadores de acompanhamento conforme o seu contrato."
+      eyebrow={finalCta.eyebrow}
+      title={finalCta.title}
+      text={finalCta.text}
+      editPath="finalCta"
+      sectionKey="cta"
+      sectionLabel="Chamada final"
     />
   </div>
 
@@ -336,6 +400,7 @@ const secStyle = (key: string, style: SectionStyle) =>
     color: var(--text-muted);
     font-size: var(--fs-md);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .principles {
@@ -363,6 +428,7 @@ const secStyle = (key: string, style: SectionStyle) =>
     font-size: var(--fs-sm);
     color: var(--text-muted);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .mvv {
@@ -394,6 +460,7 @@ const secStyle = (key: string, style: SectionStyle) =>
     font-size: var(--fs-sm);
     color: var(--text-muted);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .segments {
@@ -432,6 +499,7 @@ const secStyle = (key: string, style: SectionStyle) =>
     font-size: var(--fs-xs);
     color: var(--text-faint);
     line-height: var(--lh-normal);
+    white-space: pre-line;
   }
 
   .segment__behavior {
@@ -441,6 +509,7 @@ const secStyle = (key: string, style: SectionStyle) =>
     padding-top: 0.35rem;
     border-top: 1px solid var(--line);
     margin-top: 0.25rem;
+    white-space: pre-line;
   }
 
   .services-line {

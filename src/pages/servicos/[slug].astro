@@ -88,6 +88,8 @@ const serviceLd = {
       imageFit={imageStyle.fit}
       imagePosX={imageStyle.posX}
       imagePosY={imageStyle.posY}
+      titleEditPath={ed('heroTitle')}
+      leadEditPath={ed('heroLead')}
     >
       <div class="cluster hero-actions">
         <a href="#solicitar" class="btn btn--on-brand">
@@ -200,11 +202,16 @@ const serviceLd = {
                   </p>
                 )}
                 {block.items && (
-                  <ul class="check-list">
-                    {block.items.map((item) => (
-                      <li>
+                  <ul class="check-list" data-edit-list={ed(`blocks.${index}.items`)}>
+                    {block.items.map((item, itemIndex) => (
+                      <li data-edit-item={ed(itemIndex)}>
                         <Icon name="check-circle" size={18} />
-                        <span>{item}</span>
+                        <span
+                          data-edit={`blocks.${index}.items.${itemIndex}`}
+                          data-edit-label={ed('Item')}
+                        >
+                          {item}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -412,6 +419,7 @@ const serviceLd = {
     font-size: var(--fs-md);
     line-height: var(--lh-relaxed);
     max-width: 68ch;
+    white-space: pre-line;
   }
 
   .svc-block .check-list {

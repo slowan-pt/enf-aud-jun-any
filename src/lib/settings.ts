@@ -14,6 +14,11 @@ import {
   social as defaultSocial,
   seo as siteSeo,
 } from '../data/site';
+import {
+  howWeWork as defaultHowWeWork,
+  missionVisionValues as defaultMissionVisionValues,
+  clientSegments as defaultClientSegments,
+} from '../data/institutional';
 import type { D1Database } from './cf-types';
 
 export interface SeoSettings {
@@ -42,6 +47,16 @@ export interface SiteSettings {
   seo: SeoSettings;
   brand: BrandSettings;
   theme: ThemeSettings;
+  /**
+   * Conteúdo institucional COMPARTILHADO entre Home, Quem Somos e (parte
+   * dele) Serviços — antes cada página guardava sua própria cópia, editada
+   * em separado; quem editasse numa página não via o resultado nas outras.
+   * Agora é uma fonte só: qualquer editor grava aqui, todas as páginas leem
+   * daqui (ver `Astro.locals.settings`, populado no middleware).
+   */
+  howWeWork: typeof defaultHowWeWork;
+  missionVisionValues: typeof defaultMissionVisionValues;
+  clientSegments: typeof defaultClientSegments;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -70,13 +85,28 @@ const DEFAULTS: SiteSettings = {
   seo: DEFAULT_SEO,
   brand: DEFAULT_BRAND,
   theme: DEFAULT_THEME,
+  howWeWork: defaultHowWeWork,
+  missionVisionValues: defaultMissionVisionValues,
+  clientSegments: defaultClientSegments,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
-      .prepare('SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6)')
-      .bind('company', 'whatsapp', 'social', 'seo', 'brand', 'theme')
+      .prepare(
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)'
+      )
+      .bind(
+        'company',
+        'whatsapp',
+        'social',
+        'seo',
+        'brand',
+        'theme',
+        'howWeWork',
+        'missionVisionValues',
+        'clientSegments'
+      )
       .all<{ key: string; value_json: string }>();
 
     const out: SiteSettings = {
@@ -86,6 +116,9 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       seo: DEFAULTS.seo,
       brand: DEFAULTS.brand,
       theme: DEFAULTS.theme,
+      howWeWork: DEFAULTS.howWeWork,
+      missionVisionValues: DEFAULTS.missionVisionValues,
+      clientSegments: DEFAULTS.clientSegments,
     };
 
     for (const row of results) {
@@ -97,6 +130,13 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         if (row.key === 'seo') out.seo = { ...DEFAULTS.seo, ...value };
         if (row.key === 'brand') out.brand = { ...DEFAULTS.brand, ...value };
         if (row.key === 'theme') out.theme = { ...DEFAULTS.theme, ...value };
+        if (row.key === 'howWeWork') out.howWeWork = { ...DEFAULTS.howWeWork, ...value };
+        if (row.key === 'missionVisionValues') {
+          out.missionVisionValues = { ...DEFAULTS.missionVisionValues, ...value };
+        }
+        if (row.key === 'clientSegments') {
+          out.clientSegments = { ...DEFAULTS.clientSegments, ...value };
+        }
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -110,7 +150,16 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
 
 export async function updateSetting(
   db: D1Database,
-  key: 'company' | 'whatsapp' | 'social' | 'seo' | 'brand' | 'theme',
+  key:
+    | 'company'
+    | 'whatsapp'
+    | 'social'
+    | 'seo'
+    | 'brand'
+    | 'theme'
+    | 'howWeWork'
+    | 'missionVisionValues'
+    | 'clientSegments',
   value: unknown,
   userId?: number
 ): Promise<void> {

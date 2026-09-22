@@ -23,7 +23,8 @@ import {
 } from '../lib/pages';
 import type { SectionStyle } from '../lib/pages';
 
-const { company, whatsapp } = Astro.locals.settings;
+const { company, whatsapp, howWeWork, missionVisionValues, clientSegments } =
+  Astro.locals.settings;
 // Atributos usados só pelo editor não vão para o HTML de quem visita o site.
 // É limpeza de marcação, não controle de acesso — quem autoriza e valida é o
 // servidor, em toda requisição.
@@ -37,10 +38,9 @@ const {
   valueProposition,
   elo,
   benefits,
-  howWeWork,
-  missionVisionValues,
-  clientSegments,
   finalCta,
+  bands,
+  indicators,
   promoVideo,
   pageStyle,
   sectionStyles,
@@ -78,6 +78,10 @@ const concorrente = findBySlug(publishedServices, 'auditoria-concorrente')!;
 const gestao = findBySlug(publishedServices, 'gestao-hospitalar')!;
 const qualificacao = findBySlug(publishedServices, 'qualificacao-da-rede-prestadora')!;
 const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
+// A faixa de números só entra no ar quando houver dado real preenchido. Dentro
+// do editor ela aparece mesmo vazia, senão não haveria onde clicar para
+// preencher.
+const hasIndicators = indicators.items.some((item) => item.value.trim() !== '');
 ---
 
 <BaseLayout
@@ -93,8 +97,22 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     data-section="hero"
     data-section-label={ed('Destaque principal')}
   >
+    <div class="hero__media">
+      <img
+        src={safeMediaUrl(hero.image)}
+        alt={hero.imageAlt}
+        width="1600"
+        height="620"
+        fetchpriority="high"
+        decoding="async"
+        data-edit="hero.image"
+        data-edit-kind={ed('image')}
+        data-edit-label={ed('Imagem do topo')}
+      />
+    </div>
+
     <div class="container hero__inner">
-      <div class="hero__text">
+      <div class:list={['hero__text', editMode ? 'hero__text--off-preview' : 'hero__text--off']}>
         <p
           class="hero__eyebrow-box"
           data-edit="hero.eyebrow"
@@ -153,35 +171,6 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
       </div>
 
       <SectionOverlays section="hero" overlays={overlays} />
-
-      <div class="hero__media">
-        {
-          promoVideo.url ? (
-            <video
-              src={safeMediaUrl(promoVideo.url)}
-              class="hero__video"
-              controls
-              preload="metadata"
-              poster={safeMediaUrl(hero.image) || undefined}
-              data-edit="promoVideo.url"
-              data-edit-kind={ed('video')}
-              data-edit-label={ed('Vídeo do topo')}
-            />
-          ) : (
-            <img
-              src={safeMediaUrl(hero.image)}
-              alt={hero.imageAlt}
-              width="1200"
-              height="900"
-              fetchpriority="high"
-              decoding="async"
-              data-edit="hero.image"
-              data-edit-kind={ed('image')}
-              data-edit-label={ed('Imagem do topo')}
-            />
-          )
-        }
-      </div>
     </div>
   </section>
 
@@ -343,11 +332,19 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   <section class="section section--subtle" style="order:4">
     <div class="container">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">Nossos serviços</p>
-        <h2 class="title-lg">Soluções técnicas para cada ponto da cadeia assistencial</h2>
-        <p class="lead">
-          Da avaliação durante a internação à qualificação da rede prestadora, com a mesma base
-          metodológica e a mesma exigência de evidência.
+        <p class="eyebrow" data-edit="bands.servicesEyebrow" data-edit-label={ed('Etiqueta')}>
+          {bands.servicesEyebrow}
+        </p>
+        <h2 class="title-lg" data-edit="bands.servicesTitle" data-edit-label={ed('Título')}>
+          {bands.servicesTitle}
+        </h2>
+        <p
+          class="lead"
+          data-edit="bands.servicesText"
+          data-edit-kind={ed('multiline')}
+          data-edit-label={ed('Texto de apoio')}
+        >
+          {bands.servicesText}
         </p>
       </div>
       <div class="grid grid--3">
@@ -355,7 +352,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
       </div>
       <div class="text-center" style="margin-top: var(--sp-8)">
         <a href="/servicos" class="btn btn--secondary">
-          Ver todos os serviços
+          <span data-edit="bands.servicesCta" data-edit-label={ed('Botão')}>
+            {bands.servicesCta}
+          </span>
           <Icon name="arrow-right" size={16} class="icon--arrow" />
         </a>
       </div>
@@ -378,7 +377,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
         </figure>
       </div>
       <div data-reveal>
-        <p class="eyebrow">Serviço em destaque</p>
+        <p class="eyebrow" data-edit="bands.concorrenteEyebrow" data-edit-label={ed('Etiqueta')}>
+          {bands.concorrenteEyebrow}
+        </p>
         <h2 class="title-lg">{concorrente.name}</h2>
         <p class="lead" style="margin-top: var(--sp-4)">{concorrente.summary}</p>
         <ul class="check-list" style="margin-top: var(--sp-6)">
@@ -416,7 +417,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   <section class="section section--brand-soft" style="order:6">
     <div class="container split">
       <div data-reveal>
-        <p class="eyebrow">Além da conferência de contas</p>
+        <p class="eyebrow" data-edit="bands.gestaoEyebrow" data-edit-label={ed('Etiqueta')}>
+          {bands.gestaoEyebrow}
+        </p>
         <h2 class="title-lg">{gestao.name}</h2>
         <p class="lead" style="margin-top: var(--sp-4)">{gestao.summary}</p>
         <div class="mini-grid">
@@ -545,7 +548,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     <div class="container">
       <div class="net-band" data-reveal>
         <div class="net-band__text">
-          <p class="eyebrow">Rede prestadora</p>
+          <p class="eyebrow" data-edit="bands.qualificacaoEyebrow" data-edit-label={ed('Etiqueta')}>
+            {bands.qualificacaoEyebrow}
+          </p>
           <h2 class="title-md">{qualificacao.name}</h2>
           <p>{qualificacao.summary}</p>
           <a
@@ -553,7 +558,9 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
             class="link-arrow"
             style="margin-top: var(--sp-4)"
           >
-            Ver como qualificamos a rede
+            <span data-edit="bands.qualificacaoCta" data-edit-label={ed('Link')}>
+              {bands.qualificacaoCta}
+            </span>
             <Icon name="arrow-right" size={16} />
           </a>
         </div>
@@ -717,8 +724,12 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     <div class="container">
       <div class="section-head section-head--split" data-reveal>
         <div>
-          <p class="eyebrow">Conteúdos</p>
-          <h2 class="title-lg">Publicações técnicas da nossa equipe</h2>
+          <p class="eyebrow" data-edit="bands.postsEyebrow" data-edit-label={ed('Etiqueta')}>
+            {bands.postsEyebrow}
+          </p>
+          <h2 class="title-lg" data-edit="bands.postsTitle" data-edit-label={ed('Título')}>
+            {bands.postsTitle}
+          </h2>
         </div>
         <a href="/conteudos" class="btn btn--secondary btn--sm">
           Ver todos
@@ -748,8 +759,68 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     <SectionOverlays section="cta" overlays={overlays} />
   </CtaBand>
 
+  <!-- ================================================ INDICADORES -->
+  {
+    (hasIndicators || editMode) && (
+      <section class="indicators" style="order:14">
+        <div class="container">
+          <div class="indicators__head" data-reveal>
+            <p class="eyebrow" data-edit="indicators.eyebrow" data-edit-label={ed('Etiqueta')}>
+              {indicators.eyebrow}
+            </p>
+            <h2 class="title-md" data-edit="indicators.title" data-edit-label={ed('Título')}>
+              {indicators.title}
+            </h2>
+          </div>
+          <div class="indicators__grid" data-edit-list={ed('indicators.items')}>
+            {indicators.items.map((item, index) => (
+              <div class="indicator" data-reveal data-edit-item={ed(index)}>
+                <span class="indicator__icon">
+                  <Icon
+                    name={item.icon}
+                    size={30}
+                    data-edit={`indicators.items.${index}.icon`}
+                    data-edit-kind={ed('icon')}
+                    data-edit-value={item.icon}
+                    data-edit-label={ed('Ícone')}
+                  />
+                </span>
+                <div>
+                  <p class="indicator__value">
+                    <span
+                      class="indicator__num"
+                      data-edit={`indicators.items.${index}.value`}
+                      data-edit-label={ed('Número')}
+                    >
+                      {item.value || (editMode ? '00' : '')}
+                    </span>
+                    <span
+                      class="indicator__unit"
+                      data-edit={`indicators.items.${index}.unit`}
+                      data-edit-label={ed('Unidade')}
+                    >
+                      {item.unit}
+                    </span>
+                  </p>
+                  <p
+                    class="indicator__text"
+                    data-edit={`indicators.items.${index}.text`}
+                    data-edit-kind={ed('multiline')}
+                    data-edit-label={ed('Descrição do indicador')}
+                  >
+                    {item.text || (editMode ? 'Descreva este indicador' : '')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   <!-- ================================================= FORMULÁRIO -->
-  <section class="section section--tight" id="contato" style="order:14">
+  <section class="section section--tight" id="contato" style="order:15">
     <div class="container split split--wide-text">
       <div data-reveal>
         <p class="eyebrow">Contato</p>
@@ -877,23 +948,32 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     overflow: hidden;
     background: var(--bg);
     color: var(--text);
-    padding-block: clamp(2rem, 4vw, 3.5rem);
+    padding-block: 0 clamp(2rem, 4vw, 3.5rem);
     border-bottom: 1px solid var(--line);
   }
 
   .hero__inner {
     position: relative;
-    display: grid;
-    gap: clamp(1.75rem, 4vw, 3rem);
-    align-items: center;
+    display: block;
     max-width: 1040px;
     margin-inline: auto;
+    padding-top: clamp(1.75rem, 4vw, 3rem);
   }
 
-  @media (min-width: 900px) {
-    .hero__inner {
-      grid-template-columns: 1fr 1fr;
-    }
+  .hero__text {
+    max-width: 62ch;
+  }
+
+  /* Escondido no site publicado a pedido do cliente — o hero agora é só a
+     foto. Continua no editor visual (esmaecido) porque os campos ainda
+     existem e podem voltar a ser exibidos depois, se for o caso. */
+  .hero__text--off {
+    display: none;
+  }
+
+  .hero__text--off-preview {
+    opacity: 0.35;
+    filter: grayscale(0.6);
   }
 
   .hero__eyebrow-box {
@@ -926,6 +1006,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     font-size: var(--fs-sm);
     color: var(--text-muted);
     max-width: 38ch;
+    white-space: pre-line;
   }
 
   .hero__actions {
@@ -994,19 +1075,23 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
 
   .hero__media {
     position: relative;
-    width: min(100%, 440px);
-    margin-inline: auto;
+    width: 100%;
   }
 
-  .hero__media img,
-  .hero__video {
+  .hero__media img {
+    display: block;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 2.4 / 1;
     object-fit: cover;
-    border-radius: var(--r-xl);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-lg);
-    background: #000;
+    object-position: center 30%;
+    background: var(--c-ink-100);
+  }
+
+  @media (min-width: 1000px) {
+    .hero__media img {
+      aspect-ratio: 2.5 / 1;
+      object-position: center;
+    }
   }
 
   @media (max-width: 640px) {
@@ -1046,6 +1131,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     font-size: var(--fs-sm);
     color: var(--text-muted);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   /* ------------------------------------------------ gestão hospitalar */
@@ -1087,6 +1173,87 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     border: 1px solid var(--line);
     border-radius: var(--r-xl);
     background: linear-gradient(140deg, var(--c-ink-50), var(--c-white));
+  }
+
+  /* --------------------------------------------------- indicadores */
+  .indicators {
+    padding-block: clamp(2.5rem, 5vw, 4rem);
+    background: var(--c-brand-900);
+    color: #fff;
+  }
+
+  .indicators__head {
+    text-align: center;
+    margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
+  }
+
+  .indicators__head .eyebrow {
+    color: var(--c-brand-300);
+  }
+
+  .indicators__head .title-md {
+    color: #fff;
+  }
+
+  .indicators__grid {
+    display: grid;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  }
+
+  .indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem;
+    margin: -0.75rem;
+    border-radius: var(--r-lg);
+    transition:
+      transform var(--dur) var(--ease),
+      background var(--dur) var(--ease);
+  }
+
+  .indicator:hover,
+  .indicator:focus-within {
+    transform: scale(1.08);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .indicator__icon {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: var(--r-md);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: var(--c-brand-300);
+    transition: color var(--dur) var(--ease);
+  }
+
+  .indicator:hover .indicator__icon {
+    color: #fff;
+    border-color: var(--c-brand-300);
+  }
+
+  .indicator__value {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--c-brand-300);
+  }
+
+  .indicator__unit {
+    font-size: 0.875em;
+  }
+
+  .indicator__text {
+    margin-top: 0.25rem;
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+    color: rgba(234, 243, 251, 0.82);
+    white-space: pre-line;
   }
 
   @media (min-width: 900px) {
@@ -1167,6 +1334,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   .mvv__card p {
     font-size: var(--fs-sm);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .values {
@@ -1210,6 +1378,7 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
   .value p {
     font-size: var(--fs-xs);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   /* ----------------------------------------------------- audiência */
@@ -1301,3 +1470,68 @@ const latestPosts = publishedPostsOnly(Astro.locals.posts).slice(0, 3);
     text-decoration: underline;
   }
 </style>
+
+<script>
+  /**
+   * Contagem dos números da faixa de indicadores: toda vez que a seção
+   * entra na tela, cada valor sobe de 0 até o número real (mantendo o sinal
+   * "+" e qualquer texto que não seja dígito). Não desliga o observer —
+   * passar pela seção de novo repete a animação, como pedido.
+   */
+  const nums = document.querySelectorAll<HTMLElement>('.indicator__num');
+  if (nums.length) {
+    const parsed = new Map<HTMLElement, { prefix: string; target: number; suffix: string }>();
+    nums.forEach((el) => {
+      const match = el.textContent?.trim().match(/^(\D*)(\d+)(\D*)$/);
+      if (match) {
+        parsed.set(el, { prefix: match[1], target: Number(match[2]), suffix: match[3] });
+      }
+    });
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timers = new WeakMap<HTMLElement, number>();
+
+    const animate = (el: HTMLElement) => {
+      const info = parsed.get(el);
+      if (!info) return;
+      const running = timers.get(el);
+      if (running) cancelAnimationFrame(running);
+
+      const duration = 1100;
+      const start = performance.now();
+      const step = (now: number) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = Math.round(info.target * eased);
+        el.textContent = `${info.prefix}${value}${info.suffix}`;
+        if (progress < 1) {
+          timers.set(el, requestAnimationFrame(step));
+        } else {
+          el.textContent = `${info.prefix}${info.target}${info.suffix}`;
+        }
+      };
+      timers.set(el, requestAnimationFrame(step));
+    };
+
+    if (reduce || !('IntersectionObserver' in window)) {
+      parsed.forEach((info, el) => {
+        el.textContent = `${info.prefix}${info.target}${info.suffix}`;
+      });
+    } else {
+      const section = document.querySelector('.indicators');
+      if (section) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                parsed.forEach((_info, el) => animate(el));
+              }
+            });
+          },
+          { threshold: 0.35 }
+        );
+        observer.observe(section);
+      }
+    }
+  }
+</script>

@@ -26,6 +26,14 @@ interface Props {
   imageFit?: 'cover' | 'contain';
   imagePosX?: number;
   imagePosY?: number;
+  /**
+   * Caminhos `data-edit` do texto — mesma regra da imagem acima: ausente
+   * (fora do editor, ou quando o chamador não tem campo correspondente) não
+   * gera nenhum atributo extra, então a página pública fica idêntica.
+   */
+  eyebrowEditPath?: string;
+  titleEditPath?: string;
+  leadEditPath?: string;
 }
 
 const {
@@ -40,6 +48,9 @@ const {
   imageFit,
   imagePosX,
   imagePosY,
+  eyebrowEditPath,
+  titleEditPath,
+  leadEditPath,
 } = Astro.props;
 const hasImage = Boolean(image);
 const imageStyle =
@@ -58,9 +69,32 @@ const imageStyle =
       ]}
     >
       <Breadcrumbs items={crumbs} variant="inverse" />
-      {eyebrow && <p class="eyebrow page-hero__eyebrow">{eyebrow}</p>}
-      <h1 class="title-lg">{title}</h1>
-      {lead && <p class="page-hero__lead">{lead}</p>}
+      {eyebrow && (
+        <p
+          class="eyebrow page-hero__eyebrow"
+          data-edit={eyebrowEditPath}
+          data-edit-label={eyebrowEditPath ? 'Selo do topo' : undefined}
+        >
+          {eyebrow}
+        </p>
+      )}
+      <h1
+        class="title-lg"
+        data-edit={titleEditPath}
+        data-edit-label={titleEditPath ? 'Título' : undefined}
+      >
+        {title}
+      </h1>
+      {lead && (
+        <p
+          class="page-hero__lead"
+          data-edit={leadEditPath}
+          data-edit-kind={leadEditPath ? 'multiline' : undefined}
+          data-edit-label={leadEditPath ? 'Texto de apoio' : undefined}
+        >
+          {lead}
+        </p>
+      )}
       <slot />
     </div>
     {
@@ -141,6 +175,10 @@ const imageStyle =
     font-size: var(--fs-lg);
     color: rgba(234, 243, 251, 0.82);
     max-width: 40rem;
+    /* Campo "multiline": preserva os parágrafos (linhas em branco) que a
+       pessoa digitou no editor — sem isto, o HTML colapsa tudo em uma
+       única linha corrida, ignorando a quebra visual que ela escolheu. */
+    white-space: pre-line;
   }
 
   .page-hero__text--center .page-hero__lead {

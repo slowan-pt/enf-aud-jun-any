@@ -178,6 +178,10 @@ export const about = {
   eyebrow: 'Quem somos',
   title: 'Uma camada protetora entre operadoras e prestadores de saúde',
   lead: 'A Essencial Saúde Auditoria é uma empresa de gestão e auditoria em saúde sediada em Brasília - DF, que pretende atuar de forma colaborativa e preventiva para somar forças às instituições de saúde.',
+  /** Etiqueta e título da seção "Nossa atuação" — abaixo do hero da página,
+   *  distintos de `eyebrow`/`title` acima (que são do hero). */
+  bodyEyebrow: 'Nossa atuação',
+  bodyTitle: 'Técnica, presente e orientada por evidência',
   paragraphs: [
     'Por meio de visitas técnicas presenciais aos prestadores, validamos diretamente os tratamentos disponibilizados e monitoramos a eficácia real dos cuidados no quadro clínico do paciente. O objetivo é estabelecer um canal de comunicação fluido e seguro que conecte três frentes: o beneficiário internado, a operadora de saúde/fonte pagadora e o prestador de serviço.',
     'Essa integração viabiliza a mitigação de riscos operacionais e garante que, no momento de maior vulnerabilidade clínica, o paciente receba um cuidado técnico digno, seguro e assertivo. A premissa do negócio baseia-se no cuidado centrado no paciente, na qualidade e segurança dos cuidados e na máxima satisfação do beneficiário.',
@@ -311,4 +315,47 @@ export const finalCta = {
   title: 'Vamos avaliar juntos o seu cenário assistencial',
   text: 'Converse com nossa equipe técnica sobre auditoria concorrente, contas hospitalares, jornada do paciente ou gestão hospitalar. Respondemos em horário comercial.',
   primary: { label: 'Solicitar uma apresentação', href: '/contato' },
+};
+
+/** Chamada final da página Quem Somos — mesma ideia de `finalCta`, mas com
+ *  texto próprio dessa página (era fixo no template antes desta correção). */
+export const aboutFinalCta = {
+  eyebrow: 'Fale com a Essencial',
+  title: 'Quer entender como aplicamos isso na sua operação?',
+  text: 'Nossa equipe apresenta o método, o escopo e os indicadores de acompanhamento conforme o seu contrato.',
+};
+
+/**
+ * Textos das faixas cujo miolo vem de outra tela do painel (Serviços,
+ * Conteúdos, serviços em destaque). Ficam aqui — e não soltos no template —
+ * para o editor visual poder alterá-los como qualquer outro texto da Home.
+ */
+export const bands = {
+  servicesEyebrow: 'Nossos serviços',
+  servicesTitle: 'Soluções técnicas para cada ponto da cadeia assistencial',
+  servicesText:
+    'Da avaliação durante a internação à qualificação da rede prestadora, com a mesma base metodológica e a mesma exigência de evidência.',
+  servicesCta: 'Ver todos os serviços',
+  concorrenteEyebrow: 'Serviço em destaque',
+  gestaoEyebrow: 'Além da conferência de contas',
+  qualificacaoEyebrow: 'Rede prestadora',
+  qualificacaoCta: 'Ver como qualificamos a rede',
+  postsEyebrow: 'Conteúdos',
+  postsTitle: 'Publicações técnicas da nossa equipe',
+  postsCta: 'Ver todos',
+};
+
+/**
+ * Faixa de indicadores (números de credibilidade). Cada item tem número,
+ * unidade opcional e a frase que explica o dado — tudo editável no painel.
+ */
+export const indicators = {
+  eyebrow: 'Em números',
+  title: 'Resultados que sustentam a operação',
+  items: [
+    { icon: 'shield-check', value: '', unit: '', text: '' },
+    { icon: 'chart', value: '', unit: '', text: '' },
+    { icon: 'check', value: '', unit: '', text: '' },
+    { icon: 'network', value: '', unit: '', text: '' },
+  ],
 };

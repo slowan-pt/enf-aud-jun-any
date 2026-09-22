@@ -19,6 +19,24 @@ import {
 import type { HomeContent, HomeSectionKey } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
 import { safeHref } from '../../../lib/urls';
+import { updateSetting } from '../../../lib/settings';
+import type { SiteSettings } from '../../../lib/settings';
+
+/**
+ * Missão/visão/valores, "como atuamos" e "para quem atuamos" são
+ * conteúdo COMPARTILHADO (ver src/lib/settings.ts) — não pertencem só à
+ * Home. Uma operação cujo caminho comece por uma dessas chaves grava em
+ * `settings`, não no JSON da Home, para editar aqui refletir também em
+ * Quem Somos/Serviços (e vice-versa).
+ */
+const SHARED_KEYS = ['howWeWork', 'missionVisionValues', 'clientSegments'] as const;
+type SharedKey = (typeof SHARED_KEYS)[number];
+
+function sharedKeyOf(path: unknown): SharedKey | null {
+  if (typeof path !== 'string') return null;
+  const head = path.split('.')[0];
+  return (SHARED_KEYS as readonly string[]).includes(head) ? (head as SharedKey) : null;
+}
 
 const SHAPE_HEX = /^#[0-9a-fA-F]{6}$/;
 function clampInt(value: unknown, min: number, max: number): number {
@@ -296,9 +314,26 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const current = await getHomeContent(db);
   const { updatedAt: _ignored, ...content } = current;
 
+  const settings = locals.settings as SiteSettings;
+  const shared: Record<SharedKey, unknown> = {
+    howWeWork: structuredClone(settings.howWeWork),
+    missionVisionValues: structuredClone(settings.missionVisionValues),
+    clientSegments: structuredClone(settings.clientSegments),
+  };
+  const touchedShared = new Set<SharedKey>();
+
   const rejected: number[] = [];
   ops.forEach((operation, index) => {
-    if (!applyOp(content as HomeContent, operation as EditOp)) rejected.push(index);
+    const path = (operation as { path?: unknown }).path;
+    const sharedKey = 'path' in (operation as object) ? sharedKeyOf(path) : null;
+    const ok = sharedKey
+      ? applyOp(shared as unknown as HomeContent, operation as EditOp)
+      : applyOp(content as HomeContent, operation as EditOp);
+    if (!ok) {
+      rejected.push(index);
+    } else if (sharedKey) {
+      touchedShared.add(sharedKey);
+    }
   });
 
   if (rejected.length === ops.length) {
@@ -309,6 +344,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   await updateHomeContent(db, content as HomeContent, locals.user.id);
+  for (const key of touchedShared) {
+    await updateSetting(db, key, shared[key], locals.user.id);
+  }
 
   await writeAuditLog(db, {
     userId: locals.user.id,

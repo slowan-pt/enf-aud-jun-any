@@ -263,6 +263,10 @@ a {
   font-size: var(--fs-lg);
   line-height: var(--lh-normal);
   color: var(--text-muted);
+  /* Muitos textos "lead" são campos editáveis multilinha — sem isto, os
+     parágrafos digitados no editor (linhas em branco) colapsam numa única
+     linha corrida ao renderizar. */
+  white-space: pre-line;
 }
 
 .muted {
@@ -472,6 +476,7 @@ a {
   color: var(--text-muted);
   font-size: var(--fs-sm);
   line-height: var(--lh-relaxed);
+  white-space: pre-line;
 }
 
 .card__foot {
@@ -844,6 +849,7 @@ a {
   font-size: var(--fs-md);
   line-height: var(--lh-relaxed);
   color: var(--text-muted);
+  white-space: pre-line;
 }
 
 .prose > * + * {

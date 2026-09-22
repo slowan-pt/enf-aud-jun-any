@@ -12,10 +12,9 @@ import {
   valueProposition as defaultValueProposition,
   elo as defaultElo,
   benefits as defaultBenefits,
-  howWeWork as defaultHowWeWork,
-  missionVisionValues as defaultMissionVisionValues,
-  clientSegments as defaultClientSegments,
   finalCta as defaultFinalCta,
+  bands as defaultBands,
+  indicators as defaultIndicators,
 } from '../data/institutional';
 import type { D1Database } from './cf-types';
 import { safeHref } from './urls';
@@ -235,10 +234,11 @@ export interface HomeContent {
   valueProposition: typeof defaultValueProposition;
   elo: typeof defaultElo;
   benefits: typeof defaultBenefits;
-  howWeWork: typeof defaultHowWeWork;
-  missionVisionValues: typeof defaultMissionVisionValues;
-  clientSegments: typeof defaultClientSegments;
   finalCta: typeof defaultFinalCta;
+  /** Textos das faixas alimentadas por outras telas (Serviços, Conteúdos). */
+  bands: typeof defaultBands;
+  /** Faixa de indicadores — fica fora do ar enquanto nenhum número for preenchido. */
+  indicators: typeof defaultIndicators;
   /** Vídeo institucional/promocional — some da Home enquanto `url` estiver vazia. */
   promoVideo: PromoVideo;
   /** Sobrescrita da paleta global só para esta página (opcional) — ver PageStyle. */
@@ -287,10 +287,9 @@ const DEFAULT_HOME: HomeContent = {
   valueProposition: defaultValueProposition,
   elo: defaultElo,
   benefits: defaultBenefits,
-  howWeWork: defaultHowWeWork,
-  missionVisionValues: defaultMissionVisionValues,
-  clientSegments: defaultClientSegments,
   finalCta: defaultFinalCta,
+  bands: defaultBands,
+  indicators: defaultIndicators,
   promoVideo: DEFAULT_PROMO_VIDEO,
   pageStyle: { ...EMPTY_PAGE_STYLE },
   sectionStyles: DEFAULT_SECTION_STYLES,
@@ -697,13 +696,16 @@ export async function getHomeContent(
       valueProposition: { ...DEFAULT_HOME.valueProposition, ...stored.valueProposition },
       elo: { ...DEFAULT_HOME.elo, ...stored.elo },
       benefits: { ...DEFAULT_HOME.benefits, ...stored.benefits },
-      howWeWork: { ...DEFAULT_HOME.howWeWork, ...stored.howWeWork },
-      missionVisionValues: {
-        ...DEFAULT_HOME.missionVisionValues,
-        ...stored.missionVisionValues,
-      },
-      clientSegments: { ...DEFAULT_HOME.clientSegments, ...stored.clientSegments },
       finalCta: { ...DEFAULT_HOME.finalCta, ...stored.finalCta },
+      bands: { ...DEFAULT_HOME.bands, ...stored.bands },
+      indicators: {
+        ...DEFAULT_HOME.indicators,
+        ...stored.indicators,
+        items: (stored.indicators?.items ?? DEFAULT_HOME.indicators.items).map((item) => ({
+          ...DEFAULT_HOME.indicators.items[0],
+          ...item,
+        })),
+      },
       promoVideo: { ...DEFAULT_HOME.promoVideo, ...stored.promoVideo },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {

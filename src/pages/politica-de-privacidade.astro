@@ -71,6 +71,9 @@ function parseBody(body: string): { kind: 'p' | 'ul'; lines: string[] }[] {
       title={hero.title}
       lead={hero.lead}
       crumbs={[{ label: 'Política de Privacidade' }]}
+      eyebrowEditPath={ed('hero.eyebrow')}
+      titleEditPath={ed('hero.title')}
+      leadEditPath={ed('hero.lead')}
     />
   </div>
 
@@ -175,6 +178,7 @@ function parseBody(body: string): { kind: 'p' | 'ul'; lines: string[] }[] {
     color: var(--c-warning-600);
     font-size: var(--fs-xs);
     line-height: var(--lh-relaxed);
+    white-space: pre-line;
   }
 
   .policy {

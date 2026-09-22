@@ -16,9 +16,7 @@
 import {
   about as defaultAbout,
   elo as defaultElo,
-  howWeWork as defaultHowWeWork,
-  missionVisionValues as defaultMissionVisionValues,
-  clientSegments as defaultClientSegments,
+  aboutFinalCta as defaultAboutFinalCta,
 } from '../data/institutional';
 import type { D1Database } from './cf-types';
 import {
@@ -50,9 +48,7 @@ export type QuemSomosSectionKey = (typeof QUEM_SOMOS_SECTION_KEYS)[number];
 export interface QuemSomosContent {
   about: typeof defaultAbout;
   elo: typeof defaultElo;
-  howWeWork: typeof defaultHowWeWork;
-  missionVisionValues: typeof defaultMissionVisionValues;
-  clientSegments: typeof defaultClientSegments;
+  finalCta: typeof defaultAboutFinalCta;
   pageStyle: PageStyle;
   sectionStyles: Record<QuemSomosSectionKey, SectionStyle>;
   sectionOrder: QuemSomosSectionKey[];
@@ -64,9 +60,7 @@ export interface QuemSomosContent {
 const DEFAULT_QUEM_SOMOS: QuemSomosContent = {
   about: defaultAbout,
   elo: defaultElo,
-  howWeWork: defaultHowWeWork,
-  missionVisionValues: defaultMissionVisionValues,
-  clientSegments: defaultClientSegments,
+  finalCta: defaultAboutFinalCta,
   pageStyle: { ...EMPTY_PAGE_STYLE },
   sectionStyles: {
     about: { ...EMPTY_STYLE },
@@ -128,12 +122,7 @@ export async function getQuemSomosContent(
     return {
       about: { ...DEFAULT_QUEM_SOMOS.about, ...stored.about },
       elo: { ...DEFAULT_QUEM_SOMOS.elo, ...stored.elo },
-      howWeWork: { ...DEFAULT_QUEM_SOMOS.howWeWork, ...stored.howWeWork },
-      missionVisionValues: {
-        ...DEFAULT_QUEM_SOMOS.missionVisionValues,
-        ...stored.missionVisionValues,
-      },
-      clientSegments: { ...DEFAULT_QUEM_SOMOS.clientSegments, ...stored.clientSegments },
+      finalCta: { ...DEFAULT_QUEM_SOMOS.finalCta, ...stored.finalCta },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {
         ...DEFAULT_QUEM_SOMOS.sectionStyles,
@@ -418,8 +407,6 @@ export type ServicosSectionKey = (typeof SERVICOS_SECTION_KEYS)[number];
 
 export interface ServicosContent {
   hero: { eyebrow: string; title: string; lead: string };
-  howWeWork: typeof defaultHowWeWork;
-  clientSegments: typeof defaultClientSegments;
   cta: { eyebrow: string; title: string; text: string };
   pageStyle: PageStyle;
   sectionStyles: Record<ServicosSectionKey, SectionStyle>;
@@ -435,8 +422,6 @@ const DEFAULT_SERVICOS: ServicosContent = {
     title: 'Soluções técnicas em gestão e auditoria em saúde',
     lead: 'Seis frentes de atuação que compartilham a mesma base: avaliação com critério, evidência documental e acompanhamento até o desfecho.',
   },
-  howWeWork: defaultHowWeWork,
-  clientSegments: defaultClientSegments,
   cta: {
     eyebrow: 'Fale com a Essencial',
     title: 'Qual desses cenários é o seu?',
@@ -489,8 +474,6 @@ export async function getServicosContent(
     const stored = JSON.parse(row.sections_json) as Partial<ServicosContent>;
     return {
       hero: { ...DEFAULT_SERVICOS.hero, ...stored.hero },
-      howWeWork: { ...DEFAULT_SERVICOS.howWeWork, ...stored.howWeWork },
-      clientSegments: { ...DEFAULT_SERVICOS.clientSegments, ...stored.clientSegments },
       cta: { ...DEFAULT_SERVICOS.cta, ...stored.cta },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {
@@ -774,6 +757,8 @@ export type ConteudosSectionKey = (typeof CONTEUDOS_SECTION_KEYS)[number];
 
 export interface ConteudosContent {
   hero: { eyebrow: string; title: string; lead: string };
+  /** Etiqueta acima do card em destaque — era fixa no template. */
+  featuredEyebrow: string;
   cta: { eyebrow: string; title: string; text: string };
   pageStyle: PageStyle;
   sectionStyles: Record<ConteudosSectionKey, SectionStyle>;
@@ -789,6 +774,7 @@ const DEFAULT_CONTEUDOS: ConteudosContent = {
     title: 'Conhecimento técnico sobre gestão e auditoria em saúde',
     lead: 'Publicações da equipe da Essencial Saúde sobre auditoria, gestão hospitalar, jornada do paciente e segurança assistencial.',
   },
+  featuredEyebrow: 'Em destaque',
   cta: {
     eyebrow: 'Fale com a Essencial',
     title: 'Precisa discutir um cenário específico?',
@@ -841,6 +827,10 @@ export async function getConteudosContent(
     const stored = JSON.parse(row.sections_json) as Partial<ConteudosContent>;
     return {
       hero: { ...DEFAULT_CONTEUDOS.hero, ...stored.hero },
+      featuredEyebrow:
+        typeof stored.featuredEyebrow === 'string'
+          ? stored.featuredEyebrow
+          : DEFAULT_CONTEUDOS.featuredEyebrow,
       cta: { ...DEFAULT_CONTEUDOS.cta, ...stored.cta },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {

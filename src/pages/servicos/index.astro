@@ -15,11 +15,11 @@ import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../../lib
 const edit = Boolean(Astro.locals.editMode);
 const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
+const { howWeWork, clientSegments } = Astro.locals.settings;
+
 const db = getDB();
 const {
   hero,
-  howWeWork,
-  clientSegments,
   cta,
   pageStyle,
   sectionStyles,
@@ -69,6 +69,9 @@ const itemListLd = {
       title={hero.title}
       lead={hero.lead}
       crumbs={[{ label: 'Serviços' }]}
+      eyebrowEditPath={ed('hero.eyebrow')}
+      titleEditPath={ed('hero.title')}
+      leadEditPath={ed('hero.lead')}
     />
   </div>
 
@@ -100,7 +103,7 @@ const itemListLd = {
           {howWeWork.text}
         </p>
       </div>
-      <ProcessSteps />
+      <ProcessSteps steps={howWeWork.steps} editPath="howWeWork.steps" />
       <SectionOverlays section="howWeWork" overlays={overlays} />
     </div>
   </section>
@@ -118,10 +121,19 @@ const itemListLd = {
       </div>
       <ul class="audience" data-reveal>
         {
-          clientSegments.items.map((item) => (
+          clientSegments.items.map((item, index) => (
             <li>
-              <Icon name={item.icon} size={20} />
-              {item.label}
+              <Icon
+                name={item.icon}
+                size={20}
+                data-edit={`clientSegments.items.${index}.icon`}
+                data-edit-kind={ed('icon')}
+                data-edit-value={item.icon}
+                data-edit-label={ed('Ícone')}
+              />
+              <span data-edit={`clientSegments.items.${index}.label`} data-edit-label={ed('Nome do segmento')}>
+                {item.label}
+              </span>
             </li>
           ))
         }
@@ -131,7 +143,14 @@ const itemListLd = {
   </section>
 
   <div style="order:99">
-    <CtaBand eyebrow={cta.eyebrow} title={cta.title} text={cta.text} />
+    <CtaBand
+      eyebrow={cta.eyebrow}
+      title={cta.title}
+      text={cta.text}
+      editPath="cta"
+      sectionKey="cta"
+      sectionLabel="Chamada final"
+    />
   </div>
 
   {layoutCss && <style is:inline set:html={layoutCss} />}
