@@ -41,7 +41,6 @@ export const QUEM_SOMOS_SECTION_KEYS = [
   'elo',
   'howWeWork',
   'mvv',
-  'segments',
 ] as const;
 export type QuemSomosSectionKey = (typeof QUEM_SOMOS_SECTION_KEYS)[number];
 
@@ -67,7 +66,6 @@ const DEFAULT_QUEM_SOMOS: QuemSomosContent = {
     elo: { ...EMPTY_STYLE },
     howWeWork: { ...EMPTY_STYLE },
     mvv: { ...EMPTY_STYLE },
-    segments: { ...EMPTY_STYLE },
   },
   sectionOrder: [...QUEM_SOMOS_SECTION_KEYS],
   hiddenSections: [],
@@ -108,6 +106,20 @@ export const QUEM_SOMOS_SLUG = '/quem-somos';
  * conteúdo estático que já existe hoje em `data/institutional.ts`) — a
  * página continua idêntica até alguém editar pelo painel.
  */
+/** Todo nó do diagrama tem `tag` (texto do selo) — só o nó "essencial" nasce com "Elo técnico". */
+function normalizeElo<T extends { nodes: { key: string }[] }>(elo: T): T {
+  return {
+    ...elo,
+    nodes: elo.nodes.map((node) => {
+      const tag = (node as { tag?: unknown }).tag;
+      return {
+        ...node,
+        tag: typeof tag === 'string' ? tag : node.key === 'essencial' ? 'Elo técnico' : '',
+      };
+    }),
+  };
+}
+
 export async function getQuemSomosContent(
   db: D1Database
 ): Promise<QuemSomosContent & { updatedAt: string }> {
@@ -121,7 +133,7 @@ export async function getQuemSomosContent(
     const stored = JSON.parse(row.sections_json) as Partial<QuemSomosContent>;
     return {
       about: { ...DEFAULT_QUEM_SOMOS.about, ...stored.about },
-      elo: { ...DEFAULT_QUEM_SOMOS.elo, ...stored.elo },
+      elo: normalizeElo({ ...DEFAULT_QUEM_SOMOS.elo, ...stored.elo }),
       finalCta: { ...DEFAULT_QUEM_SOMOS.finalCta, ...stored.finalCta },
       pageStyle: normalizePageStyle(stored.pageStyle),
       sectionStyles: {
@@ -257,7 +269,7 @@ export function formatBrPhoneDisplay(rawDigits: string): string {
 }
 
 export interface ContatoContent {
-  hero: { eyebrow: string; title: string; lead: string };
+  hero: { eyebrow: string; title: string; lead: string; bg: string; bgAlt: string };
   formTitle: string;
   formDescription: string;
   asideCtaTitle: string;
@@ -277,6 +289,8 @@ const DEFAULT_CONTATO: ContatoContent = {
     eyebrow: 'Contato',
     title: 'Fale com a Essencial Saúde',
     lead: 'Conte o cenário da sua organização. Nossa equipe técnica retorna com os próximos passos para uma conversa objetiva.',
+    bg: '',
+    bgAlt: '',
   },
   formTitle: 'Envie sua mensagem',
   formDescription:
@@ -406,7 +420,7 @@ export const SERVICOS_SECTION_KEYS = ['list', 'howWeWork', 'segments'] as const;
 export type ServicosSectionKey = (typeof SERVICOS_SECTION_KEYS)[number];
 
 export interface ServicosContent {
-  hero: { eyebrow: string; title: string; lead: string };
+  hero: { eyebrow: string; title: string; lead: string; bg: string; bgAlt: string };
   cta: { eyebrow: string; title: string; text: string };
   pageStyle: PageStyle;
   sectionStyles: Record<ServicosSectionKey, SectionStyle>;
@@ -421,6 +435,8 @@ const DEFAULT_SERVICOS: ServicosContent = {
     eyebrow: 'Serviços',
     title: 'Soluções técnicas em gestão e auditoria em saúde',
     lead: 'Seis frentes de atuação que compartilham a mesma base: avaliação com critério, evidência documental e acompanhamento até o desfecho.',
+    bg: '',
+    bgAlt: '',
   },
   cta: {
     eyebrow: 'Fale com a Essencial',
@@ -635,9 +651,9 @@ const DEFAULT_POLITICA: PoliticaContent = {
     title: 'Política de Privacidade',
     lead: 'Como a Essencial Saúde Auditoria trata os dados pessoais coletados neste site, em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018).',
   },
-  updatedAt: '20 de agosto de 2026',
-  noteText:
-    'Documento em versão preliminar (Etapa 1), redigido como base técnica. Antes da publicação em produção deve ser revisado pelo responsável jurídico.',
+  updatedAt: '',
+  // Aviso opcional no topo: vazio = a faixa inteira (aviso + data) fica oculta.
+  noteText: '',
   sections: DEFAULT_POLITICA_SECTIONS,
   pageStyle: { ...EMPTY_PAGE_STYLE },
   sectionStyles: {
@@ -756,7 +772,7 @@ export const CONTEUDOS_SECTION_KEYS = ['destaque', 'grade', 'cta'] as const;
 export type ConteudosSectionKey = (typeof CONTEUDOS_SECTION_KEYS)[number];
 
 export interface ConteudosContent {
-  hero: { eyebrow: string; title: string; lead: string };
+  hero: { eyebrow: string; title: string; lead: string; bg: string; bgAlt: string };
   /** Etiqueta acima do card em destaque — era fixa no template. */
   featuredEyebrow: string;
   cta: { eyebrow: string; title: string; text: string };
@@ -773,6 +789,8 @@ const DEFAULT_CONTEUDOS: ConteudosContent = {
     eyebrow: 'Conteúdos',
     title: 'Conhecimento técnico sobre gestão e auditoria em saúde',
     lead: 'Publicações da equipe da Essencial Saúde sobre auditoria, gestão hospitalar, jornada do paciente e segurança assistencial.',
+    bg: '',
+    bgAlt: '',
   },
   featuredEyebrow: 'Em destaque',
   cta: {

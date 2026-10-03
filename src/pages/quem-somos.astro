@@ -6,20 +6,17 @@ import EloDiagram from '../components/EloDiagram.astro';
 import ProcessSteps from '../components/ProcessSteps.astro';
 import CtaBand from '../components/CtaBand.astro';
 import SectionOverlays from '../components/SectionOverlays.astro';
-import { publishedOnly } from '../lib/services';
 import { getDB } from '../lib/db';
 import { getQuemSomosContent } from '../lib/documents';
 import { sectionStyleAttr, layoutStylesheet, pageStyleOverride } from '../lib/pages';
 import type { SectionStyle } from '../lib/pages';
-
-const publishedServices = publishedOnly(Astro.locals.services);
 
 // Atributos usados só pelo editor não vão para o HTML de quem visita o site
 // — mesma regra da Home (ver src/pages/index.astro).
 const edit = Boolean(Astro.locals.editMode);
 const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
-const { howWeWork, missionVisionValues, clientSegments } = Astro.locals.settings;
+const { howWeWork, missionVisionValues } = Astro.locals.settings;
 
 const db = getDB();
 const {
@@ -41,7 +38,7 @@ const isHidden = (key: string) => (hiddenSections as string[]).includes(key);
 const secClass = (key: string) =>
   isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
 
-// As 5 seções editáveis ficam entre o Hero (fixo antes, order:-1) e o CTA
+// As seções editáveis ficam entre o Hero (fixo antes, order:-1) e o CTA
 // final (fixo depois, order:99) — só a ordem ENTRE elas muda no editor.
 const slotOf = new Map<string, number>();
 sectionOrder.forEach((key, index) => slotOf.set(key, index));
@@ -65,6 +62,9 @@ const secStyle = (key: string, style: SectionStyle) =>
       image={about.image}
       imageAlt={about.imageAlt}
       imageEditPath={ed('about.image')}
+      bgImage={about.heroBg}
+      bgImageAlt={about.heroBgAlt}
+      bgEditPath={ed('about.heroBg')}
       eyebrowEditPath={ed('about.eyebrow')}
       titleEditPath={ed('about.title')}
       leadEditPath={ed('about.lead')}
@@ -77,64 +77,96 @@ const secStyle = (key: string, style: SectionStyle) =>
     data-section="about"
     data-section-label={ed('Nossa atuação')}
   >
-    <div class="container split split--wide-text">
-      <div data-reveal>
-        <p class="eyebrow" data-edit="about.bodyEyebrow" data-edit-label={ed('Etiqueta')}>
-          {about.bodyEyebrow}
-        </p>
-        <h2 class="title-md" data-edit="about.bodyTitle" data-edit-label={ed('Título')}>
-          {about.bodyTitle}
-        </h2>
-        <div
-          class="stack"
-          style="margin-top: var(--sp-5)"
-          data-edit-list={ed('about.paragraphs')}
-        >
+    {
+      (about.introText || about.introTitle || edit) && (
+        <div class="container" data-reveal>
           {
-            about.paragraphs.map((paragraph, index) => (
-              <p
-                class="about__p"
-                data-edit={`about.paragraphs.${index}`}
-                data-edit-kind={ed('multiline')}
-                data-edit-item={ed(index)}
+            (about.introTitle || edit) && (
+              <h2
+                class="title-md intro-text__title"
+                data-edit="about.introTitle"
+                data-edit-label={ed('Título do texto de abertura')}
               >
-                {paragraph}
-              </p>
-            ))
+                {about.introTitle}
+              </h2>
+            )
           }
+          <p
+            class="intro-text"
+            data-edit="about.introText"
+            data-edit-kind={ed('multiline')}
+            data-edit-label={ed('Texto de abertura')}
+          >
+            {about.introText}
+          </p>
         </div>
-      </div>
+      )
+    }
 
-      <div class="principles" data-reveal data-edit-list={ed('about.principles')}>
+    <!-- Cartões no padrão já usado em Serviços (.card.highlight) — venceu o
+         teste A/B frente à caixa de texto do fundador (removida). Conteúdo
+         editável: reaproveita o campo `about.principles` (painel "Cartões
+         laterais" no admin de Quem Somos). -->
+    <div class="container" data-reveal>
+      <div class="grid grid--4 principles-grid" data-edit-list={ed('about.principles')}>
         {
           about.principles.map((item, index) => (
-            <article class="principle" data-edit-item={ed(index)}>
-              <span class="icon-badge icon-badge--sm">
+            <article
+              class="card highlight"
+              data-card-key={`qs-principle-${index}`}
+              data-edit-item={ed(index)}
+            >
+              <span class="icon-badge icon-badge--accent icon-badge--sm">
                 <Icon
                   name={item.icon}
-                  size={20}
+                  size={16}
                   data-edit={`about.principles.${index}.icon`}
                   data-edit-kind={ed('icon')}
                   data-edit-value={item.icon}
                   data-edit-label={ed('Ícone')}
                 />
               </span>
-              <div>
-                <h3
-                  data-edit={`about.principles.${index}.title`}
-                  data-edit-label={ed('Título')}
-                >
-                  {item.title}
-                </h3>
-                <p
-                  data-edit={`about.principles.${index}.text`}
-                  data-edit-kind={ed('multiline')}
-                  data-edit-label={ed('Texto')}
-                >
-                  {item.text}
-                </p>
-              </div>
+              <h2
+                data-edit={`about.principles.${index}.title`}
+                data-edit-label={ed('Título')}
+              >
+                {item.title}
+              </h2>
+              <p
+                data-edit={`about.principles.${index}.text`}
+                data-edit-kind={ed('multiline')}
+                data-edit-label={ed('Texto')}
+              >
+                {item.text}
+              </p>
             </article>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="container" data-reveal>
+      <p class="eyebrow" data-edit="about.bodyEyebrow" data-edit-label={ed('Etiqueta')}>
+        {about.bodyEyebrow}
+      </p>
+      <h2 class="title-md" data-edit="about.bodyTitle" data-edit-label={ed('Título')}>
+        {about.bodyTitle}
+      </h2>
+      <div
+        class="stack"
+        style="margin-top: var(--sp-5)"
+        data-edit-list={ed('about.paragraphs')}
+      >
+        {
+          about.paragraphs.map((paragraph, index) => (
+            <p
+              class="about__p"
+              data-edit={`about.paragraphs.${index}`}
+              data-edit-kind={ed('multiline')}
+              data-edit-item={ed(index)}
+            >
+              {paragraph}
+            </p>
           ))
         }
       </div>
@@ -207,7 +239,7 @@ const secStyle = (key: string, style: SectionStyle) =>
               ['vision', missionVisionValues.vision],
             ] as const
           ).map(([key, item]) => (
-            <article class="mvv__card">
+            <article class="mvv__card" data-card-key={`qs-${key}`}>
               <span class="icon-badge">
                 <Icon
                   name={item.icon}
@@ -233,117 +265,49 @@ const secStyle = (key: string, style: SectionStyle) =>
         }
       </div>
 
-      <div
-        class="grid grid--3"
-        style="margin-top: var(--sp-8)"
-        data-edit-list={ed('missionVisionValues.values')}
-      >
-        {
-          missionVisionValues.values.map((value, index) => (
-            <article class="card" data-reveal data-edit-item={ed(index)}>
-              <span class="icon-badge icon-badge--accent icon-badge--sm">
-                <Icon
-                  name={value.icon}
-                  size={18}
-                  data-edit={`missionVisionValues.values.${index}.icon`}
-                  data-edit-kind={ed('icon')}
-                  data-edit-value={value.icon}
-                  data-edit-label={ed('Ícone')}
-                />
-              </span>
-              <h3
-                data-edit={`missionVisionValues.values.${index}.title`}
-                data-edit-label={ed('Título')}
-              >
-                {value.title}
-              </h3>
-              <p
-                data-edit={`missionVisionValues.values.${index}.text`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Texto')}
-              >
-                {value.text}
-              </p>
-            </article>
-          ))
-        }
-      </div>
+      {
+        (missionVisionValues.values.length > 0 || edit) && (
+          <div class="values-frame">
+            <p class="values-frame__label">Valores</p>
+            <div
+              class="grid grid--3 mvv-values-grid"
+              style={`--mvv-count: ${Math.min(Math.max(missionVisionValues.values.length, 1), 3)};`}
+              data-edit-list={ed('missionVisionValues.values')}
+            >
+              {
+                missionVisionValues.values.map((value, index) => (
+                  <article class="card" data-reveal data-card-key={`qs-value-${index}`} data-edit-item={ed(index)}>
+                    <span class="icon-badge icon-badge--accent icon-badge--sm">
+                      <Icon
+                        name={value.icon}
+                        size={18}
+                        data-edit={`missionVisionValues.values.${index}.icon`}
+                        data-edit-kind={ed('icon')}
+                        data-edit-value={value.icon}
+                        data-edit-label={ed('Ícone')}
+                      />
+                    </span>
+                    <h3
+                      data-edit={`missionVisionValues.values.${index}.title`}
+                      data-edit-label={ed('Título')}
+                    >
+                      {value.title}
+                    </h3>
+                    <p
+                      data-edit={`missionVisionValues.values.${index}.text`}
+                      data-edit-kind={ed('multiline')}
+                      data-edit-label={ed('Texto')}
+                    >
+                      {value.text}
+                    </p>
+                  </article>
+                ))
+              }
+            </div>
+          </div>
+        )
+      }
       <SectionOverlays section="mvv" overlays={overlays} />
-    </div>
-  </section>
-
-  <section
-    class:list={['section', 'section--subtle', secClass('segments')]}
-    style={secStyle('segments', sectionStyles.segments)}
-    data-section="segments"
-    data-section-label={ed('Para quem atuamos')}
-  >
-    <div class="container">
-      <div class="section-head section-head--center" data-reveal>
-        <p class="eyebrow" data-edit="clientSegments.eyebrow">{clientSegments.eyebrow}</p>
-        <h2 class="title-lg" data-edit="clientSegments.title">{clientSegments.title}</h2>
-        <p class="lead" data-edit="clientSegments.text" data-edit-kind={ed('multiline')}>
-          {clientSegments.text}
-        </p>
-      </div>
-
-      <div class="segments" data-reveal data-edit-list={ed('clientSegments.items')}>
-        {
-          clientSegments.items.map((item, index) => (
-            <article class="segment" data-edit-item={ed(index)}>
-              <span class="icon-badge icon-badge--sm">
-                <Icon
-                  name={item.icon}
-                  size={18}
-                  data-edit={`clientSegments.items.${index}.icon`}
-                  data-edit-kind={ed('icon')}
-                  data-edit-value={item.icon}
-                  data-edit-label={ed('Ícone')}
-                />
-              </span>
-              <h3
-                data-edit={`clientSegments.items.${index}.label`}
-                data-edit-label={ed('Nome do segmento')}
-              >
-                {item.label}
-              </h3>
-              <p
-                class="segment__detail"
-                data-edit={`clientSegments.items.${index}.detail`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Detalhe')}
-              >
-                {item.detail}
-              </p>
-              <p
-                class="segment__behavior"
-                data-edit={`clientSegments.items.${index}.behavior`}
-                data-edit-kind={ed('multiline')}
-                data-edit-label={ed('Comportamento')}
-              >
-                {item.behavior}
-              </p>
-            </article>
-          ))
-        }
-      </div>
-      <SectionOverlays section="segments" overlays={overlays} />
-
-      <div class="services-line" data-reveal>
-        <p class="muted small">Serviços disponíveis:</p>
-        <ul>
-          {
-            publishedServices.map((service) => (
-              <li>
-                <a href={`/servicos/${service.slug}`}>
-                  <Icon name={service.icon} size={16} />
-                  {service.name}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
-      </div>
     </div>
   </section>
 
@@ -393,9 +357,54 @@ const secStyle = (key: string, style: SectionStyle) =>
     opacity: 0.35;
     filter: grayscale(0.6);
   }
+
+  /* A imagem do topo tem um logo desenhado no canto inferior direito — o
+     `object-position` padrão do herói-foto (pensado para fotos de pessoa)
+     corta esse canto em várias larguras/alturas de tela. Só nesta página,
+     a âncora do corte vai para o canto inferior direito: o que sobra
+     (corta) é sempre a borda de cima/esquerda, nunca o canto do logo. */
+  body.page-quem-somos .page-hero__photo {
+    object-position: 100% 100%;
+  }
+
+  /* A regra de celular do herói-foto (mais específica, dentro do próprio
+     componente) também ancora em 75% 50% por padrão — aqui força a mesma
+     âncora no canto inferior direito, senão o celular volta a cortar o
+     logo mesmo com a regra acima. */
+  @media (max-width: 939px) {
+    body.page-quem-somos .page-hero--photo .page-hero__photo {
+      object-position: 100% 100% !important;
+    }
+  }
+
+  /* Mais respiro entre o texto e o DNA: o degradê escuro padrão recua a
+     70% da largura — aqui ele recua mais tarde e de forma mais suave, dando
+     mais espaço visual entre a área de leitura e a imagem nítida. */
+  body.page-quem-somos .page-hero--photo .page-hero__bg {
+    background: linear-gradient(90deg, rgba(6, 22, 46, 0.82), rgba(6, 22, 46, 0.3) 82%);
+  }
 </style>
 
 <style>
+  /* Título "Nossa atuação" — sem teto de largura no container, mas o
+     `text-wrap: balance` sitewide dos títulos ainda escolhe uma quebra de
+     linha mais estreita e "equilibrada", destoando do parágrafo largo
+     logo abaixo. Aqui ele quebra usando a largura cheia disponível. */
+  section[data-section='about'] h2.title-md {
+    text-wrap: wrap;
+  }
+
+  /* "Como atuamos" — mesmo ajuste feito em Serviços: `.section-head` tem
+     teto de 46rem por padrão (bem mais estreito que os cartões acima) e o
+     título quebra "equilibrado" numa largura ainda menor. */
+  section[data-section='howWeWork'] .section-head {
+    max-width: none;
+  }
+
+  section[data-section='howWeWork'] .section-head h2 {
+    text-wrap: wrap;
+  }
+
   .about__p {
     color: var(--text-muted);
     font-size: var(--fs-md);
@@ -403,32 +412,140 @@ const secStyle = (key: string, style: SectionStyle) =>
     white-space: pre-line;
   }
 
-  .principles {
-    display: grid;
-    gap: var(--sp-4);
+  .intro-text__title {
+    margin-bottom: var(--sp-4);
   }
 
-  .principle {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--sp-4);
-    align-items: start;
-    padding: var(--sp-5);
-    background: var(--c-white);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-  }
-
-  .principle h3 {
-    font-size: var(--fs-base);
-    margin-bottom: 0.25rem;
-  }
-
-  .principle p {
-    font-size: var(--fs-sm);
+  .intro-text {
     color: var(--text-muted);
+    font-size: var(--fs-md);
     line-height: var(--lh-relaxed);
     white-space: pre-line;
+    margin-bottom: clamp(2rem, 5vw, 3rem);
+  }
+
+  /* O "elo" (faixa azul) usa o `.section-head` padrão, com teto de 46rem —
+     bem mais estreito que o container do texto logo acima ("Nossa
+     atuação"), o que desalinhava as bordas esquerda/direita entre as duas
+     seções. Aqui ele acompanha a mesma largura do container. */
+  .section--brand .section-head {
+    max-width: none;
+  }
+
+  /* Cartões de destaque entre o topo (com a foto) e o texto "Nossa atuação". */
+  /* `.grid--4` é uma grade fixa de 4 colunas — com menos de 4 cartões, os
+     que sobram ficam "faltando" à direita em vez de centralizados. Aqui
+     vira uma linha flexível que sempre centraliza o grupo, tenha 1, 2, 3
+     ou 4 cartões, mantendo a mesma largura por cartão em cada breakpoint. */
+  .principles-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: clamp(2rem, 5vw, 3rem);
+  }
+
+  .principles-grid .card.highlight {
+    flex: 0 1 100%;
+  }
+
+  @media (min-width: 640px) and (max-width: 999px) {
+    .principles-grid .card.highlight {
+      flex: 0 1 calc(50% - var(--sp-6) / 2);
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .principles-grid .card.highlight {
+      flex: 0 1 calc(25% - (var(--sp-6) * 3 / 4));
+    }
+  }
+
+  /* Moldura que une os cartões de valores num só bloco, com "VALORES"
+     recortando a borda no topo — mesmo padrão da moldura do diagrama
+     "elo" (EloDiagram.astro), mas em tom claro pra combinar com o fundo
+     branco desta seção. */
+  .values-frame {
+    position: relative;
+    margin-top: var(--sp-8);
+    border: 2px solid var(--c-accent-500);
+    border-radius: var(--r-xl);
+    padding: clamp(2.25rem, 4vw, 3rem) clamp(1.25rem, 3vw, 2rem) clamp(1.5rem, 3vw, 2rem);
+    box-shadow: 0 0 0 4px rgba(18, 167, 148, 0.08);
+  }
+
+  .values-frame__label {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    max-width: calc(100% - 2rem);
+    padding: 0.35rem var(--sp-6);
+    background: var(--c-white);
+    border: 2px solid var(--c-accent-500);
+    border-radius: var(--r-pill);
+    color: var(--c-accent-700);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* Texto curto em cartão estreito: justificado abre buracos enormes entre as
+     palavras — nestes cartões fica alinhado à esquerda. */
+  .mvv-values-grid .card p,
+  .principles-grid .card p {
+    text-align: left;
+  }
+
+  /* Cartões de valores — sempre centralizados como grupo, e distribuídos
+     para ocupar a largura inteira da moldura acima (`--mvv-count` vem do
+     número real de itens, então se um cartão for adicionado ou removido
+     depois, a largura de cada um se ajusta sozinha, sem sobrar nem faltar
+     espaço). */
+  .mvv-values-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .mvv-values-grid .card {
+    flex: 0 1 100%;
+  }
+
+  /* Telas médias (tablet / janela estreita): 3 colunas deixavam cada cartão com
+     ~150px de texto, quebrando a frase cedo demais. Aqui são 2 por linha e o
+     recuo interno é menor; as 3 colunas só voltam quando há espaço de sobra. */
+  .mvv-values-grid .card {
+    padding: clamp(1rem, 2.2vw, 1.5rem);
+  }
+
+  @media (min-width: 600px) {
+    .mvv-values-grid .card {
+      flex: 0 1 calc((100% - var(--sp-6)) / 2);
+    }
+  }
+
+  @media (min-width: 940px) {
+    .mvv-values-grid .card {
+      flex: 0 1
+        calc((100% - (var(--mvv-count, 3) - 1) * var(--sp-6)) / var(--mvv-count, 3));
+    }
+  }
+
+  @media (max-width: 939px) {
+    .values-frame {
+      padding-inline: clamp(0.75rem, 2.5vw, 1.5rem);
+    }
+  }
+
+  .principles-grid .highlight h2 {
+    font-size: var(--fs-base);
+  }
+
+  .principles-grid .highlight p {
+    font-size: var(--fs-xs);
   }
 
   .mvv {
@@ -448,8 +565,9 @@ const secStyle = (key: string, style: SectionStyle) =>
     gap: var(--sp-3);
     padding: clamp(1.35rem, 2.5vw, 2rem);
     border-radius: var(--r-lg);
-    background: linear-gradient(150deg, var(--c-brand-50), var(--c-white));
-    border: 1px solid var(--c-brand-100);
+    background: var(--card-bg, var(--c-brand-50));
+    border: 1px solid var(--card-border, var(--c-brand-100));
+    border-top: 3px solid var(--card-accent, var(--c-brand-100));
   }
 
   .mvv__card h3 {
@@ -461,94 +579,5 @@ const secStyle = (key: string, style: SectionStyle) =>
     color: var(--text-muted);
     line-height: var(--lh-relaxed);
     white-space: pre-line;
-  }
-
-  .segments {
-    display: grid;
-    gap: var(--sp-4);
-  }
-
-  @media (min-width: 640px) {
-    .segments {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 980px) {
-    .segments {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .segment {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: var(--sp-5);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    background: var(--c-white);
-  }
-
-  .segment h3 {
-    font-size: var(--fs-base);
-    margin-top: 0.25rem;
-  }
-
-  .segment__detail {
-    font-size: var(--fs-xs);
-    color: var(--text-faint);
-    line-height: var(--lh-normal);
-    white-space: pre-line;
-  }
-
-  .segment__behavior {
-    font-size: var(--fs-sm);
-    color: var(--text-muted);
-    line-height: var(--lh-relaxed);
-    padding-top: 0.35rem;
-    border-top: 1px solid var(--line);
-    margin-top: 0.25rem;
-    white-space: pre-line;
-  }
-
-  .services-line {
-    margin-top: var(--sp-10);
-    padding-top: var(--sp-6);
-    border-top: 1px solid var(--line);
-  }
-
-  .services-line ul {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-2);
-    list-style: none;
-    margin: var(--sp-3) 0 0;
-    padding: 0;
-  }
-
-  .services-line a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: var(--r-pill);
-    border: 1px solid var(--line);
-    background: var(--c-white);
-    font-size: var(--fs-xs);
-    color: var(--text-muted);
-    text-decoration: none;
-    transition:
-      border-color var(--dur) var(--ease),
-      color var(--dur) var(--ease);
-  }
-
-  .services-line a:hover {
-    border-color: var(--c-brand-300);
-    color: var(--c-brand-700);
-  }
-
-  .services-line :global(.icon) {
-    color: var(--c-accent-500);
   }
 </style>

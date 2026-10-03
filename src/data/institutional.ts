@@ -188,29 +188,48 @@ export const about = {
     'Atuamos estrategicamente in loco no prestador de serviço para promover a otimização de processos, garantindo resolutividade e agilidade, e validando o tratamento conforme o perfil clínico. Nossos auditores — médicos e enfermeiros — realizam visitas à beira-leito e mantêm contato direto com a equipe assistencial e o médico assistente, exercendo dupla checagem e análise minuciosa de dados na rede de Brasília: hospitais de alta complexidade, unidades de transição e home care.',
     'Essa atuação é potencializada pelo uso integrado de um software de gestão da jornada do paciente, associado à metodologia DRG (Diagnosis Related Groups), que estrutura a análise das internações, mensura complexidade e prediz prorrogações de permanência — convertendo dados operacionais em previsibilidade, mitigação de riscos e conformidade regulatória.',
   ],
+  /** Imagem de fundo do topo (substitui o fundo azul). Vazio = fundo azul. */
+  heroBg: '',
+  heroBgAlt: '',
+  /** Título do texto de abertura — opcional, some se vazio (igual ao texto). */
+  introTitle: '',
+  /** Texto de abertura entre o herói e os cartões — opcional, some se vazio. */
+  introText:
+    'Representamos a operadora de saúde suplementar e os financiadores do cuidado junto à rede prestadora, acompanhando a jornada do paciente e analisando a adequação do tratamento ao quadro clínico. Nossa atuação gera informação qualificada para antecipar riscos, apoiar decisões e responder com agilidade às situações que impactam a internação e os custos assistenciais.\n\nNossa atuação é estruturada de acordo com as necessidades, características da carteira e objetivos de cada operadora, com presença em hospitais de alta complexidade, unidades de transição de agudos e home care. Nossos auditores atuam à beira leito, analisam prontuários, prescrições, exames e procedimentos e interagem diretamente com as equipes assistenciais e médicos assistentes, identificando inconsistências, oportunidades de desospitalização segura e uso adequado dos recursos.\n\nA plataforma Carefy amplia essa capacidade ao processar os dados da internação e sinalizar riscos, oportunidades e tendências de permanência. A integração entre presença técnica, inteligência de dados e análise especializada fortalece a qualidade e a segurança do cuidado, otimiza recursos e contribui para uma gestão mais eficiente da sinistralidade.\n\nMais do que acompanhar internações, entregamos presença, informação e ação no momento em que elas fazem diferença — promovendo respostas ágeis, otimizando recursos e gerando valor para quem financia o cuidado.',
+  /**
+   * Caixa de qualificações do fundador, entre o hero e o texto "Nossa
+   * atuação" — texto livre e o link do LinkedIn ao lado, os dois editáveis.
+   * `linkedinUrl` vazio esconde o botão (não faz sentido linkar para lugar
+   * nenhum).
+   */
+  founder: {
+    text: 'Mais de 25 anos de experiência em assistência, gestão e auditoria em saúde, atuando em instituições de referência no Brasil e no exterior.',
+    linkedinUrl: '',
+    linkedinLabel: 'Ver perfil no LinkedIn',
+  },
   image: '/images/quem-somos.svg',
   imageAlt:
     'Composição gráfica institucional representando a atuação técnica da Essencial Saúde',
   principles: [
     {
-      icon: 'heart',
-      title: 'Assistência centrada no paciente',
-      text: 'Proteger a vida e a dignidade do paciente acima de qualquer processo ou burocracia.',
+      icon: 'check',
+      title: 'Visita técnica beira-leito',
+      text: 'Auditores, médicos e enfermeiros in loco, com leitura do prontuário e observação direta da evolução clínica.',
     },
     {
-      icon: 'scale',
-      title: 'Rigor e assertividade técnica',
-      text: 'Cada validação baseada em evidências clínicas rígidas e visitas técnicas minuciosas em tempo real.',
+      icon: 'check',
+      title: 'Interação com a equipe assistencial',
+      text: 'Contato técnico com o médico assistente e com a equipe multiprofissional, preservando a autonomia clínica.',
     },
     {
-      icon: 'eye',
-      title: 'Integridade e transparência',
-      text: 'Canais de comunicação limpos, fluidos e éticos com todas as partes envolvidas.',
+      icon: 'check',
+      title: 'Dupla checagem',
+      text: 'Análise minuciosa de dados, apoiada em metodologia de atuação e software de gestão da jornada do paciente.',
     },
     {
-      icon: 'handshake',
-      title: 'Parceria colaborativa',
-      text: 'Somar forças com operadoras/fonte pagadora e prestadores para construir soluções preventivas.',
+      icon: 'check',
+      title: 'Transição de cuidado',
+      text: 'Preparo antecipado da alta, da desospitalização e da continuidade do cuidado no nível de atenção adequado.',
     },
   ],
 };
@@ -359,6 +378,45 @@ export const indicators = {
     { icon: 'network', value: '', unit: '', text: '' },
   ],
 };
+
+export const heroSlides = [
+  {
+    title: 'Presença Técnica onde o cuidado acontece',
+    text: 'Atua na rede prestadora, conectando a operadora de saúde à realidade assistencial e apoiando decisões mais assertivas.',
+    image: '/images/home/presenca-tecnica-ampla.webp',
+    alt: 'Paciente em leito hospitalar acompanhado por médica e enfermeiro em ambiente claro',
+  },
+  {
+    title: 'Presença Técnica integrada à rede',
+    text: 'Acompanha a evolução clínica no prestador, aproximando beneficiário, equipe assistencial e operadora para decisões mais seguras.',
+    image: '/images/home/presenca-tecnica-clara.png',
+    alt: 'Equipe de saúde acompanhando paciente internado em quarto hospitalar iluminado',
+  },
+  {
+    title: 'Gestão da Jornada do Paciente',
+    text: 'Coordena a transição entre níveis de atenção, assegurando o cuidado adequado, no momento certo e pelo tempo necessário.',
+    image: '/images/home/jornada-paciente-ampla.webp',
+    alt: 'Paciente em cadeira de rodas acompanhado por profissionais de saúde diversos',
+  },
+  {
+    title: 'Eficiência Sustentável',
+    text: 'Transforma dados fragmentados e cenários imprevisíveis em informação integrada para ampliar a previsibilidade e otimizar custos.',
+    image: '/images/home/eficiencia-sustentavel-ampla.webp',
+    alt: 'Equipe de saúde analisando painel de redução de custos e aumento de eficiência',
+  },
+  {
+    title: 'Inteligência em Saúde',
+    text: 'Tecnologia Carefy processa dados com agilidade e precisão, protegendo informações sensíveis e sinalizando riscos e oportunidades.',
+    image: '/images/home/inteligencia-saude-auditoria.png',
+    alt: 'Profissional de saúde utilizando tecnologia de auditoria integrada',
+  },
+  {
+    title: 'Auditoria conectada à decisão',
+    text: 'Integra tecnologia, informação assistencial e análise técnica para sinalizar riscos e oportunidades com mais precisão.',
+    image: '/images/home/inteligencia-saude-escura.png',
+    alt: 'Profissional médico utilizando tablet com sistema de auditoria em saúde',
+  },
+];
 
 export const faqItems = [
   {

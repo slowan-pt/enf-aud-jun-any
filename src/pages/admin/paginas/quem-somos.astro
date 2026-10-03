@@ -12,6 +12,10 @@ import Icon from '../../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getQuemSomosContent, updateQuemSomosContent } from '../../../lib/documents';
 import { getSettings, updateSetting } from '../../../lib/settings';
+import RowsEditor from '../../../components/admin/RowsEditor.astro';
+import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
+import { readRows } from '../../../lib/form-rows';
+import { iconPaths } from '../../../data/icons';
 
 const db = getDB();
 
@@ -30,12 +34,36 @@ if (Astro.request.method === 'POST') {
       eyebrow: text('about_eyebrow', current.about.eyebrow),
       title: text('about_title', current.about.title),
       lead: text('about_lead', current.about.lead),
+      heroBg: text('about_heroBg', current.about.heroBg),
+      heroBgAlt: text('about_heroBgAlt', current.about.heroBgAlt),
+      introTitle: text('about_introTitle', current.about.introTitle),
+      introText: text('about_introText', current.about.introText),
+      founder: {
+        text: text('founder_text', current.about.founder.text),
+        linkedinUrl: text('founder_linkedin_url', current.about.founder.linkedinUrl),
+        linkedinLabel: text('founder_linkedin_label', current.about.founder.linkedinLabel),
+      },
+      bodyEyebrow: text('about_bodyEyebrow', current.about.bodyEyebrow),
+      bodyTitle: text('about_bodyTitle', current.about.bodyTitle),
+      paragraphs: text('about_paragraphs', current.about.paragraphs.join('\n\n'))
+        .split(/\n\s*\n/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean),
+      image: text('about_image', current.about.image),
+      imageAlt: text('about_imageAlt', current.about.imageAlt),
+      principles: readRows(form, 'principle', ['icon', 'title', 'text'] as const, 12),
     },
     elo: {
       ...current.elo,
       eyebrow: text('elo_eyebrow', current.elo.eyebrow),
       title: text('elo_title', current.elo.title),
       text: text('elo_text', current.elo.text),
+      nodes: readRows(form, 'elonode', ['key', 'icon', 'label', 'text', 'tag'] as const, 6).map(
+        (node, index) => ({
+          ...node,
+          key: node.key || `no${Date.now().toString(36)}${index}`,
+        })
+      ),
     },
   };
 
@@ -44,11 +72,28 @@ if (Astro.request.method === 'POST') {
     eyebrow: text('how_eyebrow', currentSettings.howWeWork.eyebrow),
     title: text('how_title', currentSettings.howWeWork.title),
     text: text('how_text', currentSettings.howWeWork.text),
+    steps: readRows(form, 'step', ['icon', 'title', 'text'] as const, 12).map((step, index) => ({
+      number: String(index + 1).padStart(2, '0'),
+      ...step,
+    })),
   };
   const updatedMissionVisionValues = {
     ...currentSettings.missionVisionValues,
     eyebrow: text('mvv_eyebrow', currentSettings.missionVisionValues.eyebrow),
     title: text('mvv_title', currentSettings.missionVisionValues.title),
+    mission: {
+      ...currentSettings.missionVisionValues.mission,
+      icon: text('mission_icon', currentSettings.missionVisionValues.mission.icon),
+      title: text('mission_title', currentSettings.missionVisionValues.mission.title),
+      text: text('mission_text', currentSettings.missionVisionValues.mission.text),
+    },
+    vision: {
+      ...currentSettings.missionVisionValues.vision,
+      icon: text('vision_icon', currentSettings.missionVisionValues.vision.icon),
+      title: text('vision_title', currentSettings.missionVisionValues.vision.title),
+      text: text('vision_text', currentSettings.missionVisionValues.vision.text),
+    },
+    values: readRows(form, 'value', ['icon', 'title', 'text'] as const, 12),
   };
   const updatedClientSegments = {
     ...currentSettings.clientSegments,
@@ -80,7 +125,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
 
 <AdminLayout
   title="Quem Somos — Conteúdo"
-  description="Textos de abertura de cada seção. Itens de lista e elementos livres são editados no Editor Visual."
+  description="Todos os textos, imagens e cartões da página. O Editor Visual continua disponível para posicionar elementos livres."
   active="/admin/editor"
 >
   <div slot="actions">
@@ -117,12 +162,116 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           <label class="label" for="about_title">Título</label>
           <input class="input" id="about_title" name="about_title" value={about.title} />
         </div>
+        <ImageUploadField
+          id="about_heroBg"
+          name="about_heroBg"
+          value={about.heroBg}
+          label="Imagem de fundo do topo (substitui o fundo azul; vazio = azul)"
+        />
+        <div class="field">
+          <label class="label" for="about_heroBgAlt">Texto alternativo do fundo do topo</label>
+          <input class="input" id="about_heroBgAlt" name="about_heroBgAlt" value={about.heroBgAlt} />
+        </div>
         <div class="field">
           <label class="label" for="about_lead">Texto de apoio</label>
           <textarea class="textarea" id="about_lead" name="about_lead" rows="3"
             >{about.lead}</textarea
           >
         </div>
+        <div class="field">
+          <label class="label" for="about_introTitle"
+            >Título do texto de abertura (vazio = oculto)</label
+          >
+          <input
+            class="input"
+            id="about_introTitle"
+            name="about_introTitle"
+            value={about.introTitle}
+          />
+        </div>
+        <div class="field">
+          <label class="label" for="about_introText"
+            >Texto de abertura (entre a foto e os cartões; vazio = oculto)</label
+          >
+          <textarea class="textarea" id="about_introText" name="about_introText" rows="6"
+            >{about.introText}</textarea
+          >
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Qualificações do fundador</h2>
+      </div>
+      <div class="panel__body stack">
+        <p class="hint">
+          Aparece numa caixa entre a foto do topo e o texto "Nossa atuação", com um botão para o
+          LinkedIn ao lado. Deixe o link do LinkedIn em branco para esconder o botão.
+        </p>
+        <div class="field">
+          <label class="label" for="founder_text">Texto das qualificações</label>
+          <textarea class="textarea" id="founder_text" name="founder_text" rows="3"
+            >{about.founder.text}</textarea
+          >
+        </div>
+        <div class="form-grid form-grid--2">
+          <div class="field">
+            <label class="label" for="founder_linkedin_url">Link do LinkedIn</label>
+            <input
+              class="input"
+              id="founder_linkedin_url"
+              name="founder_linkedin_url"
+              placeholder="https://www.linkedin.com/in/..."
+              value={about.founder.linkedinUrl}
+            />
+          </div>
+          <div class="field">
+            <label class="label" for="founder_linkedin_label">Texto do botão</label>
+            <input
+              class="input"
+              id="founder_linkedin_label"
+              name="founder_linkedin_label"
+              value={about.founder.linkedinLabel}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Nossa atuação (texto e cartões)</h2>
+      </div>
+      <div class="panel__body stack">
+        <div class="field">
+          <label class="label" for="about_bodyEyebrow">Selo</label>
+          <input class="input" id="about_bodyEyebrow" name="about_bodyEyebrow" value={about.bodyEyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="about_bodyTitle">Título</label>
+          <input class="input" id="about_bodyTitle" name="about_bodyTitle" value={about.bodyTitle} />
+        </div>
+        <div class="field">
+          <label class="label" for="about_paragraphs">Parágrafos (separe com uma linha em branco)</label>
+          <textarea class="textarea" id="about_paragraphs" name="about_paragraphs" rows="14">{about.paragraphs.join('\n\n')}</textarea>
+        </div>
+        <ImageUploadField id="about_image" name="about_image" value={about.image} label="Imagem do topo" />
+        <div class="field">
+          <label class="label" for="about_imageAlt">Texto alternativo da imagem</label>
+          <input class="input" id="about_imageAlt" name="about_imageAlt" value={about.imageAlt} />
+        </div>
+        <h3 class="form-section__title">Cartões laterais</h3>
+        <RowsEditor
+          name="principle"
+          items={about.principles}
+          fields={[
+            { key: 'icon', label: 'Ícone', kind: 'icon' },
+            { key: 'title', label: 'Título' },
+            { key: 'text', label: 'Texto', kind: 'textarea' },
+          ]}
+          addLabel="Adicionar cartão"
+        />
       </div>
     </section>
 
@@ -144,6 +293,24 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           <textarea class="textarea" id="elo_text" name="elo_text" rows="3">{elo.text}</textarea
           >
         </div>
+        <h3 class="form-section__title">Diagrama (cartões)</h3>
+        <p class="hint">
+          O cartão "Essencial Saúde" fica em destaque e o "Paciente / Beneficiário" abaixo dos
+          demais. Cartões novos entram na linha do meio. Apague um cartão pelo botão Remover.
+        </p>
+        <RowsEditor
+          name="elonode"
+          items={elo.nodes.map((node) => ({ tag: '', ...node }))}
+          fields={[
+            { key: 'key', label: '', kind: 'hidden' },
+            { key: 'icon', label: 'Ícone', kind: 'icon' },
+            { key: 'label', label: 'Título' },
+            { key: 'text', label: 'Texto', kind: 'textarea' },
+            { key: 'tag', label: 'Selo (opcional)' },
+          ]}
+          max={6}
+          addLabel="Adicionar cartão"
+        />
       </div>
     </section>
 
@@ -166,6 +333,17 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
             >{howWeWork.text}</textarea
           >
         </div>
+        <h3 class="form-section__title">Etapas</h3>
+        <RowsEditor
+          name="step"
+          items={howWeWork.steps}
+          fields={[
+            { key: 'icon', label: 'Ícone', kind: 'icon' },
+            { key: 'title', label: 'Título' },
+            { key: 'text', label: 'Texto', kind: 'textarea' },
+          ]}
+          addLabel="Adicionar etapa"
+        />
       </div>
     </section>
 
@@ -192,33 +370,36 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
             value={missionVisionValues.title}
           />
         </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel__head">
-        <h2 class="panel__title">Para quem atuamos (abertura)</h2>
-      </div>
-      <div class="panel__body stack">
-        <div class="field">
-          <label class="label" for="seg_eyebrow">Selo</label>
-          <input
-            class="input"
-            id="seg_eyebrow"
-            name="seg_eyebrow"
-            value={clientSegments.eyebrow}
-          />
-        </div>
-        <div class="field">
-          <label class="label" for="seg_title">Título</label>
-          <input class="input" id="seg_title" name="seg_title" value={clientSegments.title} />
-        </div>
-        <div class="field">
-          <label class="label" for="seg_text">Texto</label>
-          <textarea class="textarea" id="seg_text" name="seg_text" rows="3"
-            >{clientSegments.text}</textarea
-          >
-        </div>
+        {
+          (
+            [
+              ['mission', 'Missão', missionVisionValues.mission],
+              ['vision', 'Visão', missionVisionValues.vision],
+            ] as const
+          ).map(([key, label, item]) => (
+            <div class="field">
+              <h3 class="form-section__title">{label}</h3>
+              <select class="select" name={`${key}_icon`} aria-label={`Ícone de ${label}`}>
+                {Object.keys(iconPaths).sort().map((icon) => (
+                  <option value={icon} selected={icon === item.icon}>{icon}</option>
+                ))}
+              </select>
+              <input class="input" name={`${key}_title`} value={item.title} placeholder="Título" />
+              <textarea class="textarea" name={`${key}_text`} rows="3">{item.text}</textarea>
+            </div>
+          ))
+        }
+        <h3 class="form-section__title">Valores</h3>
+        <RowsEditor
+          name="value"
+          items={missionVisionValues.values}
+          fields={[
+            { key: 'icon', label: 'Ícone', kind: 'icon' },
+            { key: 'title', label: 'Título' },
+            { key: 'text', label: 'Texto', kind: 'textarea' },
+          ]}
+          addLabel="Adicionar valor"
+        />
       </div>
     </section>
 
@@ -228,7 +409,7 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       </div>
       <div class="panel__body">
         <p class="muted small">
-          Princípios, missão/visão/valores individuais, segmentos e qualquer elemento livre ou
+          Princípios, missão/visão/valores individuais e qualquer elemento livre ou
           forma são editados diretamente no <a href="/admin/editor/quem-somos">Editor Visual</a
           >, clicando no próprio texto ou imagem.
         </p>

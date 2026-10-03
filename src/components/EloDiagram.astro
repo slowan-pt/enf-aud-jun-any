@@ -1,8 +1,12 @@
 ---
 /**
  * Diagrama do modelo Essencial — HTML + CSS + SVG (sem imagem estática).
- * Desktop: eixo horizontal Operadora → Essencial → Prestador, com o Paciente
- * ao centro, abaixo. Mobile: fluxo vertical.
+ * Desktop: eixo horizontal com os nós em linha; o nó "paciente" (quando
+ * existe) fica ao centro, abaixo. Mobile: fluxo vertical.
+ *
+ * Os nós vêm de `elo.nodes` e são livres: dá para editar texto/ícone, remover,
+ * duplicar e reordenar (Editor Visual e formulário de Páginas). Papéis pela
+ * `key`: "essencial" = nó em destaque; "paciente" = nó de baixo, se houver.
  */
 import Icon from './Icon.astro';
 import { elo as defaultElo } from '../data/institutional';
@@ -13,47 +17,137 @@ interface Props {
 }
 
 const { elo = defaultElo } = Astro.props;
-const [pagador, essencial, prestador, paciente] = elo.nodes;
+const { company } = Astro.locals.settings;
+const edit = Boolean(Astro.locals.editMode);
+const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
+
+type Node = (typeof elo.nodes)[number] & { tag?: string };
+const nodes = elo.nodes as Node[];
+const patientIndex = nodes.findIndex((node) => node.key === 'paciente');
+const rowNodes = nodes
+  .map((node, index) => ({ node, index }))
+  .filter(({ index }) => index !== patientIndex);
+const patient = patientIndex >= 0 ? nodes[patientIndex]! : null;
 ---
 
-<div class="elo" role="group" aria-label="Modelo de atuação da Essencial Saúde">
+<div class="elo-frame">
+  <p class="elo-frame__label">{company.name}</p>
+  <div
+    class="elo"
+    role="group"
+    aria-label="Modelo de atuação da Essencial Saúde"
+    data-edit-list={ed('elo.nodes')}
+  >
   <div class="elo__row">
-    <article class="elo__node">
-      <span class="elo__icon"><Icon name={pagador!.icon} size={22} /></span>
-      <h3>{pagador!.label}</h3>
-      <p>{pagador!.text}</p>
-    </article>
-
-    <span class="elo__link" aria-hidden="true"><i></i></span>
-
-    <article class="elo__node elo__node--core">
-      <span class="elo__icon elo__icon--core"><Icon name={essencial!.icon} size={24} /></span>
-      <h3>{essencial!.label}</h3>
-      <p>{essencial!.text}</p>
-      <span class="elo__tag">Elo técnico</span>
-    </article>
-
-    <span class="elo__link" aria-hidden="true"><i></i></span>
-
-    <article class="elo__node">
-      <span class="elo__icon"><Icon name={prestador!.icon} size={22} /></span>
-      <h3>{prestador!.label}</h3>
-      <p>{prestador!.text}</p>
-    </article>
+    {
+      rowNodes.map(({ node, index }, position) => (
+        <>
+          {position > 0 && (
+            <span class="elo__link" aria-hidden="true">
+              <i />
+            </span>
+          )}
+          <article
+            class:list={['elo__node', node.key === 'essencial' && 'elo__node--core']}
+            data-edit-item={ed(index)}
+          >
+            <span class:list={['elo__icon', node.key === 'essencial' && 'elo__icon--core']}>
+              <Icon
+                name={node.icon}
+                size={node.key === 'essencial' ? 24 : 22}
+                data-edit={`elo.nodes.${index}.icon`}
+                data-edit-kind={ed('icon')}
+                data-edit-value={node.icon}
+                data-edit-label={ed('Ícone')}
+              />
+            </span>
+            <h3 data-edit={`elo.nodes.${index}.label`} data-edit-label={ed('Título')}>
+              {node.label}
+            </h3>
+            <p
+              data-edit={`elo.nodes.${index}.text`}
+              data-edit-kind={ed('multiline')}
+              data-edit-label={ed('Texto')}
+            >
+              {node.text}
+            </p>
+            {(node.tag || (edit && typeof node.tag === 'string')) && (
+              <span class="elo__tag" data-edit={`elo.nodes.${index}.tag`} data-edit-label={ed('Selo')}>
+                {node.tag}
+              </span>
+            )}
+          </article>
+        </>
+      ))
+    }
   </div>
 
-  <span class="elo__link elo__link--down" aria-hidden="true"><i></i></span>
+  {
+    patient && (
+      <>
+        <span class="elo__link elo__link--down" aria-hidden="true">
+          <i />
+        </span>
 
-  <article class="elo__node elo__node--patient">
-    <span class="elo__icon elo__icon--patient"><Icon name={paciente!.icon} size={22} /></span>
-    <div>
-      <h3>{paciente!.label}</h3>
-      <p>{paciente!.text}</p>
-    </div>
-  </article>
+        <article class="elo__node elo__node--patient" data-edit-item={ed(patientIndex)}>
+          <span class="elo__icon elo__icon--patient">
+            <Icon
+              name={patient.icon}
+              size={22}
+              data-edit={`elo.nodes.${patientIndex}.icon`}
+              data-edit-kind={ed('icon')}
+              data-edit-value={patient.icon}
+              data-edit-label={ed('Ícone')}
+            />
+          </span>
+          <div>
+            <h3 data-edit={`elo.nodes.${patientIndex}.label`} data-edit-label={ed('Título')}>
+              {patient.label}
+            </h3>
+            <p
+              data-edit={`elo.nodes.${patientIndex}.text`}
+              data-edit-kind={ed('multiline')}
+              data-edit-label={ed('Texto')}
+            >
+              {patient.text}
+            </p>
+          </div>
+        </article>
+      </>
+    )
+  }
+  </div>
 </div>
 
 <style>
+  /* Moldura que engloba os três nós, com o nome da empresa "recortando" a
+     borda no topo (como uma legenda de fieldset) — usa a mesma cor sólida
+     de fundo da seção para o recorte funcionar. */
+  .elo-frame {
+    position: relative;
+    border: 2px solid rgba(111, 208, 194, 0.55);
+    border-radius: var(--r-xl);
+    padding: clamp(2rem, 4vw, 2.75rem) clamp(1.25rem, 3vw, 2rem) clamp(1.5rem, 3vw, 2rem);
+    box-shadow: 0 0 0 1px rgba(111, 208, 194, 0.15) inset;
+  }
+
+  .elo-frame__label {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    max-width: calc(100% - 2rem);
+    padding: 0 var(--sp-4);
+    background: var(--bg-brand);
+    color: #fff;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
   .elo {
     display: flex;
     flex-direction: column;
