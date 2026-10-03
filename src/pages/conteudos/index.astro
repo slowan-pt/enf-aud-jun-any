@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PageHero from '../../components/PageHero.astro';
 import PostCard from '../../components/PostCard.astro';
+import PageHero from '../../components/PageHero.astro';
 import Icon from '../../components/Icon.astro';
 import CtaBand from '../../components/CtaBand.astro';
 import SectionOverlays from '../../components/SectionOverlays.astro';
@@ -19,17 +19,13 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
 
 const categories = await listCategories(getDB());
 const publishedPosts = publishedOnly(Astro.locals.posts);
-const [featured, ...rest] = publishedPosts;
-/** Os chips filtram a grade (que não inclui o destaque), então as contagens
- *  são calculadas sobre `rest` e categorias sem itens na grade ficam de fora. */
 const countByCategory = (slug: string) =>
-  rest.filter((post) => post.categorySlug === slug).length;
+  publishedPosts.filter((post) => post.categorySlug === slug).length;
 const usedCategories = categories.filter((category) => countByCategory(category.slug) > 0);
 
 const db = getDB();
 const {
   hero,
-  featuredEyebrow,
   cta,
   pageStyle,
   sectionStyles,
@@ -47,9 +43,7 @@ const secClass = (key: string) =>
   isHidden(key) ? (editMode ? 'is-section-off-preview' : 'is-section-off') : '';
 
 // A grade de matérias em si vem do banco (tabela `posts`, gerida em
-// Conteúdo → Matérias) — aqui só a abertura e a chamada final são
-// documento editável; "destaque"/"grade" continuam mostrando os posts
-// reais, só a ordem ENTRE as 3 seções muda no editor.
+// Conteúdo → Matérias). A página abre diretamente nela.
 const slotOf = new Map<string, number>();
 sectionOrder.forEach((key, index) => slotOf.set(key, index));
 const secStyle = (key: string, style: SectionStyle) =>
@@ -69,36 +63,14 @@ const secStyle = (key: string, style: SectionStyle) =>
       title={hero.title}
       lead={hero.lead}
       crumbs={[{ label: 'Conteúdos' }]}
-      align="center"
+      bgImage={hero.bg}
+      bgImageAlt={hero.bgAlt}
+      bgEditPath={ed('hero.bg')}
       eyebrowEditPath={ed('hero.eyebrow')}
       titleEditPath={ed('hero.title')}
       leadEditPath={ed('hero.lead')}
     />
   </div>
-
-  {
-    featured && (
-      <section
-        class:list={['section section--tight', secClass('destaque')]}
-        data-section="destaque"
-        style={secStyle('destaque', sectionStyles.destaque)}
-        data-featured
-      >
-        <div class="container">
-          <p
-            class="eyebrow"
-            data-reveal
-            data-edit="featuredEyebrow"
-            data-edit-label={ed('Etiqueta do destaque')}
-          >
-            {featuredEyebrow}
-          </p>
-          <PostCard post={featured} featured />
-          <SectionOverlays overlays={overlays} section="destaque" />
-        </div>
-      </section>
-    )
-  }
 
   <section
     class:list={['section section--tight', secClass('grade')]}
@@ -110,7 +82,7 @@ const secStyle = (key: string, style: SectionStyle) =>
         <div class="filters__chips" role="group" aria-label="Filtrar por categoria">
           <button type="button" class="chip is-active" data-filter="all">
             Todos
-            <span class="chip__count">{rest.length}</span>
+            <span class="chip__count">{publishedPosts.length}</span>
           </button>
           {
             usedCategories.map((category) => (
@@ -135,7 +107,7 @@ const secStyle = (key: string, style: SectionStyle) =>
 
       <div class="grid grid--3 posts" data-posts>
         {
-          rest.map((post) => (
+          publishedPosts.map((post) => (
             <div data-category={post.categorySlug} data-title={post.title.toLowerCase()}>
               <PostCard post={post} />
             </div>
@@ -192,6 +164,10 @@ const secStyle = (key: string, style: SectionStyle) =>
   body.page-conteudos main > section {
     position: relative;
     container-type: inline-size;
+  }
+
+  body.page-conteudos main > section:first-of-type {
+    padding-top: clamp(1rem, 2.5vw, 2rem);
   }
 
   .is-section-off {
@@ -293,6 +269,10 @@ const secStyle = (key: string, style: SectionStyle) =>
     background: var(--c-ink-50);
   }
 
+  .empty h2 {
+    text-align: center;
+  }
+
   .empty[hidden] {
     display: none;
   }
@@ -308,8 +288,6 @@ const secStyle = (key: string, style: SectionStyle) =>
 
   let activeCategory = 'all';
 
-  const featuredSection = document.querySelector<HTMLElement>('[data-featured]');
-
   function apply() {
     const term = (search?.value ?? '').trim().toLowerCase();
     let visible = 0;
@@ -324,8 +302,6 @@ const secStyle = (key: string, style: SectionStyle) =>
     });
 
     if (empty) empty.hidden = visible > 0;
-    // o destaque não participa da filtragem: some enquanto houver filtro ativo
-    if (featuredSection) featuredSection.hidden = activeCategory !== 'all' || term !== '';
   }
 
   chips.forEach((chip) => {

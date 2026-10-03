@@ -16,6 +16,14 @@ export const GET: APIRoute = async ({ params, request }) => {
   }
 
   const rangeHeader = request.headers.get('Range');
+
+  // Cache de borda: a primeira leitura vai ao R2 (lenta), as seguintes saem do
+  // cache da Cloudflare em milissegundos. Só respostas completas (sem Range).
+  const edgeCache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default;
+  if (!rangeHeader && edgeCache) {
+    const cached = await edgeCache.match(request);
+    if (cached) return cached;
+  }
   const object = await getBucket().get(
     `uploads/${key}`,
     rangeHeader ? { range: request.headers } : undefined
@@ -37,7 +45,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     'X-Content-Type-Options': 'nosniff',
   };
 
-  if (object.range) {
+  if (rangeHeader && object.range) {
     const totalSize = object.size;
     const offset = object.range.offset ?? 0;
     const length =
@@ -49,5 +57,13 @@ export const GET: APIRoute = async ({ params, request }) => {
   }
 
   headers['Content-Length'] = String(object.size);
-  return new Response(object.body, { headers });
+  const response = new Response(object.body, { headers });
+  if (!rangeHeader && edgeCache) {
+    try {
+      await edgeCache.put(request, response.clone());
+    } catch {
+      // cache é só otimização: se falhar, a resposta segue normalmente
+    }
+  }
+  return response;
 };

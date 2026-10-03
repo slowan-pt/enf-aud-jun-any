@@ -66,6 +66,8 @@ describe('getConteudosContent — fallback e normalização', () => {
       eyebrow: 'Blog',
       title: 'Título editado',
       lead: 'Lead editado',
+      bg: '',
+      bgAlt: '',
     });
     expect(content.cta).toEqual({
       eyebrow: 'Fale',

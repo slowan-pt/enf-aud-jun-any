@@ -12,6 +12,7 @@ const { post, featured = false } = Astro.props;
 
 <article
   class:list={['card card--link card--flush post', { 'post--featured': featured }]}
+  data-card-key={`post-${post.slug}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60)}
   data-reveal
 >
   <div class="post__media">
