@@ -18,7 +18,27 @@ type CloudflareEnv = {
    * inativo (nunca no site novo nem localmente).
    */
   INACTIVE_REDIRECT_URL?: string;
+  /**
+   * Quando definida, o aviso por e-mail de contato e de currículo vai para
+   * ESTE endereço em vez do e-mail cadastrado em Configurações — usado só
+   * para testar o envio sem trocar o e-mail que aparece publicamente no
+   * site. Nunca definida em produção normal; remover a variável (não o
+   * código) restaura o destino de sempre. Ver src/lib/notify.ts.
+   */
+  NOTIFY_TEST_EMAIL?: string;
+  /** Chave da API do Resend (segredo) — liga o envio da newsletter a inscritos quaisquer. */
+  RESEND_API_KEY?: string;
+  /** Remetente da newsletter (precisa ser do domínio verificado no Resend). Padrão: MAIL_FROM. */
+  NEWSLETTER_FROM?: string;
 };
+
+declare module 'cloudflare:email' {
+  export class EmailMessage {
+    constructor(from: string, to: string, raw: string | ReadableStream);
+    readonly from: string;
+    readonly to: string;
+  }
+}
 
 declare module 'cloudflare:workers' {
   export const env: CloudflareEnv;

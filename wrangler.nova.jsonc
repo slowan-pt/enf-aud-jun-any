@@ -24,7 +24,26 @@
       "bucket_name": "essencial-saude-nova-media",
     },
   ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "essencialsaudeauditoria.com.br", "custom_domain": true },
+    { "pattern": "www.essencialsaudeauditoria.com.br", "custom_domain": true },
+    { "pattern": "essencialsaudeauditoria.online", "custom_domain": true },
+    { "pattern": "www.essencialsaudeauditoria.online", "custom_domain": true },
+  ],
+  // Único destino permitido para o aviso por e-mail de contato/currículo —
+  // precisa estar VERIFICADO na Cloudflare (wrangler email routing addresses
+  // list) para os envios saírem de verdade.
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_destination_addresses": ["essencialsaudeauditoria@gmail.com"],
+    },
+  ],
   "vars": {
-    "PUBLIC_SITE_URL": "https://essencial-saude-nova.slowgithub.workers.dev",
+    "MAIL_FROM": "curriculos@essencialsaudeauditoria.com.br",
+    "NEWSLETTER_FROM": "novidades@essencialsaudeauditoria.com.br",
+    "PUBLIC_SITE_URL": "https://essencialsaudeauditoria.com.br",
   },
 }

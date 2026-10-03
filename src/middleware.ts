@@ -13,6 +13,19 @@ const PUBLIC_ADMIN_PATHS = new Set(['/admin/login']);
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
+  // O domínio .online é só um atalho: leva ao endereço principal (.com.br).
+  if (/(^|\.)essencialsaudeauditoria\.online$/.test(context.url.hostname)) {
+    const target = new URL(context.url.pathname + context.url.search, 'https://essencialsaudeauditoria.com.br');
+    return context.redirect(target.toString(), 301);
+  }
+
+  // "www." sempre vai para o endereço principal (mesmo caminho e parâmetros).
+  if (context.url.hostname.startsWith('www.')) {
+    const target = new URL(context.url);
+    target.hostname = context.url.hostname.slice(4);
+    return context.redirect(target.toString(), 301);
+  }
+
   // Site desativado (ver INACTIVE_REDIRECT_URL em env.d.ts): manda todo
   // visitante público para o site novo, sem apagar nada aqui — o painel
   // (/admin/*) continua acessível normalmente para quem já tem login, para
