@@ -1,0 +1,207 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import {
+  countCommentsByStatus,
+  deleteComment,
+  listCommentsForAdmin,
+  moderateComment,
+  type CommentStatus,
+} from '../../lib/engagement';
+
+const labels: Record<CommentStatus, string> = {
+  pendente: 'Pendente',
+  aprovado: 'Aprovado',
+  rejeitado: 'Rejeitado',
+};
+const tone: Record<CommentStatus, string> = {
+  pendente: 'badge--warning',
+  aprovado: 'badge--success',
+  rejeitado: 'badge--neutral',
+};
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  const action = String(form.get('action') ?? '');
+  const reply = String(form.get('reply') ?? '').trim().slice(0, 1500);
+  const back = String(form.get('back') ?? '') in labels ? String(form.get('back')) : '';
+
+  if (Number.isInteger(id) && id > 0) {
+    let logged = '';
+    if (action === 'aprovar') {
+      await moderateComment(db, id, 'aprovado', reply);
+      logged = 'aprovado';
+    } else if (action === 'rejeitar') {
+      await moderateComment(db, id, 'rejeitado');
+      logged = 'rejeitado';
+    } else if (action === 'excluir') {
+      await deleteComment(db, id);
+      logged = 'excluído';
+    }
+    if (logged) {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'comment.moderate',
+        target: `Comentário #${id} ${logged}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+    }
+  }
+  return Astro.redirect(back ? `/admin/comentarios?status=${back}` : '/admin/comentarios');
+}
+
+const requested = Astro.url.searchParams.get('status') ?? '';
+const filter = (requested in labels ? requested : 'pendente') as CommentStatus;
+const [comments, counts] = await Promise.all([
+  listCommentsForAdmin(db, filter),
+  countCommentsByStatus(db),
+]);
+
+function formatDate(iso: string): string {
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y} ${(timePart ?? '').slice(0, 5)}`;
+}
+---
+
+<AdminLayout
+  title="Comentários"
+  description="Comentários enviados nas matérias. Só os aprovados aparecem no site."
+  active="/admin/comentarios"
+>
+  <section class="panel">
+    <div class="toolbar">
+      {
+        (['pendente', 'aprovado', 'rejeitado'] as CommentStatus[]).map((status) => (
+          <a
+            class:list={['btn', 'btn--sm', filter === status ? 'btn--secondary' : 'btn--ghost']}
+            href={`/admin/comentarios?status=${status}`}
+          >
+            {labels[status]} ({counts[status]})
+          </a>
+        ))
+      }
+    </div>
+
+    {
+      comments.length === 0 && (
+        <div class="empty-state">
+          <span class="empty-state__icon"><Icon name="message" size={22} /></span>
+          <h2 class="title-sm">Nenhum comentário {labels[filter].toLowerCase()}</h2>
+          <p>Quando alguém comentar numa matéria, ele aparece aqui para você aprovar.</p>
+        </div>
+      )
+    }
+
+    <div class="comment-admin-list">
+      {
+        comments.map((c) => (
+          <article class="comment-admin">
+            <header class="comment-admin__head">
+              <div>
+                <strong>{c.name}</strong>
+                <a class="small" href={`mailto:${c.email}`}>{c.email}</a>
+              </div>
+              <span class="muted small">{formatDate(c.created_at)}</span>
+              <span class:list={['badge', tone[c.status]]}>{labels[c.status]}</span>
+            </header>
+            <p class="muted small">
+              Em:{' '}
+              {c.post_slug ? (
+                <a href={`/conteudos/${c.post_slug}#comentarios`} target="_blank" rel="noopener">
+                  {c.post_title}
+                </a>
+              ) : (
+                'matéria removida'
+              )}
+            </p>
+            <p class="comment-admin__body">{c.body}</p>
+            <form method="post" class="comment-admin__form">
+              <input type="hidden" name="id" value={c.id} />
+              <input type="hidden" name="back" value={filter} />
+              <label class="label" for={`reply-${c.id}`}>Resposta da empresa (opcional — aparece abaixo do comentário)</label>
+              <textarea class="textarea" id={`reply-${c.id}`} name="reply" rows="2">{c.reply}</textarea>
+              <div class="comment-admin__actions">
+                {c.status !== 'aprovado' && (
+                  <button type="submit" name="action" value="aprovar" class="btn btn--accent btn--sm">
+                    <Icon name="check" size={16} /> Aprovar
+                  </button>
+                )}
+                {c.status === 'aprovado' && (
+                  <button type="submit" name="action" value="aprovar" class="btn btn--secondary btn--sm">
+                    <Icon name="check" size={16} /> Salvar resposta
+                  </button>
+                )}
+                {c.status !== 'rejeitado' && (
+                  <button type="submit" name="action" value="rejeitar" class="btn btn--ghost btn--sm">
+                    Rejeitar
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  name="action"
+                  value="excluir"
+                  class="btn btn--ghost btn--sm"
+                  onclick="return confirm('Excluir este comentário definitivamente?')"
+                >
+                  <Icon name="trash" size={16} /> Excluir
+                </button>
+              </div>
+            </form>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .comment-admin-list {
+    display: grid;
+    gap: var(--sp-4);
+    padding: var(--sp-5);
+  }
+
+  .comment-admin {
+    display: grid;
+    gap: var(--sp-2);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-white);
+  }
+
+  .comment-admin__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .comment-admin__head > div {
+    display: grid;
+  }
+
+  .comment-admin__body {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  .comment-admin__form {
+    display: grid;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+  }
+
+  .comment-admin__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+</style>

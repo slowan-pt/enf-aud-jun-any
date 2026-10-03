@@ -1,0 +1,95 @@
+---
+/**
+ * Cancelamento da inscrição pelo link do e-mail (/cancelar-inscricao?token=...).
+ * GET só mostra a confirmação (programas de segurança de e-mail "clicam" nos
+ * links, então cancelar num GET removeria gente sem querer); o cancelamento
+ * acontece no POST do botão.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getDB } from '../lib/db';
+import { getSubscriberByToken, unsubscribeByToken } from '../lib/engagement';
+
+export const prerender = false;
+
+const db = getDB();
+const token = (Astro.url.searchParams.get('token') ?? '').toLowerCase();
+const subscriber = await getSubscriberByToken(db, token);
+
+let done = false;
+if (Astro.request.method === 'POST' && subscriber) {
+  done = await unsubscribeByToken(db, token);
+}
+
+const alreadyOut = subscriber?.status === 'cancelado' && !done;
+const firstName = subscriber?.name.split(' ')[0] ?? '';
+---
+
+<BaseLayout
+  title="Cancelar inscrição"
+  description="Cancele o recebimento das novas publicações da Essencial Saúde Auditoria."
+  path="/cancelar-inscricao"
+  noindex
+  bodyClass="page-cancelar"
+>
+  <section class="section">
+    <div class="container container--narrow cancel">
+      {
+        !subscriber && (
+          <>
+            <h1 class="title-md">Link inválido</h1>
+            <p>Não encontramos essa inscrição. O link pode estar incompleto ou ter expirado.</p>
+          </>
+        )
+      }
+      {
+        subscriber && done && (
+          <>
+            <h1 class="title-md">Inscrição cancelada</h1>
+            <p>
+              Pronto{firstName ? `, ${firstName}` : ''}. Você não receberá mais as nossas
+              publicações. Se mudar de ideia, é só se inscrever novamente em qualquer matéria.
+            </p>
+          </>
+        )
+      }
+      {
+        subscriber && alreadyOut && (
+          <>
+            <h1 class="title-md">Você já está fora da lista</h1>
+            <p>Esse e-mail não recebe mais as nossas publicações.</p>
+          </>
+        )
+      }
+      {
+        subscriber && !done && !alreadyOut && (
+          <>
+            <h1 class="title-md">Cancelar inscrição</h1>
+            <p>
+              {firstName ? `${firstName}, d` : 'D'}eseja deixar de receber as novas publicações da
+              Essencial Saúde Auditoria?
+            </p>
+            <form method="post">
+              <button type="submit" class="btn btn--primary">Sim, cancelar inscrição</button>
+              <a class="btn btn--ghost" href="/conteudos">Voltar ao site</a>
+            </form>
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .cancel {
+    display: grid;
+    gap: var(--sp-4);
+    min-height: 40vh;
+    align-content: start;
+  }
+
+  .cancel form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+</style>

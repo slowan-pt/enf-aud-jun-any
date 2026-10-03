@@ -8,6 +8,14 @@ import { listAuthors } from '../../../lib/authors';
 import { getPost, updatePost, slugExists, type BlockNode } from '../../../lib/posts';
 import { slugify } from '../../../lib/urls';
 import { createRedirect } from '../../../lib/redirects';
+import {
+  EMAIL_RE_SIMPLE,
+  getNewsletterStatus,
+  isNewsletterConfigured,
+  sendNewsletterForPost,
+  sendNewsletterTo,
+  type NewsletterPost,
+} from '../../../lib/newsletter';
 
 const db = getDB();
 const slug = Astro.params.slug ?? '';
@@ -15,6 +23,24 @@ const existing = await getPost(db, slug);
 if (!existing) return Astro.rewrite('/404');
 
 let slugError = '';
+
+const { company } = Astro.locals.settings;
+const toNewsletterPost = (p: typeof existing): NewsletterPost => ({
+  id: p.id,
+  slug: p.slug,
+  title: p.title,
+  excerpt: p.excerpt,
+  cover: p.cover,
+  categoryName: p.categoryName,
+});
+const auditNewsletter = (target: string) =>
+  writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'post.newsletter',
+    target,
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
 
 const BLOCK_TYPES: BlockNode['type'][] = [
   'paragraph',
@@ -70,6 +96,37 @@ let currentBlocks = existing.body;
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? 'save');
+
+  // Newsletter: teste para um endereço ou envio a todos os inscritos — não altera a matéria.
+  if (action === 'newsletter_test' || action === 'newsletter_send') {
+    const post = toNewsletterPost(existing);
+    if (action === 'newsletter_test') {
+      const to = String(form.get('newsletter_to') ?? '').trim();
+      if (!EMAIL_RE_SIMPLE.test(to)) {
+        return Astro.redirect(`/admin/conteudos/${slug}?nl=email-invalido`);
+      }
+      const result = await sendNewsletterTo(
+        post,
+        { email: to, name: Astro.locals.user?.name ?? '', token: '0'.repeat(32) },
+        company.name,
+        company.email
+      );
+      await auditNewsletter(
+        `Teste de newsletter "${existing.title}" → ${to}: ${result.ok ? 'enviado' : result.error}`
+      );
+      return Astro.redirect(
+        `/admin/conteudos/${slug}?nl=${result.ok ? 'teste-ok' : 'teste-erro'}&to=${encodeURIComponent(to)}&err=${encodeURIComponent(result.error ?? '')}`
+      );
+    }
+    const outcome = await sendNewsletterForPost(db, post, company.name, company.email);
+    await auditNewsletter(
+      `Newsletter "${existing.title}": ${outcome.sent} enviados, ${outcome.failed} falhas${outcome.firstError ? ` (${outcome.firstError})` : ''}`
+    );
+    return Astro.redirect(
+      `/admin/conteudos/${slug}?nl=enviada&ok=${outcome.sent}&falhas=${outcome.failed}&err=${encodeURIComponent(outcome.firstError ?? '')}`
+    );
+  }
+
   const blockCount = Number(form.get('block_count') ?? currentBlocks.length);
   let blocks = readBlocksFromForm(form, blockCount);
 
@@ -139,7 +196,25 @@ if (Astro.request.method === 'POST') {
         target: `Matéria: ${title}`,
         ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
       });
-      return Astro.redirect(`/admin/conteudos/${nextSlug}?saved=1`);
+      let nlQuery = '';
+      const firstPublish = status === 'published' && existing.status !== 'published';
+      if (firstPublish && form.get('notify_subscribers') === 'on') {
+        const sentBefore = (await getNewsletterStatus(db, existing.id)).sentAt;
+        if (!sentBefore) {
+          const published = (await getPost(db, nextSlug)) ?? existing;
+          const outcome = await sendNewsletterForPost(
+            db,
+            toNewsletterPost(published),
+            company.name,
+            company.email
+          );
+          await auditNewsletter(
+            `Newsletter ao publicar "${title}": ${outcome.sent} enviados, ${outcome.failed} falhas${outcome.firstError ? ` (${outcome.firstError})` : ''}`
+          );
+          nlQuery = `&nl=enviada&ok=${outcome.sent}&falhas=${outcome.failed}&err=${encodeURIComponent(outcome.firstError ?? '')}`;
+        }
+      }
+      return Astro.redirect(`/admin/conteudos/${nextSlug}?saved=1${nlQuery}`);
     }
   }
 
@@ -150,6 +225,12 @@ const fresh = (await getPost(db, slug))!;
 const categories = await listCategories(db);
 const authors = await listAuthors(db);
 const justSaved = Astro.url.searchParams.get('saved') === '1';
+const nlState = Astro.url.searchParams.get('nl') ?? '';
+const nlStatus = await getNewsletterStatus(db, fresh.id);
+const nlTo = Astro.url.searchParams.get('to') ?? '';
+const nlOk = Number(Astro.url.searchParams.get('ok') ?? 0);
+const nlFail = Number(Astro.url.searchParams.get('falhas') ?? 0);
+const nlErr = Astro.url.searchParams.get('err') ?? '';
 ---
 
 <AdminLayout
@@ -182,6 +263,45 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       >
         <Icon name="check-circle" size={18} />
         <span>Matéria salva.</span>
+      </div>
+    )
+  }
+  {
+    nlState === 'enviada' && (
+      <div
+        class:list={['form-alert', nlOk > 0 ? 'form-alert--success' : 'form-alert--error']}
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name={nlOk > 0 ? 'check-circle' : 'alert-circle'} size={18} />
+        <span>
+          Newsletter: {nlOk} e-mail(s) enviado(s){nlFail > 0 ? `, ${nlFail} falha(s)` : ''}.
+          {nlErr && ` Motivo: ${nlErr}`}
+        </span>
+      </div>
+    )
+  }
+  {
+    nlState === 'teste-ok' && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>E-mail de teste enviado para {nlTo}. Confira a caixa de entrada (e o spam).</span>
+      </div>
+    )
+  }
+  {
+    nlState === 'teste-erro' && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>Não foi possível enviar o teste para {nlTo}. Motivo: {nlErr || 'desconhecido'}</span>
+      </div>
+    )
+  }
+  {
+    nlState === 'email-invalido' && (
+      <div class="form-alert form-alert--error" role="alert" style="margin-bottom: var(--sp-5)">
+        <Icon name="alert-circle" size={18} />
+        <span>Informe um e-mail válido para o teste.</span>
       </div>
     )
   }
@@ -426,6 +546,68 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
             <input type="checkbox" name="featured" checked={fresh.featured} />
             <span>Destacar na listagem de conteúdos</span>
           </label>
+          {
+            !nlStatus.sentAt && (
+              <label class="checkbox">
+                <input type="checkbox" name="notify_subscribers" checked />
+                <span>Ao publicar, avisar os inscritos por e-mail</span>
+              </label>
+            )
+          }
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Newsletter</h2>
+        </div>
+        <div class="panel__body stack">
+          {
+            !isNewsletterConfigured() && (
+              <p class="muted small">
+                Envio aos inscritos ainda não configurado (falta a chave do serviço de e-mail).
+                Enquanto isso, o teste só chega a endereços verificados na Cloudflare.
+              </p>
+            )
+          }
+          <p class="muted small">
+            {
+              nlStatus.sentAt
+                ? `Enviada em ${nlStatus.sentAt} (UTC) para ${nlStatus.count} inscrito(s).`
+                : 'Ainda não enviada aos inscritos.'
+            }
+          </p>
+          <div class="field">
+            <label class="label" for="newsletter_to">Enviar teste para</label>
+            <input
+              class="input"
+              id="newsletter_to"
+              name="newsletter_to"
+              type="email"
+              value={Astro.locals.user?.email ?? ''}
+              placeholder="seu@email.com"
+            />
+          </div>
+          <button
+            type="submit"
+            name="_action"
+            value="newsletter_test"
+            class="btn btn--secondary btn--sm"
+            formnovalidate
+          >
+            <Icon name="mail" size={16} />
+            Enviar e-mail de teste
+          </button>
+          <button
+            type="submit"
+            name="_action"
+            value="newsletter_send"
+            class="btn btn--ghost btn--sm"
+            formnovalidate
+            onclick="return confirm('Enviar esta matéria agora para TODOS os inscritos ativos?')"
+          >
+            Enviar agora aos inscritos
+          </button>
         </div>
       </section>
 

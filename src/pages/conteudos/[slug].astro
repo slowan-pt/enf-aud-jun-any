@@ -3,6 +3,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumbs from '../../components/Breadcrumbs.astro';
 import Icon from '../../components/Icon.astro';
 import PostCard from '../../components/PostCard.astro';
+import PostEngagement from '../../components/PostEngagement.astro';
+import { listApprovedComments } from '../../lib/engagement';
 import CtaBand from '../../components/CtaBand.astro';
 import SectionOverlays from '../../components/SectionOverlays.astro';
 import { getDB } from '../../lib/db';
@@ -26,6 +28,7 @@ const category = post.categoryName
   : null;
 const db = getDB();
 const author = post.authorId ? await getAuthor(db, post.authorId) : null;
+const comments = await listApprovedComments(db, post.id);
 const related = publishedOnly(Astro.locals.posts)
   .filter((item) => item.slug !== post.slug)
   .sort((a, b) => {
@@ -94,7 +97,8 @@ const headings = post.body.filter((block) => block.type === 'h2');
 >
   <div style="order:-1">
     <header class="article__head">
-      <div class="container container--narrow">
+      <div class="container article__frame">
+        <div class="article__frame-col">
         <Breadcrumbs
           items={[{ label: 'Conteúdos', href: '/conteudos' }, { label: post.title }]}
         />
@@ -111,10 +115,12 @@ const headings = post.body.filter((block) => block.type === 'h2');
         </div>
         <h1 class="title-lg">{post.title}</h1>
         <p class="lead">{post.excerpt}</p>
+        </div>
       </div>
     </header>
 
-    <div class="container container--narrow">
+    <div class="container article__frame">
+      <div class="article__frame-col">
       <figure class="article__cover">
         <img
           src={post.cover}
@@ -128,6 +134,7 @@ const headings = post.body.filter((block) => block.type === 'h2');
           style={coverStyle}
         />
       </figure>
+      </div>
     </div>
   </div>
 
@@ -245,6 +252,16 @@ const headings = post.body.filter((block) => block.type === 'h2');
             </div>
           )
         }
+      </div>
+    </div>
+    <div class="container article__frame article__frame--engage">
+      <div class="article__frame-col">
+        <PostEngagement
+          postId={post.id}
+          postSlug={post.slug}
+          comments={comments}
+          replyAuthor={company.name}
+        />
       </div>
     </div>
     <SectionOverlays overlays={overlays} section="body" />
@@ -376,6 +393,38 @@ const headings = post.body.filter((block) => block.type === 'h2');
     }
   }
 
+  /* Título, resumo e capa usam a MESMA grade do corpo (coluna do sumário +
+     coluna do texto), então ficam alinhados à esquerda com o texto abaixo e
+     com a mesma largura dele — em qualquer tela. */
+  .article__frame {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  @media (min-width: 1040px) {
+    .article__frame {
+      grid-template-columns: 240px minmax(0, 1fr);
+    }
+
+    .article__frame-col {
+      grid-column: 2;
+    }
+  }
+
+  .article__frame-col {
+    min-width: 0;
+    max-width: 72ch;
+    font-size: var(--fs-md);
+  }
+
+  .article__frame--engage {
+    padding-bottom: var(--section-y);
+  }
+
+  .article__frame-col :where(h1, .lead, .article__meta, nav) {
+    max-width: none;
+  }
+
   .article__aside {
     display: grid;
     gap: var(--sp-6);
@@ -403,6 +452,11 @@ const headings = post.body.filter((block) => block.type === 'h2');
     gap: var(--sp-2);
     margin: 0;
     padding-left: 1.1rem;
+  }
+
+  .toc li,
+  .toc a {
+    text-align: left;
   }
 
   .toc a {

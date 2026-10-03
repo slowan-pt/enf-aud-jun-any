@@ -1,0 +1,367 @@
+---
+/**
+ * Bloco no fim de cada matéria: caixa de inscrição para receber novas
+ * publicações + comentários (moderados no admin; só os aprovados aparecem).
+ */
+import Icon from './Icon.astro';
+import { COMMENT_LIMITS } from '../lib/engagement';
+
+interface Comment {
+  id: number;
+  name: string;
+  body: string;
+  reply: string;
+  created_at: string;
+}
+
+interface Props {
+  postId: number;
+  postSlug: string;
+  comments: Comment[];
+  replyAuthor: string;
+}
+
+const { postId, postSlug, comments, replyAuthor } = Astro.props;
+
+function formatDate(iso: string): string {
+  const [datePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y}`;
+}
+---
+
+<section class="engage" aria-label="Receber publicações e comentários">
+  <div class="engage__box" data-engage-form="inscricao">
+    <h2 class="engage__title">Receba as novas publicações</h2>
+    <p class="engage__hint">
+      Deixe seu e-mail para ser avisado quando publicarmos novos conteúdos.
+    </p>
+    <form class="engage__form" method="post" action="/api/inscricao" novalidate>
+      <input type="hidden" name="origem" value={postSlug} />
+      <div class="engage__hp" aria-hidden="true">
+        <label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <input
+        class="input"
+        type="text"
+        name="nome"
+        placeholder="Seu nome"
+        autocomplete="name"
+        maxlength="80"
+        aria-label="Seu nome"
+        required
+      />
+      <div class="engage__row">
+        <input
+          class="input"
+          type="email"
+          name="email"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          aria-label="Seu e-mail"
+          required
+        />
+        <button type="submit" class="btn btn--primary">
+          <Icon name="mail" size={16} /> Inscrever-me
+        </button>
+      </div>
+      <label class="engage__consent">
+        <input type="checkbox" name="consentimento" />
+        <span>
+          Concordo em receber e-mails da Essencial Saúde e com o tratamento do meu e-mail conforme a{' '}
+          <a href="/politica-de-privacidade" data-popup target="_blank" rel="noopener">Política de Privacidade</a>. Posso cancelar quando quiser.
+        </span>
+      </label>
+      <p class="engage__msg" role="status" data-msg></p>
+    </form>
+  </div>
+
+  <div class="engage__comments" id="comentarios">
+    <h2 class="engage__title">
+      Comentários {comments.length > 0 && <span class="engage__count">({comments.length})</span>}
+    </h2>
+
+    {comments.length === 0 && <p class="engage__hint">Seja o primeiro a comentar.</p>}
+
+    {
+      comments.length > 0 && (
+        <ul class="comment-list">
+          {comments.map((comment) => (
+            <li class="comment">
+              <div class="comment__head">
+                <strong>{comment.name}</strong>
+                <span>{formatDate(comment.created_at)}</span>
+              </div>
+              <p class="comment__body">{comment.body}</p>
+              {comment.reply && (
+                <div class="comment__reply">
+                  <strong>{replyAuthor}</strong>
+                  <p>{comment.reply}</p>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    <form class="engage__form" method="post" action="/api/comentarios" data-engage-form="comentario" novalidate>
+      <h3 class="engage__subtitle">Deixe seu comentário</h3>
+      <input type="hidden" name="post_id" value={postId} />
+      <div class="engage__hp" aria-hidden="true">
+        <label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <div class="engage__grid">
+        <label class="engage__field">
+          <span>Nome</span>
+          <input class="input" type="text" name="nome" maxlength={COMMENT_LIMITS.nameMax} autocomplete="name" required />
+        </label>
+        <label class="engage__field">
+          <span>E-mail <small>(não será publicado)</small></span>
+          <input class="input" type="email" name="email" autocomplete="email" required />
+        </label>
+      </div>
+      <label class="engage__field">
+        <span>Comentário</span>
+        <textarea
+          class="textarea"
+          name="comentario"
+          rows="4"
+          maxlength={COMMENT_LIMITS.bodyMax}
+          required></textarea>
+      </label>
+      <label class="engage__consent">
+        <input type="checkbox" name="consentimento" />
+        <span>
+          Concordo com o tratamento dos meus dados para publicação do comentário, conforme a{' '}
+          <a href="/politica-de-privacidade" data-popup target="_blank" rel="noopener">Política de Privacidade</a>.
+        </span>
+      </label>
+      <button type="submit" class="btn btn--primary">
+        <Icon name="message" size={16} /> Enviar comentário
+      </button>
+      <p class="engage__msg" role="status" data-msg></p>
+      <p class="engage__hint">Os comentários são analisados antes de aparecer no site.</p>
+    </form>
+  </div>
+</section>
+
+<style>
+  .engage {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    margin-top: clamp(2rem, 4vw, 3rem);
+    text-align: left;
+    white-space: normal;
+  }
+
+  .engage :is(h2, h3, p, li, label, span) {
+    text-align: left;
+    white-space: normal;
+  }
+
+  .engage__box,
+  .engage__comments {
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    background: var(--c-white);
+  }
+
+  .engage__box {
+    background: linear-gradient(150deg, var(--c-brand-50), var(--c-white));
+    border-color: var(--c-brand-100);
+  }
+
+  .engage__title {
+    font-size: var(--fs-xl);
+    margin-bottom: var(--sp-2);
+  }
+
+  .engage__subtitle {
+    font-size: var(--fs-lg);
+    margin-bottom: var(--sp-1);
+  }
+
+  .engage__count {
+    color: var(--text-faint);
+    font-weight: var(--fw-regular, 400);
+  }
+
+  .engage__hint {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    margin: 0 0 var(--sp-3);
+  }
+
+  .engage__form {
+    display: grid;
+    gap: var(--sp-4);
+    margin-top: var(--sp-3);
+  }
+
+  .engage__row {
+    display: grid;
+    gap: var(--sp-3);
+  }
+
+  @media (min-width: 560px) {
+    .engage__row {
+      grid-template-columns: 1fr auto;
+    }
+
+    .engage__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .engage__grid {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .engage__field {
+    display: grid;
+    gap: 0.35rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-strong);
+  }
+
+  .engage__field small {
+    font-weight: normal;
+    color: var(--text-faint);
+  }
+
+  .engage__consent {
+    display: flex;
+    gap: var(--sp-2);
+    align-items: flex-start;
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  .engage__consent input {
+    margin-top: 0.2rem;
+    flex: none;
+  }
+
+  .engage__msg {
+    min-height: 1.2em;
+    margin: 0;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+  }
+
+  .engage__msg[data-state='ok'] {
+    color: var(--c-accent-700);
+  }
+
+  .engage__msg[data-state='error'] {
+    color: var(--c-danger-600);
+  }
+
+  .engage__hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .comment-list {
+    display: grid;
+    gap: var(--sp-4);
+    list-style: none;
+    margin: var(--sp-4) 0 var(--sp-6);
+    padding: 0;
+  }
+
+  .comment {
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .comment__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    align-items: baseline;
+    font-size: var(--fs-sm);
+  }
+
+  .comment__head span {
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+
+  .comment__body {
+    margin: var(--sp-2) 0 0;
+    white-space: pre-line;
+    color: var(--text-muted);
+  }
+
+  .comment__reply {
+    margin-top: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border-left: 3px solid var(--c-accent-500);
+    background: var(--c-brand-50);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    font-size: var(--fs-sm);
+  }
+
+  .comment__reply p {
+    margin: 0.25rem 0 0;
+    white-space: pre-line;
+    color: var(--text-muted);
+  }
+</style>
+
+<script>
+  const MESSAGES: Record<string, { ok: string }> = {
+    inscricao: { ok: 'Inscrição realizada! Você receberá as próximas publicações.' },
+    comentario: {
+      ok: 'Comentário enviado! Ele aparecerá no site depois de aprovado pela equipe.',
+    },
+  };
+
+  document.querySelectorAll<HTMLElement>('[data-engage-form]').forEach((wrap) => {
+    const kind = wrap.dataset.engageForm ?? '';
+    const form = (wrap.tagName === 'FORM' ? wrap : wrap.querySelector('form')) as HTMLFormElement | null;
+    const msg = form?.querySelector<HTMLElement>('[data-msg]');
+    if (!form || !msg) return;
+
+    const show = (text: string, state: 'ok' | 'error') => {
+      msg.textContent = text;
+      msg.dataset.state = state;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      show('Enviando…', 'ok');
+      const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (button) button.disabled = true;
+      try {
+        const res = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+        const payload = (await res.json().catch(() => null)) as {
+          success?: boolean;
+          fields?: Record<string, string>;
+          message?: string;
+        } | null;
+        if (res.ok && payload?.success) {
+          show(MESSAGES[kind]?.ok ?? 'Enviado!', 'ok');
+          form.reset();
+        } else if (res.status === 422 && payload?.fields) {
+          show(Object.values(payload.fields)[0] ?? 'Verifique os campos.', 'error');
+        } else {
+          show(payload?.message ?? 'Não foi possível enviar agora. Tente novamente.', 'error');
+        }
+      } catch {
+        show('Falha de conexão. Tente novamente.', 'error');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    });
+  });
+</script>

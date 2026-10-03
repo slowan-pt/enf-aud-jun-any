@@ -1,0 +1,150 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import {
+  deleteSubscriber,
+  listSubscribers,
+  setSubscriberStatus,
+} from '../../lib/engagement';
+
+const db = getDB();
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  const action = String(form.get('action') ?? '');
+
+  if (Number.isInteger(id) && id > 0) {
+    let logged = '';
+    if (action === 'cancelar') {
+      await setSubscriberStatus(db, id, 'cancelado');
+      logged = 'cancelado';
+    } else if (action === 'reativar') {
+      await setSubscriberStatus(db, id, 'ativo');
+      logged = 'reativado';
+    } else if (action === 'excluir') {
+      await deleteSubscriber(db, id);
+      logged = 'excluído';
+    }
+    if (logged) {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'subscriber.update',
+        target: `Inscrito #${id} ${logged}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+    }
+  }
+  return Astro.redirect('/admin/inscritos');
+}
+
+const subscribers = await listSubscribers(db);
+const active = subscribers.filter((s) => s.status === 'ativo').length;
+
+function formatDate(iso: string): string {
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y} ${(timePart ?? '').slice(0, 5)}`;
+}
+---
+
+<AdminLayout
+  title="Inscritos"
+  description="E-mails de quem pediu para receber as novas publicações."
+  active="/admin/inscritos"
+>
+  <div slot="actions">
+    <a href="/admin/api/inscritos" class="btn btn--secondary btn--sm">
+      <Icon name="download" size={16} /> Exportar CSV ({active} ativos)
+    </a>
+  </div>
+
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Origem (matéria)</th>
+            <th>Inscrito em</th>
+            <th>Status</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            subscribers.length === 0 && (
+              <tr>
+                <td colspan="6">Ninguém se inscreveu ainda.</td>
+              </tr>
+            )
+          }
+          {
+            subscribers.map((s) => (
+              <tr>
+                <td>{s.name || '—'}</td>
+                <td><a href={`mailto:${s.email}`}>{s.email}</a></td>
+                <td class="small">{s.source || '—'}</td>
+                <td class="nowrap muted small">{formatDate(s.created_at)}</td>
+                <td>
+                  <span class:list={['badge', s.status === 'ativo' ? 'badge--success' : 'badge--neutral']}>
+                    {s.status === 'ativo' ? 'Ativo' : 'Cancelado'}
+                  </span>
+                </td>
+                <td>
+                  <form method="post" class="actions">
+                    <input type="hidden" name="id" value={s.id} />
+                    {s.status === 'ativo' ? (
+                      <button type="submit" name="action" value="cancelar" class="btn btn--ghost btn--sm">
+                        Cancelar inscrição
+                      </button>
+                    ) : (
+                      <button type="submit" name="action" value="reativar" class="btn btn--ghost btn--sm">
+                        Reativar
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      name="action"
+                      value="excluir"
+                      class="btn btn--ghost btn--sm"
+                      onclick="return confirm('Excluir este e-mail da lista definitivamente?')"
+                    >
+                      <Icon name="trash" size={16} /> Excluir
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="panel__foot">
+      <span class="muted small">
+        {subscribers.length} e-mail(s), {active} ativo(s). O envio das newsletters é feito
+        fora do site (use o CSV).
+      </span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
+</style>
