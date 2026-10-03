@@ -1,0 +1,229 @@
+---
+/**
+ * Trabalhe conosco — envio de currículo (somente PDF, até 5 MB).
+ * POST para /api/trabalhe-conosco: o PDF vai para o R2, os dados para o D1 e,
+ * quando o envio de e-mail estiver configurado, o currículo segue em anexo
+ * para o e-mail cadastrado no site (ver src/lib/notify.ts).
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<BaseLayout
+  title="Trabalhe conosco"
+  description="Envie seu currículo em PDF e faça parte da equipe da Essencial Saúde Auditoria."
+  path="/trabalhe-conosco"
+  bodyClass="page-trabalhe"
+>
+  <PageHero
+    eyebrow="Carreiras"
+    title="Trabalhe conosco"
+    lead="Quer fazer parte da equipe? Envie seu currículo em PDF e entraremos em contato quando houver uma oportunidade compatível com o seu perfil."
+    crumbs={[{ label: 'Trabalhe conosco' }]}
+  />
+
+  <section class="section">
+    <div class="container job-wrap">
+      <form class="job-form" id="form-curriculo" novalidate data-job-form>
+        <div class="hp" aria-hidden="true">
+          <label for="cv-website">Não preencha este campo</label>
+          <input type="text" id="cv-website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="cv-nome">Nome completo <span class="req">*</span></label>
+          <input class="input" id="cv-nome" name="nome" type="text" autocomplete="name" required />
+          <span class="job-error" data-error="nome"></span>
+        </div>
+
+        <div class="job-row">
+          <div class="field">
+            <label class="label" for="cv-email">E-mail <span class="req">*</span></label>
+            <input
+              class="input"
+              id="cv-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+            />
+            <span class="job-error" data-error="email"></span>
+          </div>
+          <div class="field">
+            <label class="label" for="cv-telefone">Telefone</label>
+            <input
+              class="input"
+              id="cv-telefone"
+              name="telefone"
+              type="tel"
+              autocomplete="tel"
+              placeholder="(61) 90000-0000"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="cv-arquivo">Currículo (PDF, até 5 MB) <span class="req">*</span></label>
+          <input
+            class="input"
+            id="cv-arquivo"
+            name="curriculo"
+            type="file"
+            accept="application/pdf,.pdf"
+            required
+          />
+          <span class="job-error" data-error="curriculo"></span>
+        </div>
+
+        <div class="field">
+          <label class="label" for="cv-mensagem">Mensagem (opcional)</label>
+          <textarea class="textarea" id="cv-mensagem" name="mensagem" rows="4" maxlength="2000"
+          ></textarea>
+        </div>
+
+        <label class="job-consent">
+          <input type="checkbox" name="consentimento" />
+          <span>
+            Autorizo o uso dos meus dados e do meu currículo para fins de recrutamento, conforme a
+            <a href="/politica-de-privacidade" data-popup target="_blank" rel="noopener">Política de Privacidade</a>.
+          </span>
+        </label>
+        <span class="job-error" data-error="consentimento"></span>
+
+        <button type="submit" class="btn" data-submit>
+          <Icon name="upload" size={16} />
+          Enviar currículo
+        </button>
+
+        <p class="job-status" role="status" data-status></p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-job-form]');
+  if (form) {
+    const status = form.querySelector<HTMLElement>('[data-status]')!;
+    const button = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+    const fileInput = form.querySelector<HTMLInputElement>('input[name="curriculo"]')!;
+
+    const setError = (field: string, message: string) => {
+      const target = form.querySelector<HTMLElement>(`[data-error="${field}"]`);
+      if (target) target.textContent = message;
+    };
+    const clearErrors = () =>
+      form.querySelectorAll<HTMLElement>('[data-error]').forEach((el) => (el.textContent = ''));
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearErrors();
+      status.textContent = '';
+      status.className = 'job-status';
+
+      // Conferência rápida no navegador; o servidor confere de novo.
+      const file = fileInput.files?.[0];
+      if (!file) return setError('curriculo', 'Anexe seu currículo em PDF.');
+      if (file.size > 5 * 1024 * 1024) return setError('curriculo', 'O PDF deve ter no máximo 5 MB.');
+      if (!/\.pdf$/i.test(file.name)) return setError('curriculo', 'Envie apenas arquivos em PDF.');
+
+      button.disabled = true;
+      status.textContent = 'Enviando…';
+      try {
+        const response = await fetch('/api/trabalhe-conosco', {
+          method: 'POST',
+          body: new FormData(form),
+        });
+        const result = (await response.json()) as {
+          success: boolean;
+          fields?: Record<string, string>;
+          message?: string;
+        };
+        if (result.success) {
+          form.reset();
+          status.textContent = 'Currículo enviado com sucesso. Obrigado pelo interesse!';
+          status.className = 'job-status job-status--ok';
+        } else {
+          Object.entries(result.fields ?? {}).forEach(([field, message]) =>
+            setError(field, message)
+          );
+          status.textContent = result.message ?? 'Confira os campos destacados.';
+          status.className = 'job-status job-status--error';
+        }
+      } catch {
+        status.textContent = 'Não foi possível enviar agora. Tente novamente em instantes.';
+        status.className = 'job-status job-status--error';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .job-wrap {
+    max-width: 720px;
+  }
+
+  .job-form {
+    display: grid;
+    gap: var(--sp-5);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+  }
+
+  .job-row {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  @media (min-width: 640px) {
+    .job-row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .job-consent {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-start;
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+
+  .job-consent input {
+    margin-top: 0.3rem;
+  }
+
+  .job-error {
+    display: block;
+    min-height: 0;
+    font-size: var(--fs-xs);
+    color: var(--c-danger-600);
+  }
+
+  .job-status {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+  }
+
+  .job-status--ok {
+    color: var(--c-accent-600);
+    font-weight: var(--fw-semibold);
+  }
+
+  .job-status--error {
+    color: var(--c-danger-600);
+  }
+
+  .hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>

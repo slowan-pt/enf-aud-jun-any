@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDB } from '../../lib/db';
 import { insertContact, isRateLimited } from '../../lib/contacts';
-import { notifyNewContact } from '../../lib/notify';
+import { notifyNewContact, resolveNotifyDestination } from '../../lib/notify';
 
 export const prerender = false;
 
@@ -13,7 +13,7 @@ function clean(value: FormDataEntryValue | null, max = 2000): string {
     .slice(0, max);
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const ip = request.headers.get('cf-connecting-ip') ?? 'desconhecido';
   const db = getDB();
 
@@ -88,7 +88,12 @@ export const POST: APIRoute = async ({ request }) => {
     ip,
   });
 
-  await notifyNewContact({ name, company, email, phone, service, subject, message });
+  // Aviso por e-mail é best-effort: uma falha aqui nunca esconde do visitante
+  // que a mensagem já foi gravada (o contato já está em /admin/contatos).
+  await notifyNewContact(
+    { name, company, email, phone, service, subject, message },
+    resolveNotifyDestination(locals.settings.company.email)
+  );
 
   return new Response(JSON.stringify({ success: true, id }), {
     status: 201,

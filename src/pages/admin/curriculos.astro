@@ -1,0 +1,71 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB } from '../../lib/db';
+import { listApplications } from '../../lib/applications';
+
+const applications = await listApplications(getDB());
+
+function formatDate(iso: string): string {
+  // "YYYY-MM-DD HH:MM:SS" (UTC) -> DD/MM/YYYY HH:MM
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y} ${(timePart ?? '').slice(0, 5)}`;
+}
+
+const formatSize = (bytes: number) => `${Math.max(1, Math.round(bytes / 1024))} KB`;
+---
+
+<AdminLayout
+  title="Currículos"
+  description="Currículos em PDF enviados pela página Trabalhe conosco."
+  active="/admin/curriculos"
+>
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Telefone</th>
+            <th>Recebido em</th>
+            <th>Aviso por e-mail</th>
+            <th>PDF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            applications.length === 0 && (
+              <tr>
+                <td colspan="6">Nenhum currículo recebido ainda.</td>
+              </tr>
+            )
+          }
+          {
+            applications.map((item) => (
+              <tr>
+                <td>
+                  <strong>{item.name}</strong>
+                  {item.message && <div class="muted small">{item.message}</div>}
+                </td>
+                <td>
+                  <a href={`mailto:${item.email}`}>{item.email}</a>
+                </td>
+                <td>{item.phone || '—'}</td>
+                <td>{formatDate(item.created_at)}</td>
+                <td>{item.email_sent ? 'Enviado' : 'Não enviado'}</td>
+                <td>
+                  <a class="btn btn--ghost btn--sm" href={`/admin/api/curriculo/${item.id}`}>
+                    <Icon name="download" size={16} />
+                    Baixar ({formatSize(item.size_bytes)})
+                  </a>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
