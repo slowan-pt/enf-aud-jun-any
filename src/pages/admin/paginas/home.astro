@@ -4,12 +4,17 @@ import Icon from '../../../components/Icon.astro';
 import IconPicker from '../../../components/admin/IconPicker.astro';
 import SectionColorFields from '../../../components/admin/SectionColorFields.astro';
 import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
-import { homeSections } from '../../../data/admin';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getHomeContent, updateHomeContent, HOME_SECTION_KEYS } from '../../../lib/pages';
 import { getSettings, updateSetting } from '../../../lib/settings';
+import { createService, slugExists, updateService, type Service } from '../../../lib/services';
+import { slugify } from '../../../lib/urls';
 
 const db = getDB();
+const MAX_HOME_SERVICES = 10;
+const homeServices = Astro.locals.services
+  .filter((service) => service.status !== 'archived')
+  .slice(0, MAX_HOME_SERVICES);
 
 if (Astro.request.method === 'POST') {
   const current = await getHomeContent(db);
@@ -33,6 +38,131 @@ if (Astro.request.method === 'POST') {
     }))
     .filter((item) => item.question && item.answer)
     .slice(0, 24);
+  const slideTitles = form.getAll('hero_slide_title').map((value) => String(value).trim());
+  const slideTexts = form.getAll('hero_slide_text').map((value) => String(value).trim());
+  const slideImages = form.getAll('hero_slide_image').map((value) => String(value).trim());
+  const slideAlts = form.getAll('hero_slide_alt').map((value) => String(value).trim());
+  const updatedHeroSlides = slideTitles
+    .map((title, index) => ({
+      title,
+      text: slideTexts[index] ?? '',
+      image: slideImages[index] ?? '',
+      alt: slideAlts[index] ?? '',
+    }))
+    .filter((item) => item.title && item.text && item.image)
+    .slice(0, 12);
+  const rawHeroSlideInterval = Number(
+    form.get('hero_slide_interval') ?? current.heroSlideIntervalSeconds
+  );
+  const heroSlideIntervalSeconds = Number.isFinite(rawHeroSlideInterval)
+    ? Math.min(30, Math.max(3, Math.round(rawHeroSlideInterval)))
+    : current.heroSlideIntervalSeconds;
+
+  const servicesById = new Map(Astro.locals.services.map((service) => [service.id, service]));
+  const serviceKeys = form
+    .getAll('home_service_key')
+    .map((value) => String(value))
+    .filter(Boolean)
+    .slice(0, MAX_HOME_SERVICES);
+
+  async function uniqueServiceSlug(name: string): Promise<string> {
+    const base = slugify(name) || 'servico';
+    let candidate = base;
+    let suffix = 2;
+    while (await slugExists(db, candidate)) {
+      candidate = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
+  }
+
+  for (const key of serviceKeys) {
+    const fieldPrefix = `service_${key}`;
+    const action = text(`${fieldPrefix}_action`, 'save');
+    const desiredStatus = text(`${fieldPrefix}_status`, 'published') === 'published'
+      ? 'published'
+      : 'draft';
+
+    if (key.startsWith('new_')) {
+      if (action === 'delete') continue;
+      const name = text(`${fieldPrefix}_name`, '').trim();
+      if (!name) continue;
+      const summary = text(`${fieldPrefix}_summary`, '').trim();
+      const highlights = [0, 1, 2]
+        .map((index) => ({
+          icon: text(`${fieldPrefix}_highlight_${index}_icon`, 'check-circle'),
+          title: text(`${fieldPrefix}_highlight_${index}_title`, '').trim(),
+          text: text(`${fieldPrefix}_highlight_${index}_text`, '').trim(),
+        }))
+        .filter((item) => item.title || item.text);
+
+      await createService(
+        db,
+        {
+          slug: await uniqueServiceSlug(name),
+          name,
+          shortName: text(`${fieldPrefix}_short`, name),
+          icon: text(`${fieldPrefix}_icon`, 'stethoscope'),
+          summary,
+          heroTitle: name,
+          heroLead: summary,
+          image: text(`${fieldPrefix}_image`, ''),
+          imageAlt: text(`${fieldPrefix}_alt`, ''),
+          intro: summary ? [summary] : [],
+          highlights,
+          blocks: [],
+          deliverables: [],
+          audience: [],
+          whatsappMessage: text(`${fieldPrefix}_wa`, ''),
+          seoTitle: name,
+          seoDescription: summary,
+          status: desiredStatus,
+          featured: false,
+        },
+        Astro.locals.user?.id
+      );
+      continue;
+    }
+
+    const service = servicesById.get(Number(key));
+    if (!service) continue;
+    const updatedHighlights = service.highlights.map((item, index) => {
+      if (index > 2) return item;
+      return {
+        ...item,
+        icon: text(`${fieldPrefix}_highlight_${index}_icon`, item.icon),
+        title: text(`${fieldPrefix}_highlight_${index}_title`, item.title),
+        text: text(`${fieldPrefix}_highlight_${index}_text`, item.text),
+      };
+    });
+
+    await updateService(
+      db,
+      service.slug,
+      {
+        slug: service.slug,
+        name: text(`${fieldPrefix}_name`, service.name),
+        icon: text(`${fieldPrefix}_icon`, service.icon),
+        shortName: text(`${fieldPrefix}_short`, service.shortName),
+        summary: text(`${fieldPrefix}_summary`, service.summary),
+        heroTitle: service.heroTitle,
+        heroLead: service.heroLead,
+        image: text(`${fieldPrefix}_image`, service.image),
+        imageAlt: text(`${fieldPrefix}_alt`, service.imageAlt),
+        whatsappMessage: text(`${fieldPrefix}_wa`, service.whatsappMessage),
+        seoTitle: service.seo.title,
+        seoDescription: service.seo.description,
+        status: action === 'delete' ? 'archived' : (desiredStatus as Service['status']),
+        featured: service.featured,
+        intro: service.intro,
+        deliverables: service.deliverables,
+        audience: service.audience,
+        highlights: updatedHighlights,
+        blocks: service.blocks,
+      },
+      service
+    );
+  }
 
   const updatedBenefits = current.benefits.items.map((item, index) => ({
     ...item,
@@ -138,6 +268,8 @@ if (Astro.request.method === 'POST') {
       imageAlt: text('vp_alt', current.valueProposition.imageAlt),
       points: updatedVpPoints,
     },
+    heroSlides: updatedHeroSlides.length ? updatedHeroSlides : current.heroSlides,
+    heroSlideIntervalSeconds,
     elo: {
       ...current.elo,
       eyebrow: text('elo_eyebrow', current.elo.eyebrow),
@@ -205,6 +337,8 @@ if (Astro.request.method === 'POST') {
 
 const {
   hero,
+  heroSlides,
+  heroSlideIntervalSeconds,
   valueProposition,
   elo,
   benefits,
@@ -228,7 +362,7 @@ function formatDate(iso: string): string {
 
 <AdminLayout
   title="Editar Home"
-  description="A Home é administrada por seções estruturadas — sem page builder livre. Serviços em destaque usam os dados cadastrados em Serviços; as demais seções gravam diretamente aqui."
+  description="Edite em um só lugar o que aparece na página inicial: carrossel, ícones e abas de serviços, matérias, perguntas frequentes e contato."
   active="/admin/paginas"
 >
   <div slot="actions">
@@ -253,130 +387,259 @@ function formatDate(iso: string): string {
 
   <form class="editor-layout" method="post" id="form-home">
     <div class="stack-panels">
-      <!-- seções -->
-      <section class="panel">
-        <div class="panel__head">
-          <h2 class="panel__title">Seções da Home</h2>
-          <span class="muted small">Referência — reordenar chega numa próxima fase</span>
-        </div>
-        <div class="panel__body">
-          <ul class="list-clean">
-            {
-              homeSections.map((section, index) => (
-                <li class="list-row section-row">
-                  <span class="drag" aria-hidden="true">
-                    <Icon name="list" size={16} />
-                  </span>
-                  <span class="order">{String(index + 1).padStart(2, '0')}</span>
-                  <span class="list-row__main">
-                    <strong>{section.label}</strong>
-                    <span>{section.fields}</span>
-                  </span>
-                  {[
-                    'hero',
-                    'proposta',
-                    'elo',
-                    'beneficios',
-                    'como-atuamos',
-                    'mvv',
-                    'cta',
-                  ].includes(section.key) && (
-                    <span class="badge badge--success">Editável abaixo</span>
-                  )}
-                  {['servicos', 'concorrente', 'gestao', 'rede'].includes(section.key) && (
-                    <span class="badge badge--brand">Editável em Serviços</span>
-                  )}
-                  {section.key === 'conteudos' && (
-                    <span class="badge badge--neutral">Editável em Matérias (em breve)</span>
-                  )}
-                </li>
-              ))
-            }
-          </ul>
-        </div>
-      </section>
-
       <!-- edição da seção hero -->
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">Seção: Hero</h2>
-          <span class="badge badge--brand">Em edição</span>
+          <h2 class="panel__title">Carrossel do topo</h2>
+          <span class="badge badge--brand">Home</span>
         </div>
         <div class="panel__body">
-          <SectionColorFields sectionKey="hero" value={sectionStyles.hero} />
           <div class="form-section">
+            <h3 class="form-section__title">Carrossel do topo</h3>
+            <p class="hint">
+              Estes slides controlam as imagens, títulos e textos que aparecem no topo da Home.
+              Use imagens horizontais, com área limpa à esquerda para o texto.
+            </p>
             <div class="field">
-              <label class="label" for="hero_eyebrow">Rótulo (eyebrow)</label>
-              <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} />
-            </div>
-            <div class="field">
-              <label class="label" for="hero_title">Título</label>
-              <input class="input" id="hero_title" name="hero_title" value={hero.title} />
-            </div>
-            <div class="field">
-              <label class="label" for="hero_title2">Complemento em destaque</label>
+              <label class="label" for="hero_slide_interval">
+                Tempo de troca automática (segundos)
+              </label>
               <input
                 class="input"
-                id="hero_title2"
-                name="hero_title2"
-                value={hero.titleHighlight}
+                id="hero_slide_interval"
+                name="hero_slide_interval"
+                type="number"
+                min="3"
+                max="30"
+                step="1"
+                value={heroSlideIntervalSeconds}
               />
+              <span class="hint">Use entre 3 e 30 segundos. Padrão: 6.</span>
             </div>
-            <div class="field">
-              <label class="label" for="hero_lead">Subtítulo</label>
-              <textarea class="textarea" id="hero_lead" name="hero_lead">{hero.lead}</textarea>
+            <div class="hero-slide-editor" data-hero-slide-editor>
+              {
+                heroSlides.map((slide, index) => (
+                  <div class="hero-slide-editor__item" data-hero-slide-row>
+                    <div class="hero-slide-editor__head">
+                      <strong>Slide {index + 1}</strong>
+                      <button
+                        type="button"
+                        class="row-btn row-btn--danger"
+                        data-hero-slide-remove
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                    <div class="field">
+                      <label class="label">Título</label>
+                      <input class="input" name="hero_slide_title" value={slide.title} />
+                    </div>
+                    <div class="field">
+                      <label class="label">Texto</label>
+                      {/* prettier-ignore */}
+                      <textarea class="textarea hero-slide-editor__text" name="hero_slide_text">{slide.text}</textarea>
+                    </div>
+                    <div class="field hero-slide-editor__image" data-hero-slide-upload>
+                      <label class="label">Imagem</label>
+                      <div class="image-upload__row">
+                        <img
+                          class="image-upload__preview"
+                          src={slide.image}
+                          alt=""
+                          width="120"
+                          height="90"
+                          data-hero-slide-preview
+                        />
+                        <div class="image-upload__controls">
+                          <input class="input" name="hero_slide_image" value={slide.image} data-hero-slide-url />
+                          <label class="btn btn--secondary btn--sm image-upload__btn">
+                            <Icon name="upload" size={14} />
+                            Enviar arquivo
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              style="display:none"
+                              data-hero-slide-file
+                            />
+                          </label>
+                          <span class="hint" data-hero-slide-status></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label class="label">Texto alternativo</label>
+                      <input class="input" name="hero_slide_alt" value={slide.alt} />
+                    </div>
+                  </div>
+                ))
+              }
             </div>
-
-            <div class="form-grid form-grid--2">
-              <div class="field">
-                <label class="label" for="cta1">CTA primário — texto</label>
-                <input class="input" id="cta1" name="cta1" value={hero.primaryCta.label} />
-              </div>
-              <div class="field">
-                <label class="label" for="cta1url">CTA primário — URL</label>
-                <input class="input" id="cta1url" name="cta1url" value={hero.primaryCta.href} />
-              </div>
-              <div class="field">
-                <label class="label" for="cta2">CTA secundário — texto</label>
-                <input class="input" id="cta2" name="cta2" value={hero.secondaryCta.label} />
-              </div>
-              <div class="field">
-                <label class="label" for="cta2url">CTA secundário — URL</label>
-                <input
-                  class="input"
-                  id="cta2url"
-                  name="cta2url"
-                  value={hero.secondaryCta.href}
-                />
-              </div>
-            </div>
-
-            <ImageUploadField
-              id="hero_image"
-              name="hero_image"
-              value={hero.image}
-              label="Imagem do hero"
-            />
-
-            <div class="field">
-              <label class="label" for="hero_alt"
-                >Texto alternativo (acessibilidade e SEO)</label
-              >
-              <input class="input" id="hero_alt" name="hero_alt" value={hero.imageAlt} />
-            </div>
+            <button type="button" class="btn btn--secondary btn--sm" data-hero-slide-add>
+              <Icon name="plus" size={16} />
+              Adicionar slide
+            </button>
           </div>
 
-          <div class="form-section">
-            <h3 class="form-section__title">Pilares exibidos abaixo do hero (um por linha)</h3>
-            <textarea class="textarea" name="pillars" style="min-height:120px"
-              >{hero.pillars.join('\n')}</textarea
-            >
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Ícones e abas de serviços da Home</h2>
+          <span class="badge badge--brand">Home</span>
+        </div>
+        <div class="panel__body">
+          <p class="hint">
+            Edite aqui os cartões de ícones e o conteúdo das abas que aparecem logo abaixo do
+            carrossel da página inicial. O limite é de {MAX_HOME_SERVICES} serviços. Serviços
+            inativos ficam salvos no painel, mas não aparecem no site.
+          </p>
+          <div class="home-service-editor" data-home-service-editor data-service-limit={MAX_HOME_SERVICES}>
+            {
+              homeServices.map((service, serviceIndex) => (
+                <section class="home-service-card" data-home-service-row>
+                  <input type="hidden" name="home_service_key" value={service.id} />
+                  <input type="hidden" name={`service_${service.id}_action`} value="save" data-service-action />
+                  <div class="home-service-card__head">
+                    <span class="order">{String(serviceIndex + 1).padStart(2, '0')}</span>
+                    <div>
+                      <h3>{service.name}</h3>
+                      <span>{service.shortName || service.slug}</span>
+                    </div>
+                    <div class="home-service-card__actions">
+                      <label class="field field--inline">
+                        <span class="label">Status</span>
+                        <select class="select select--sm" name={`service_${service.id}_status`}>
+                          <option value="published" selected={service.status === 'published'}>
+                            Ativo
+                          </option>
+                          <option value="draft" selected={service.status !== 'published'}>
+                            Inativo
+                          </option>
+                        </select>
+                      </label>
+                      <button type="button" class="row-btn row-btn--danger" data-service-delete>
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="form-grid form-grid--2">
+                    <div class="field">
+                      <label class="label" for={`service_${service.id}_name`}>Título da aba</label>
+                      <input
+                        class="input"
+                        id={`service_${service.id}_name`}
+                        name={`service_${service.id}_name`}
+                        value={service.name}
+                      />
+                    </div>
+                    <div class="field">
+                      <label class="label" for={`service_${service.id}_short`}>
+                        Texto do ícone
+                      </label>
+                      <input
+                        class="input"
+                        id={`service_${service.id}_short`}
+                        name={`service_${service.id}_short`}
+                        value={service.shortName}
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-grid form-grid--2">
+                    <IconPicker
+                      name={`service_${service.id}_icon`}
+                      value={service.icon}
+                      label="Ícone do cartão"
+                    />
+                    <div class="field">
+                      <label class="label" for={`service_${service.id}_wa`}>
+                        Mensagem do WhatsApp
+                      </label>
+                      <input
+                        class="input"
+                        id={`service_${service.id}_wa`}
+                        name={`service_${service.id}_wa`}
+                        value={service.whatsappMessage}
+                      />
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label class="label" for={`service_${service.id}_summary`}>
+                      Texto principal da aba
+                    </label>
+                    {/* prettier-ignore */}
+                    <textarea class="textarea" id={`service_${service.id}_summary`} name={`service_${service.id}_summary`} style="min-height:92px">{service.summary}</textarea>
+                  </div>
+
+                  <ImageUploadField
+                    id={`service_${service.id}_image`}
+                    name={`service_${service.id}_image`}
+                    value={service.image}
+                    label="Imagem da aba"
+                  />
+
+                  <div class="field">
+                    <label class="label" for={`service_${service.id}_alt`}>
+                      Texto alternativo da imagem
+                    </label>
+                    <input
+                      class="input"
+                      id={`service_${service.id}_alt`}
+                      name={`service_${service.id}_alt`}
+                      value={service.imageAlt}
+                    />
+                  </div>
+
+                  <div class="form-section home-service-card__highlights">
+                    <h4 class="form-section__title">Destaques da aba</h4>
+                    {service.highlights.slice(0, 3).map((item, index) => (
+                      <div class="home-highlight-row">
+                        <IconPicker
+                          name={`service_${service.id}_highlight_${index}_icon`}
+                          value={item.icon}
+                          label={`Ícone ${index + 1}`}
+                        />
+                        <div class="home-highlight-row__fields">
+                          <input
+                            class="input"
+                            name={`service_${service.id}_highlight_${index}_title`}
+                            value={item.title}
+                            aria-label={`Título do destaque ${index + 1}`}
+                          />
+                          <input
+                            class="input"
+                            name={`service_${service.id}_highlight_${index}_text`}
+                            value={item.text}
+                            aria-label={`Texto do destaque ${index + 1}`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))
+            }
           </div>
+          <button
+            type="button"
+            class="btn btn--secondary btn--sm"
+            data-home-service-add
+            disabled={homeServices.length >= MAX_HOME_SERVICES}
+          >
+            <Icon name="plus" size={16} />
+            Adicionar serviço
+          </button>
+          <span class="hint" data-home-service-count>
+            {homeServices.length} de {MAX_HOME_SERVICES} serviços cadastrados nesta tela.
+          </span>
         </div>
       </section>
 
       <!-- proposta de valor -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Proposta de valor</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -454,7 +717,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- elo estratégico -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Elo estratégico (diagrama)</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -506,7 +769,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- benefícios -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Benefícios</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -542,7 +805,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- como atuamos -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Como atuamos</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -602,7 +865,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- missão, visão e valores -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Missão, visão e valores</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -691,7 +954,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- para quem atuamos -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Seção: Para quem atuamos</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -758,17 +1021,16 @@ function formatDate(iso: string): string {
         </div>
       </section>
 
-      <!-- cta final -->
+      <!-- contato da home -->
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">Seção: CTA final</h2>
-          <span class="badge badge--brand">Em edição</span>
+          <h2 class="panel__title">Contato da Home</h2>
+          <span class="badge badge--brand">Home</span>
         </div>
         <div class="panel__body">
-          <SectionColorFields sectionKey="cta" value={sectionStyles.cta} />
           <div class="form-section">
             <div class="field">
-              <label class="label" for="cta_eyebrow">Rótulo (eyebrow)</label>
+              <label class="label" for="cta_eyebrow">Rótulo acima do título</label>
               <input
                 class="input"
                 id="cta_eyebrow"
@@ -777,17 +1039,17 @@ function formatDate(iso: string): string {
               />
             </div>
             <div class="field">
-              <label class="label" for="cta_title">Título</label>
+              <label class="label" for="cta_title">Título do contato</label>
               <input class="input" id="cta_title" name="cta_title" value={finalCta.title} />
             </div>
             <div class="field">
-              <label class="label" for="cta_text">Texto</label>
+              <label class="label" for="cta_text">Texto de apoio</label>
               <textarea class="textarea" id="cta_text" name="cta_text">{finalCta.text}</textarea
               >
             </div>
             <div class="form-grid form-grid--2">
               <div class="field">
-                <label class="label" for="cta_primary_label">Botão — texto</label>
+                <label class="label" for="cta_primary_label">Texto do botão</label>
                 <input
                   class="input"
                   id="cta_primary_label"
@@ -796,7 +1058,7 @@ function formatDate(iso: string): string {
                 />
               </div>
               <div class="field">
-                <label class="label" for="cta_primary_href">Botão — URL</label>
+                <label class="label" for="cta_primary_href">Link do botão</label>
                 <input
                   class="input"
                   id="cta_primary_href"
@@ -810,7 +1072,7 @@ function formatDate(iso: string): string {
       </section>
 
       <!-- vídeo promocional -->
-      <section class="panel">
+      <section class="panel" hidden>
         <div class="panel__head">
           <h2 class="panel__title">Vídeo promocional</h2>
           <span class="badge badge--brand">Em edição</span>
@@ -859,11 +1121,29 @@ function formatDate(iso: string): string {
         </div>
       </section>
 
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Matérias da Home</h2>
+          <span class="badge badge--neutral">Automático</span>
+        </div>
+        <div class="panel__body">
+          <p class="muted small">
+            A seção “Últimas matérias” da Home mostra automaticamente as publicações cadastradas
+            em Conteúdos. Para alterar título, imagem, categoria ou texto de uma matéria, use o
+            botão abaixo.
+          </p>
+          <a href="/admin/conteudos" class="btn btn--secondary btn--sm" style="justify-self:start">
+            <Icon name="newspaper" size={16} />
+            Editar matérias
+          </a>
+        </div>
+      </section>
+
       <!-- perguntas frequentes -->
       <section class="panel">
         <div class="panel__head">
           <h2 class="panel__title">Perguntas frequentes</h2>
-          <span class="badge badge--brand">Em edição</span>
+          <span class="badge badge--brand">Home</span>
         </div>
         <div class="panel__body">
           <div class="form-section">
@@ -915,13 +1195,13 @@ function formatDate(iso: string): string {
     <aside class="editor-side">
       <section class="panel">
         <div class="panel__head">
-          <h2 class="panel__title">Outras seções</h2>
+          <h2 class="panel__title">O que esta tela edita</h2>
         </div>
         <div class="panel__body">
           <p class="muted small">
-            Serviços, Auditoria Concorrente, Gestão Hospitalar e Qualificação da rede usam os
-            dados cadastrados em <strong>Serviços</strong> — edite-os por lá. Conteúdos recentes usa
-            as publicações em <strong>Matérias</strong>, ainda simulada.
+            Aqui ficam os conteúdos que aparecem na Home: carrossel, ícones e abas de serviços,
+            matérias automáticas, perguntas frequentes e contato. As páginas internas de cada
+            serviço continuam tendo edição própria quando você precisar de textos mais completos.
           </p>
         </div>
       </section>
@@ -936,7 +1216,7 @@ function formatDate(iso: string): string {
             descrição padrão definidos em Configurações.
           </p>
           <p class="muted small" style="margin-top: var(--sp-3)">
-            Cores e fundo desta página ficam em
+            Ajustes avançados de cores, fundos e espaçamentos ficam em
             <a href="/admin/editor/home/aparencia">Editor Visual → Home → Aparência</a>.
           </p>
         </div>
@@ -1021,9 +1301,83 @@ function formatDate(iso: string): string {
     min-width: 0;
   }
 
+  .home-service-editor {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .home-service-card {
+    display: grid;
+    gap: var(--sp-4);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .home-service-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+
+  .home-service-card__head h3 {
+    margin: 0;
+    color: var(--text-strong);
+    font-size: var(--fs-base);
+  }
+
+  .home-service-card__head span:not(.order) {
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+
+  .home-service-card__actions {
+    display: flex;
+    align-items: end;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+
+  .field--inline {
+    gap: 0.25rem;
+  }
+
+  .home-service-card.is-pending-delete {
+    opacity: 0.52;
+    border-style: dashed;
+  }
+
+  .home-service-card__highlights {
+    margin-top: 0;
+  }
+
+  .home-highlight-row {
+    display: grid;
+    gap: var(--sp-2);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+  }
+
+  .home-highlight-row__fields {
+    display: grid;
+    gap: var(--sp-2);
+  }
+
   @media (min-width: 700px) {
     .benefit-row__fields {
       grid-template-columns: 1fr 2fr;
+    }
+
+    .home-highlight-row {
+      grid-template-columns: minmax(190px, 0.8fr) minmax(0, 2fr);
+      align-items: end;
+    }
+
+    .home-highlight-row__fields {
+      grid-template-columns: minmax(180px, 0.75fr) minmax(0, 1.25fr);
     }
   }
 
@@ -1033,6 +1387,59 @@ function formatDate(iso: string): string {
     background: #000;
     border-radius: var(--r-sm);
     border: 1px solid var(--line);
+  }
+
+  .hero-slide-editor {
+    display: grid;
+    gap: var(--sp-4);
+  }
+
+  .hero-slide-editor__item {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .hero-slide-editor__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  .hero-slide-editor__text {
+    min-height: 92px;
+  }
+
+  .image-upload__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+
+  .image-upload__preview {
+    width: 120px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--c-ink-100);
+    flex: none;
+  }
+
+  .image-upload__controls {
+    display: grid;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .image-upload__btn {
+    justify-self: start;
   }
 
   .faq-editor {
@@ -1086,6 +1493,254 @@ function formatDate(iso: string): string {
     } catch {
       if (videoStatus) videoStatus.textContent = 'Falha no envio. Tente novamente.';
     }
+  });
+
+  const heroSlideEditor = document.querySelector<HTMLElement>('[data-hero-slide-editor]');
+  const heroSlideAdd = document.querySelector<HTMLButtonElement>('[data-hero-slide-add]');
+
+  const uploadHeroSlideImage = async (root: HTMLElement, file: File) => {
+    const urlInput = root.querySelector<HTMLInputElement>('[data-hero-slide-url]');
+    const preview = root.querySelector<HTMLImageElement>('[data-hero-slide-preview]');
+    const status = root.querySelector<HTMLElement>('[data-hero-slide-status]');
+    if (!urlInput) return;
+
+    if (status) status.textContent = `Enviando ${file.name}...`;
+    const body = new FormData();
+    body.set('file', file);
+    body.set('alt', file.name);
+    body.set('title', file.name);
+
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) {
+        if (status) status.textContent = data.error ?? 'Falha no envio.';
+        return;
+      }
+      urlInput.value = data.url;
+      if (preview) preview.src = data.url;
+      if (status) status.textContent = 'Enviado.';
+    } catch {
+      if (status) status.textContent = 'Falha no envio. Tente novamente.';
+    }
+  };
+
+  const renumberHeroSlides = () => {
+    heroSlideEditor
+      ?.querySelectorAll<HTMLElement>('[data-hero-slide-row]')
+      .forEach((row, index) => {
+        const label = row.querySelector('strong');
+        if (label) label.textContent = `Slide ${index + 1}`;
+      });
+  };
+
+  const wireHeroSlideRow = (row: HTMLElement) => {
+    if (row.dataset.bound) return;
+    row.dataset.bound = '1';
+
+    row
+      .querySelector<HTMLButtonElement>('[data-hero-slide-remove]')
+      ?.addEventListener('click', () => {
+        const rows = heroSlideEditor?.querySelectorAll('[data-hero-slide-row]').length ?? 0;
+        if (rows <= 1) {
+          row.querySelector<HTMLInputElement>('input[name="hero_slide_title"]')!.value = '';
+          row.querySelector<HTMLTextAreaElement>('textarea[name="hero_slide_text"]')!.value = '';
+          row.querySelector<HTMLInputElement>('input[name="hero_slide_image"]')!.value = '';
+          row.querySelector<HTMLInputElement>('input[name="hero_slide_alt"]')!.value = '';
+          const preview = row.querySelector<HTMLImageElement>('[data-hero-slide-preview]');
+          if (preview) preview.src = '/favicon-192.png';
+        } else {
+          row.remove();
+        }
+        renumberHeroSlides();
+      });
+
+    row.querySelector<HTMLInputElement>('[data-hero-slide-file]')?.addEventListener('change', (event) => {
+      const file = (event.currentTarget as HTMLInputElement).files?.[0];
+      if (file) uploadHeroSlideImage(row, file);
+    });
+  };
+
+  heroSlideEditor?.querySelectorAll<HTMLElement>('[data-hero-slide-row]').forEach(wireHeroSlideRow);
+
+  heroSlideAdd?.addEventListener('click', () => {
+    if (!heroSlideEditor) return;
+    const row = document.createElement('div');
+    row.className = 'hero-slide-editor__item';
+    row.dataset.heroSlideRow = '';
+    row.innerHTML = `
+      <div class="hero-slide-editor__head">
+        <strong>Slide</strong>
+        <button type="button" class="row-btn row-btn--danger" data-hero-slide-remove>Excluir</button>
+      </div>
+      <div class="field">
+        <label class="label">Título</label>
+        <input class="input" name="hero_slide_title" value="" />
+      </div>
+      <div class="field">
+        <label class="label">Texto</label>
+        <textarea class="textarea hero-slide-editor__text" name="hero_slide_text"></textarea>
+      </div>
+      <div class="field hero-slide-editor__image" data-hero-slide-upload>
+        <label class="label">Imagem</label>
+        <div class="image-upload__row">
+          <img class="image-upload__preview" src="/favicon-192.png" alt="" width="120" height="90" data-hero-slide-preview />
+          <div class="image-upload__controls">
+            <input class="input" name="hero_slide_image" value="" data-hero-slide-url />
+            <label class="btn btn--secondary btn--sm image-upload__btn">
+              Enviar arquivo
+              <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" data-hero-slide-file />
+            </label>
+            <span class="hint" data-hero-slide-status></span>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Texto alternativo</label>
+        <input class="input" name="hero_slide_alt" value="" />
+      </div>
+    `;
+    heroSlideEditor.appendChild(row);
+    wireHeroSlideRow(row);
+    renumberHeroSlides();
+    row.querySelector<HTMLInputElement>('input[name="hero_slide_title"]')?.focus();
+  });
+
+  const serviceEditor = document.querySelector<HTMLElement>('[data-home-service-editor]');
+  const serviceAdd = document.querySelector<HTMLButtonElement>('[data-home-service-add]');
+  const serviceCount = document.querySelector<HTMLElement>('[data-home-service-count]');
+  const serviceLimit = Number(serviceEditor?.dataset.serviceLimit ?? 10);
+
+  const visibleServiceRows = () =>
+    Array.from(serviceEditor?.querySelectorAll<HTMLElement>('[data-home-service-row]') ?? []).filter(
+      (row) => row.querySelector<HTMLInputElement>('[data-service-action]')?.value !== 'delete'
+    );
+
+  const updateServiceControls = () => {
+    const count = visibleServiceRows().length;
+    if (serviceAdd) serviceAdd.disabled = count >= serviceLimit;
+    if (serviceCount) serviceCount.textContent = `${count} de ${serviceLimit} serviços cadastrados nesta tela.`;
+    visibleServiceRows().forEach((row, index) => {
+      const order = row.querySelector<HTMLElement>('.order');
+      if (order) order.textContent = String(index + 1).padStart(2, '0');
+    });
+  };
+
+  const rewriteServiceRowNames = (row: HTMLElement, key: string) => {
+    row.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('[name]').forEach((field) => {
+      field.name = field.name.replace(/service_(?:new_)?\d+/g, `service_${key}`);
+    });
+    row.querySelectorAll<HTMLLabelElement>('label[for]').forEach((label) => {
+      label.htmlFor = label.htmlFor.replace(/service_(?:new_)?\d+/g, `service_${key}`);
+    });
+    row.querySelectorAll<HTMLElement>('[id]').forEach((field) => {
+      field.id = field.id.replace(/service_(?:new_)?\d+/g, `service_${key}`);
+    });
+  };
+
+  const clearServiceRow = (row: HTMLElement, key: string) => {
+    const keyInput = row.querySelector<HTMLInputElement>('input[name="home_service_key"]');
+    if (keyInput) keyInput.value = key;
+    const action = row.querySelector<HTMLInputElement>('[data-service-action]');
+    if (action) {
+      action.name = `service_${key}_action`;
+      action.value = 'save';
+    }
+    row.querySelectorAll<HTMLInputElement>('input').forEach((input) => {
+      if (input.name === 'home_service_key' || input.dataset.serviceAction !== undefined) return;
+      if (input.type === 'hidden' || input.type === 'file') return;
+      input.value = '';
+    });
+    row.querySelectorAll<HTMLTextAreaElement>('textarea').forEach((textarea) => {
+      textarea.value = '';
+    });
+    row.querySelectorAll<HTMLSelectElement>('select').forEach((select) => {
+      if (select.name.endsWith('_status')) select.value = 'draft';
+      if (select.name.endsWith('_icon')) select.value = 'stethoscope';
+    });
+    row.querySelectorAll<HTMLImageElement>('[data-image-preview]').forEach((preview) => {
+      preview.src = '/favicon-192.png';
+      preview.style.visibility = 'hidden';
+    });
+    row.querySelectorAll<HTMLElement>('[data-image-upload]').forEach((root) => {
+      root.removeAttribute('data-bound');
+    });
+    const title = row.querySelector('.home-service-card__head h3');
+    if (title) title.textContent = 'Novo serviço';
+    const subtitle = row.querySelector('.home-service-card__head h3 + span');
+    if (subtitle) subtitle.textContent = 'Preencha e salve para criar';
+  };
+
+  const wireServiceRow = (row: HTMLElement) => {
+    if (row.dataset.serviceBound) return;
+    row.dataset.serviceBound = '1';
+    row.querySelector<HTMLButtonElement>('[data-service-delete]')?.addEventListener('click', () => {
+      const action = row.querySelector<HTMLInputElement>('[data-service-action]');
+      const key = row.querySelector<HTMLInputElement>('input[name="home_service_key"]')?.value ?? '';
+      if (key.startsWith('new_')) {
+        row.remove();
+      } else if (action) {
+        action.value = 'delete';
+        row.classList.add('is-pending-delete');
+        row.hidden = true;
+      }
+      updateServiceControls();
+    });
+
+    row.querySelectorAll<HTMLElement>('[data-image-upload]').forEach((root) => {
+      if (root.dataset.bound) return;
+      if (root.dataset.serviceUploadBound) return;
+      root.dataset.serviceUploadBound = '1';
+      const urlInput = root.querySelector<HTMLInputElement>('[data-image-url]');
+      const fileInput = root.querySelector<HTMLInputElement>('[data-image-file]');
+      const preview = root.querySelector<HTMLImageElement>('[data-image-preview]');
+      const status = root.querySelector<HTMLElement>('[data-image-status]');
+      fileInput?.addEventListener('change', async () => {
+        const file = fileInput.files?.[0];
+        if (!file || !urlInput) return;
+        if (status) status.textContent = `Enviando ${file.name}...`;
+        const body = new FormData();
+        body.set('file', file);
+        body.set('alt', file.name);
+        body.set('title', file.name);
+        try {
+          const res = await fetch('/admin/api/upload', { method: 'POST', body });
+          const data = await res.json();
+          if (!res.ok) {
+            if (status) status.textContent = data.error ?? 'Falha no envio.';
+            return;
+          }
+          urlInput.value = data.url;
+          if (preview) {
+            preview.src = data.url;
+            preview.style.visibility = 'visible';
+          }
+          if (status) status.textContent = 'Enviado.';
+        } catch {
+          if (status) status.textContent = 'Falha no envio. Tente novamente.';
+        }
+      });
+    });
+  };
+
+  serviceEditor?.querySelectorAll<HTMLElement>('[data-home-service-row]').forEach(wireServiceRow);
+  updateServiceControls();
+
+  serviceAdd?.addEventListener('click', () => {
+    if (!serviceEditor || visibleServiceRows().length >= serviceLimit) return;
+    const source = serviceEditor.querySelector<HTMLElement>('[data-home-service-row]');
+    if (!source) return;
+    const key = `new_${Date.now()}`;
+    const row = source.cloneNode(true) as HTMLElement;
+    row.classList.remove('is-pending-delete');
+    row.hidden = false;
+    delete row.dataset.serviceBound;
+    rewriteServiceRowNames(row, key);
+    clearServiceRow(row, key);
+    serviceEditor.appendChild(row);
+    wireServiceRow(row);
+    updateServiceControls();
+    row.querySelector<HTMLInputElement>(`input[name="service_${key}_name"]`)?.focus();
   });
 
   const faqEditor = document.querySelector<HTMLElement>('[data-faq-editor]');

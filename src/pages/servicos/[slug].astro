@@ -2,8 +2,6 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PageHero from '../../components/PageHero.astro';
 import Icon from '../../components/Icon.astro';
-import ContactForm from '../../components/ContactForm.astro';
-import ServiceCard from '../../components/ServiceCard.astro';
 import SectionOverlays from '../../components/SectionOverlays.astro';
 import { publishedOnly, findBySlug } from '../../lib/services';
 import { seo, waLink } from '../../data/site';
@@ -25,7 +23,6 @@ const publishedServices = publishedOnly(Astro.locals.services);
 const lookupPool = editMode ? Astro.locals.services : publishedServices;
 const service = findBySlug(lookupPool, Astro.params.slug ?? '');
 if (!service) return Astro.rewrite('/404');
-const others = publishedServices.filter((item) => item.slug !== service.slug).slice(0, 3);
 
 const db = getDB();
 const moldura = await getServicosContent(db);
@@ -85,6 +82,9 @@ const serviceLd = {
       image={service.image}
       imageAlt={service.imageAlt}
       imageEditPath={ed('image')}
+      bgImage={service.heroBg}
+      bgImageAlt={service.heroBgAlt}
+      bgEditPath={ed('heroBg')}
       imageFit={imageStyle.fit}
       imagePosX={imageStyle.posX}
       imagePosY={imageStyle.posY}
@@ -92,7 +92,7 @@ const serviceLd = {
       leadEditPath={ed('heroLead')}
     >
       <div class="cluster hero-actions">
-        <a href="#solicitar" class="btn btn--on-brand">
+        <a href="/contato#form-contato" class="btn btn--on-brand">
           Solicitar apresentação
           <Icon name="arrow-right" size={16} class="icon--arrow" />
         </a>
@@ -120,7 +120,12 @@ const serviceLd = {
       <div class="grid grid--4" data-edit-list={ed('highlights')}>
         {
           service.highlights.map((item, index) => (
-            <article class="card highlight" data-reveal data-edit-item={ed(index)}>
+            <article
+              class="card highlight"
+              data-reveal
+              data-card-key={`hl-${item.id ?? index}`.toLowerCase().replace(/[^a-z0-9-]/g, '')}
+              data-edit-item={ed(index)}
+            >
               <span class="icon-badge icon-badge--accent icon-badge--sm">
                 <Icon
                   name={item.icon}
@@ -190,7 +195,7 @@ const serviceLd = {
                 >
                   {block.title}
                 </h2>
-                {block.text && (
+                {(block.text || (edit && typeof block.text === 'string')) && (
                   <p
                     class="svc-block__text"
                     data-edit={`blocks.${index}.text`}
@@ -201,11 +206,13 @@ const serviceLd = {
                     {block.text}
                   </p>
                 )}
-                {block.items && (
+                {block.items?.length ? (
                   <ul class="check-list" data-edit-list={ed(`blocks.${index}.items`)}>
                     {block.items.map((item, itemIndex) => (
                       <li data-edit-item={ed(itemIndex)}>
-                        <Icon name="check-circle" size={18} />
+                        <span class="icon-badge icon-badge--accent icon-badge--sm">
+                          <Icon name="check" size={16} />
+                        </span>
                         <span
                           data-edit={`blocks.${index}.items.${itemIndex}`}
                           data-edit-label={ed('Item')}
@@ -215,7 +222,7 @@ const serviceLd = {
                       </li>
                     ))}
                   </ul>
-                )}
+                ) : null}
               </div>
             ))
           }
@@ -223,17 +230,19 @@ const serviceLd = {
       </article>
 
       <aside class="svc-aside">
-        <div class="aside-card" data-reveal>
+        <div class="aside-card" data-reveal data-card-key="aside-deliverables">
           <h2 class="aside-card__title">
             <Icon name="file-check" size={18} />
-            O que entregamos
+            <span data-edit="aside.deliverablesTitle" data-edit-label={ed('Título da lista')}>
+              {service.aside.deliverablesTitle}
+            </span>
           </h2>
           <ul class="aside-list" data-edit-list={ed('deliverables')}>
             {
               service.deliverables.map((item, index) => (
-                <li>
+                <li data-edit-item={ed(index)}>
                   <Icon name="check" size={15} />
-                  <span data-edit={`deliverables.${index}`} data-edit-item={ed(index)}>
+                  <span data-edit={`deliverables.${index}`} data-edit-label={ed('Item')}>
                     {item}
                   </span>
                 </li>
@@ -242,17 +251,19 @@ const serviceLd = {
           </ul>
         </div>
 
-        <div class="aside-card" data-reveal>
+        <div class="aside-card" data-reveal data-card-key="aside-audience">
           <h2 class="aside-card__title">
             <Icon name="users" size={18} />
-            Para quem
+            <span data-edit="aside.audienceTitle" data-edit-label={ed('Título da lista')}>
+              {service.aside.audienceTitle}
+            </span>
           </h2>
           <ul class="aside-list" data-edit-list={ed('audience')}>
             {
               service.audience.map((item, index) => (
-                <li>
+                <li data-edit-item={ed(index)}>
                   <Icon name="check" size={15} />
-                  <span data-edit={`audience.${index}`} data-edit-item={ed(index)}>
+                  <span data-edit={`audience.${index}`} data-edit-label={ed('Item')}>
                     {item}
                   </span>
                 </li>
@@ -262,9 +273,19 @@ const serviceLd = {
         </div>
 
         <div class="aside-card aside-card--cta" data-reveal>
-          <h2 class="title-sm">Fale com a equipe técnica</h2>
-          <p>
-            Tire dúvidas sobre escopo, método e indicadores de acompanhamento deste serviço.
+          <h2
+            class="title-sm"
+            data-edit="aside.ctaTitle"
+            data-edit-label={ed('Título do contato')}
+          >
+            {service.aside.ctaTitle}
+          </h2>
+          <p
+            data-edit="aside.ctaText"
+            data-edit-kind={ed('multiline')}
+            data-edit-label={ed('Texto do contato')}
+          >
+            {service.aside.ctaText}
           </p>
           <a
             href={waLink(whatsapp.number, service.whatsappMessage)}
@@ -273,75 +294,18 @@ const serviceLd = {
             rel="noopener"
           >
             <Icon name="whatsapp" size={18} />
-            {company.phoneDisplay}
+            <span data-edit="aside.whatsappLabel" data-edit-label={ed('Texto do botão WhatsApp')}>
+              {service.aside.whatsappLabel || company.phoneDisplay}
+            </span>
           </a>
-          <a href="#solicitar" class="btn btn--secondary btn--block">Solicitar apresentação</a>
+          <a href="/contato#form-contato" class="btn btn--secondary btn--block">
+            <span data-edit="aside.ctaButtonLabel" data-edit-label={ed('Texto do botão')}>
+              {service.aside.ctaButtonLabel}
+            </span>
+          </a>
         </div>
       </aside>
       <SectionOverlays section="content" overlays={overlays} />
-    </div>
-  </section>
-
-  <!-- ------------------------------------------------ formulário -->
-  <section
-    class:list={['section', 'section--subtle', secClass('form')]}
-    style={secStyle('form', sectionStyles.form)}
-    data-section="form"
-    data-section-label={ed('Formulário')}
-    id="solicitar"
-  >
-    <div class="container form-layout">
-      <div data-reveal>
-        <p class="eyebrow">Solicitar apresentação</p>
-        <h2 class="title-lg">Converse com a Essencial sobre {service.shortName}</h2>
-        <p class="lead" style="margin-top: var(--sp-4)">
-          Preencha o formulário com o cenário da sua organização. O campo “serviço de interesse”
-          já vem preenchido com <strong>{service.name}</strong>.
-        </p>
-        <ul class="check-list" style="margin-top: var(--sp-6)">
-          <li>
-            <Icon name="check-circle" size={18} />
-            <span>Retorno em horário comercial</span>
-          </li>
-          <li>
-            <Icon name="check-circle" size={18} />
-            <span>Conversa técnica, sem compromisso</span>
-          </li>
-          <li>
-            <Icon name="check-circle" size={18} />
-            <span>Apresentação do método e do escopo</span>
-          </li>
-        </ul>
-      </div>
-      <div data-reveal>
-        <ContactForm
-          variant="commercial"
-          id={`form-${service.slug}`}
-          title="Solicite uma apresentação"
-          preselectedService={service.name}
-          origin={`Serviço: ${service.name}`}
-        />
-      </div>
-      <SectionOverlays section="form" overlays={overlays} />
-    </div>
-  </section>
-
-  <!-- --------------------------------------------- outros serviços -->
-  <section
-    class:list={['section', secClass('others')]}
-    style={secStyle('others', sectionStyles.others)}
-    data-section="others"
-    data-section-label={ed('Outros serviços')}
-  >
-    <div class="container">
-      <div class="section-head" data-reveal>
-        <p class="eyebrow">Outros serviços</p>
-        <h2 class="title-md">Complemente com outras frentes de atuação</h2>
-      </div>
-      <div class="grid grid--3">
-        {others.map((item) => <ServiceCard service={item} variant="compact" />)}
-      </div>
-      <SectionOverlays section="others" overlays={overlays} />
     </div>
   </section>
 
@@ -422,8 +386,19 @@ const serviceLd = {
     white-space: pre-line;
   }
 
+  .svc-block + .svc-block {
+    margin-top: clamp(2rem, 4vw, 3rem);
+  }
+
   .svc-block .check-list {
     max-width: 68ch;
+  }
+
+  /* Listas com check seguem exatamente o corpo do texto do bloco: só o marcador muda. */
+  .svc-block .check-list li {
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
+    color: var(--text-muted);
   }
 
   .svc-aside {
@@ -440,8 +415,9 @@ const serviceLd = {
 
   .aside-card {
     padding: var(--sp-5);
-    background: var(--c-white);
-    border: 1px solid var(--line);
+    background: var(--card-bg, var(--c-white));
+    border: 1px solid var(--card-border, var(--line));
+    border-top: 3px solid var(--card-accent, var(--line));
     border-radius: var(--r-lg);
   }
 
@@ -494,15 +470,4 @@ const serviceLd = {
     line-height: var(--lh-relaxed);
   }
 
-  .form-layout {
-    display: grid;
-    gap: clamp(2rem, 4vw, 3.5rem);
-    align-items: start;
-  }
-
-  @media (min-width: 980px) {
-    .form-layout {
-      grid-template-columns: 0.85fr 1.15fr;
-    }
-  }
 </style>

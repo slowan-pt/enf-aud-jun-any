@@ -8,6 +8,7 @@
  * praticamente inalterados.
  */
 import type { D1Database } from './cf-types';
+import { normalizeAside, withServiceTemplate, type ServiceAside } from './service-template';
 
 export interface ServiceHighlight {
   /**
@@ -51,11 +52,16 @@ export interface Service {
   heroLead: string;
   image: string;
   imageAlt: string;
+  /** Imagem fixa que substitui o fundo azul do topo, ocupando toda a largura. Vazio = fundo azul. */
+  heroBg: string;
+  heroBgAlt: string;
   intro: string[];
   highlights: ServiceHighlight[];
   blocks: ServiceBlock[];
   deliverables: string[];
   audience: string[];
+  /** Títulos e textos da barra lateral. */
+  aside: ServiceAside;
   whatsappMessage: string;
   seo: { title: string; description: string };
   updatedAt: string;
@@ -64,11 +70,15 @@ export interface Service {
 export interface ServiceContentJson {
   image: string;
   imageAlt: string;
+  /** Opcionais: registros salvos antes do modelo padrão não têm estes campos. */
+  heroBg?: string;
+  heroBgAlt?: string;
   intro: string[];
   highlights: ServiceHighlight[];
   blocks: ServiceBlock[];
   deliverables: string[];
   audience: string[];
+  aside?: ServiceAside;
 }
 
 interface ServiceRow {
@@ -91,7 +101,7 @@ interface ServiceRow {
 }
 
 function rowToService(row: ServiceRow): Service {
-  const content = JSON.parse(row.content_json) as ServiceContentJson;
+  const content = withServiceTemplate(JSON.parse(row.content_json) as ServiceContentJson);
   return {
     id: row.id,
     slug: row.slug,
@@ -106,11 +116,14 @@ function rowToService(row: ServiceRow): Service {
     heroLead: row.hero_lead,
     image: content.image,
     imageAlt: content.imageAlt,
+    heroBg: content.heroBg ?? '',
+    heroBgAlt: content.heroBgAlt ?? '',
     intro: content.intro,
     highlights: content.highlights,
     blocks: content.blocks,
     deliverables: content.deliverables,
     audience: content.audience,
+    aside: normalizeAside(content.aside),
     whatsappMessage: row.whatsapp_message,
     seo: { title: row.seo_title, description: row.seo_description },
     updatedAt: row.updated_at,
@@ -160,11 +173,14 @@ export interface ServiceCreateInput {
   heroLead: string;
   image: string;
   imageAlt: string;
+  heroBg?: string;
+  heroBgAlt?: string;
   intro: string[];
   highlights: ServiceHighlight[];
   blocks: ServiceBlock[];
   deliverables: string[];
   audience: string[];
+  aside?: ServiceAside;
   whatsappMessage: string;
   seoTitle: string;
   seoDescription: string;
@@ -184,15 +200,19 @@ export async function createService(
     .first<{ maxOrder: number }>();
   const nextOrder = (maxOrderRow?.maxOrder ?? -1) + 1;
 
-  const content: ServiceContentJson = {
+  // Todo serviço novo já nasce com o modelo padrão (4 cards + lateral).
+  const content: ServiceContentJson = withServiceTemplate({
     image: input.image,
     imageAlt: input.imageAlt,
+    heroBg: input.heroBg ?? '',
+    heroBgAlt: input.heroBgAlt ?? '',
     intro: input.intro,
     highlights: input.highlights,
     blocks: input.blocks,
     deliverables: input.deliverables,
     audience: input.audience,
-  };
+    aside: normalizeAside(input.aside),
+  });
 
   const result = await db
     .prepare(
@@ -261,11 +281,14 @@ export async function duplicateService(
       heroLead: existing.heroLead,
       image: existing.image,
       imageAlt: existing.imageAlt,
+      heroBg: existing.heroBg,
+      heroBgAlt: existing.heroBgAlt,
       intro: existing.intro,
       highlights: existing.highlights,
       blocks: existing.blocks,
       deliverables: existing.deliverables,
       audience: existing.audience,
+      aside: existing.aside,
       whatsappMessage: existing.whatsappMessage,
       seoTitle: existing.seo.title,
       seoDescription: existing.seo.description,
@@ -315,6 +338,10 @@ export interface ServiceUpdate {
    */
   highlights?: ServiceHighlight[];
   blocks?: ServiceBlock[];
+  /** Opcionais pelo mesmo motivo: o CRUD tradicional não edita estes campos e mantém o que existe. */
+  heroBg?: string;
+  heroBgAlt?: string;
+  aside?: ServiceAside;
 }
 
 export async function updateService(
@@ -326,11 +353,14 @@ export async function updateService(
   const content: ServiceContentJson = {
     image: patch.image,
     imageAlt: patch.imageAlt,
+    heroBg: patch.heroBg ?? existing.heroBg,
+    heroBgAlt: patch.heroBgAlt ?? existing.heroBgAlt,
     intro: patch.intro,
     highlights: patch.highlights ?? existing.highlights,
     blocks: patch.blocks ?? existing.blocks,
     deliverables: patch.deliverables,
     audience: patch.audience,
+    aside: patch.aside ?? existing.aside,
   };
 
   await db
@@ -376,11 +406,14 @@ export async function updateServiceById(
   const content: ServiceContentJson = {
     image: patch.image,
     imageAlt: patch.imageAlt,
+    heroBg: patch.heroBg ?? existing.heroBg,
+    heroBgAlt: patch.heroBgAlt ?? existing.heroBgAlt,
     intro: patch.intro,
     highlights: patch.highlights ?? existing.highlights,
     blocks: patch.blocks ?? existing.blocks,
     deliverables: patch.deliverables,
     audience: patch.audience,
+    aside: patch.aside ?? existing.aside,
   };
 
   await db

@@ -6,6 +6,7 @@
  */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import Icon from '../../../components/Icon.astro';
+import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { getConteudosContent, updateConteudosContent } from '../../../lib/documents';
 
@@ -22,6 +23,8 @@ if (Astro.request.method === 'POST') {
       eyebrow: text('hero_eyebrow', current.hero.eyebrow),
       title: text('hero_title', current.hero.title),
       lead: text('hero_lead', current.hero.lead),
+      bg: text('hero_bg', current.hero.bg),
+      bgAlt: text('hero_bg_alt', current.hero.bgAlt),
     },
     cta: {
       eyebrow: text('cta_eyebrow', current.cta.eyebrow),
@@ -85,6 +88,16 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
         <div class="field">
           <label class="label" for="hero_title">Título</label>
           <input class="input" id="hero_title" name="hero_title" value={hero.title} />
+        </div>
+        <ImageUploadField
+          id="hero_bg"
+          name="hero_bg"
+          value={hero.bg}
+          label="Imagem de fundo do topo (substitui o fundo azul; vazio = azul)"
+        />
+        <div class="field">
+          <label class="label" for="hero_bg_alt">Texto alternativo do fundo do topo</label>
+          <input class="input" id="hero_bg_alt" name="hero_bg_alt" value={hero.bgAlt} />
         </div>
         <div class="field">
           <label class="label" for="hero_lead">Texto de apoio</label>

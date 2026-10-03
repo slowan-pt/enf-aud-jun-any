@@ -17,7 +17,7 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
   const id = Number(form.get('id'));
-  let target = `Pagina #${id}`;
+  let target = `Página #${id}`;
   if (Number.isInteger(id) && id > 0) {
     if (action === 'archive') await archiveGenericPage(db, id);
     else if (action === 'restore') await restoreGenericPage(db, id);
@@ -27,8 +27,8 @@ if (Astro.request.method === 'POST') {
     } else if (action === 'delete') {
       const confirmation = String(form.get('confirmation') ?? '');
       if (!(await permanentlyDeleteGenericPage(db, id, confirmation))) {
-        error = 'A exclusao definitiva exige uma pagina arquivada e o titulo exato.';
-      } else target = `${target} excluida definitivamente`;
+        error = 'A exclusão definitiva exige uma página arquivada e o título exato.';
+      } else target = `${target} excluída definitivamente`;
     }
     if (!error) {
       await writeAuditLog(db, {
@@ -44,6 +44,12 @@ if (Astro.request.method === 'POST') {
 }
 
 const genericPages = await listGenericPages(db);
+const servicePages = Astro.locals.services.filter((service) => service.status !== 'archived');
+const serviceStatus: Record<string, string> = {
+  published: 'Publicada',
+  draft: 'Rascunho',
+  archived: 'Arquivada',
+};
 const fixedPages = [
   { title: 'Home', slug: '/', edit: '/admin/paginas/home', visual: '/admin/editor/home' },
   {
@@ -53,13 +59,13 @@ const fixedPages = [
     visual: '/admin/editor/quem-somos',
   },
   {
-    title: 'Servicos',
+    title: 'Serviços',
     slug: '/servicos',
     edit: '/admin/paginas/servicos',
     visual: '/admin/editor/servicos/moldura',
   },
   {
-    title: 'Conteudos',
+    title: 'Conteúdos',
     slug: '/conteudos',
     edit: '/admin/paginas/conteudos',
     visual: '/admin/editor/conteudos',
@@ -71,7 +77,7 @@ const fixedPages = [
     visual: '/admin/editor/contato',
   },
   {
-    title: 'Politica de Privacidade',
+    title: 'Política de Privacidade',
     slug: '/politica-de-privacidade',
     edit: '/admin/paginas/politica',
     visual: '/admin/editor/politica',
@@ -85,8 +91,8 @@ function formatDate(value: string): string {
 ---
 
 <AdminLayout
-  title="Paginas"
-  description="Paginas fixas e institucionais criadas pelo painel, com publicacao, SEO, menu e Editor Visual."
+  title="Páginas"
+  description="Páginas fixas e institucionais criadas pelo painel, com publicação, SEO, menu e Editor Visual."
   active="/admin/paginas"
 >
   <div slot="actions">
@@ -94,7 +100,7 @@ function formatDate(value: string): string {
       ><Icon name="menu" size={16} />Menu do site</a
     >
     <a href="/admin/paginas/nova" class="btn btn--sm"
-      ><Icon name="plus" size={16} />Nova pagina</a
+      ><Icon name="plus" size={16} />Nova página</a
     >
   </div>
   {
@@ -106,7 +112,7 @@ function formatDate(value: string): string {
   }
   <section class="panel">
     <div class="panel__head">
-      <h2 class="panel__title">Paginas institucionais</h2><span class="muted small"
+      <h2 class="panel__title">Páginas institucionais</h2><span class="muted small"
         >{genericPages.length} cadastrada(s)</span
       >
     </div>
@@ -115,8 +121,8 @@ function formatDate(value: string): string {
         ><Icon name="search" size={16} /><input
           type="search"
           class="input"
-          placeholder="Buscar pagina"
-          aria-label="Buscar pagina"
+          placeholder="Buscar página"
+          aria-label="Buscar página"
           data-table-search="tabela-paginas"
         /></label
       >
@@ -131,8 +137,8 @@ function formatDate(value: string): string {
       <table class="table" id="tabela-paginas">
         <thead
           ><tr
-            ><th>Pagina</th><th>URL</th><th>Menu</th><th>Status</th><th>Atualizada</th><th
-              class="text-right">Acoes</th
+            ><th>Página</th><th>URL</th><th>Menu</th><th>Status</th><th>Atualizada</th><th
+              class="text-right">Ações</th
             ></tr
           ></thead
         >
@@ -154,7 +160,7 @@ function formatDate(value: string): string {
                     <td>
                       <span class="kbd">{page.slug}</span>
                     </td>
-                    <td>{page.showInMenu ? 'Visivel' : <span class="muted">Oculta</span>}</td>
+                    <td>{page.showInMenu ? 'Visível' : <span class="muted">Oculta</span>}</td>
                   </>
                   <td>
                     <span
@@ -255,19 +261,79 @@ function formatDate(value: string): string {
       genericPages.length === 0 && (
         <div class="empty-state">
           <>
-            <h2 class="title-sm">Nenhuma pagina institucional criada</h2>
-            <p>Crie uma pagina em branco ou comece por um modelo editavel.</p>
+            <h2 class="title-sm">Nenhuma página institucional criada</h2>
+            <p>Crie uma página em branco ou comece por um modelo editável.</p>
           </>
         </div>
       )
     }
   </section>
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Páginas de serviço</h2>
+      <a href="/admin/servicos/nova" class="btn btn--secondary btn--sm"
+        ><Icon name="plus" size={16} />Novo serviço</a
+      >
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>Página</th><th>URL</th><th>Status</th><th class="text-right">Ações</th></tr>
+        </thead>
+        <tbody>
+          {
+            servicePages.map((service) => (
+              <tr>
+                <td>
+                  <a class="table__main" href={`/admin/servicos/${service.slug}`}>
+                    {service.name}
+                  </a>
+                  <span class="table__sub">Topo, cards, blocos, barra lateral e SEO</span>
+                </td>
+                <td>
+                  <span class="kbd">{`/servicos/${service.slug}`}</span>
+                </td>
+                <td>{serviceStatus[service.status]}</td>
+                <td>
+                  <div class="table__actions">
+                    <a
+                      class="row-btn"
+                      href={`/admin/servicos/${service.slug}`}
+                      aria-label={`Editar ${service.name}`}
+                    >
+                      <Icon name="edit" size={16} />
+                    </a>
+                    <a
+                      class="row-btn"
+                      href={`/admin/editor/servicos/${service.id}`}
+                      aria-label={`Editor Visual de ${service.name}`}
+                    >
+                      <Icon name="pointer" size={16} />
+                    </a>
+                    <a
+                      class="row-btn"
+                      href={`/servicos/${service.slug}`}
+                      target="_blank"
+                      rel="noopener"
+                      aria-label={`Ver ${service.name} no site`}
+                    >
+                      <Icon name="eye" size={16} />
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
   <section class="panel fixed-pages">
-    <div class="panel__head"><h2 class="panel__title">Paginas fixas do site</h2></div><div
+    <div class="panel__head"><h2 class="panel__title">Páginas fixas do site</h2></div><div
       class="table-wrap"
     >
       <table class="table">
-        <thead><tr><th>Pagina</th><th>URL</th><th class="text-right">Acoes</th></tr></thead
+        <thead><tr><th>Página</th><th>URL</th><th class="text-right">Ações</th></tr></thead
         ><tbody
           >{
             fixedPages.map((page) => (

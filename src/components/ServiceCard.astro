@@ -10,7 +10,11 @@ interface Props {
 const { service, variant = 'default' } = Astro.props;
 ---
 
-<article class:list={['card card--link svc', `svc--${variant}`]} data-reveal>
+<article
+  class:list={['card card--link svc', `svc--${variant}`]}
+  data-reveal
+  data-card-key={`svc-${service.slug}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60)}
+>
   <span class="icon-badge">
     <Icon name={service.icon} size={24} />
   </span>

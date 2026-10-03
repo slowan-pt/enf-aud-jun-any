@@ -1,3 +1,4 @@
+import { DEFAULT_ASIDE } from '../src/lib/service-template';
 /**
  * Guarda central deste round: o CRUD tradicional (`updateServiceById`, usado
  * por /admin/servicos/[slug] e pelas operações de conteúdo do Editor Visual)
@@ -62,6 +63,9 @@ const existing: Service = {
   blocks: [{ title: 'Bloco', text: 'texto' }],
   deliverables: ['entregável 1'],
   audience: ['público 1'],
+  heroBg: '',
+  heroBgAlt: '',
+  aside: DEFAULT_ASIDE,
   whatsappMessage: 'mensagem original',
   seo: { title: 'SEO título', description: 'SEO descrição' },
   updatedAt: '2026-01-01',

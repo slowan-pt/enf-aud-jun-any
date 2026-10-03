@@ -6,7 +6,58 @@ import ImageUploadField from '../../../components/admin/ImageUploadField.astro';
 import { getDB, writeAuditLog } from '../../../lib/db';
 import { findBySlug, updateService, slugExists, type Service } from '../../../lib/services';
 import { slugify } from '../../../lib/urls';
+import { generateItemId } from '../../../lib/service-item-ids';
+import { MAX_HIGHLIGHTS, DEFAULT_ASIDE, type ServiceAside } from '../../../lib/service-template';
+import { iconPaths } from '../../../data/icons';
+import type { ServiceBlock, ServiceHighlight } from '../../../lib/services';
+
+const iconNames = Object.keys(iconPaths).sort();
 import { createRedirect } from '../../../lib/redirects';
+
+
+/** Lê os cards do formulário. Linhas vazias somem; no máximo 4; o id de quem já existia é mantido. */
+function readHighlights(form: FormData): ServiceHighlight[] {
+  const ids = form.getAll('hl_id').map(String);
+  const icons = form.getAll('hl_icon').map(String);
+  const titles = form.getAll('hl_title').map(String);
+  const texts = form.getAll('hl_text').map(String);
+  const out: ServiceHighlight[] = [];
+  titles.forEach((title, index) => {
+    const t = title.trim();
+    const body = (texts[index] ?? '').trim();
+    if (!t && !body) return;
+    out.push({
+      id: ids[index]?.trim() || generateItemId(),
+      icon: icons[index] || 'check-circle',
+      title: t,
+      text: body,
+    });
+  });
+  return out.slice(0, MAX_HIGHLIGHTS);
+}
+
+/** Lê os blocos: título, texto opcional e lista opcional (um item por linha). */
+function readBlocks(form: FormData): ServiceBlock[] {
+  const ids = form.getAll('bl_id').map(String);
+  const titles = form.getAll('bl_title').map(String);
+  const texts = form.getAll('bl_text').map(String);
+  const lists = form.getAll('bl_items').map(String);
+  const out: ServiceBlock[] = [];
+  titles.forEach((title, index) => {
+    const t = title.trim();
+    const body = (texts[index] ?? '').trim();
+    const items = (lists[index] ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!t && !body && !items.length) return;
+    const block: ServiceBlock = { id: ids[index]?.trim() || generateItemId(), title: t };
+    if (body) block.text = body;
+    if (items.length) block.items = items;
+    out.push(block);
+  });
+  return out;
+}
 
 const slug = Astro.params.slug ?? '';
 const db = getDB();
@@ -49,6 +100,16 @@ if (Astro.request.method === 'POST') {
           intro: lines('intro', existing.intro),
           deliverables: lines('entregaveis', existing.deliverables),
           audience: lines('publico', existing.audience),
+          heroBg: text('hero_bg', existing.heroBg),
+          heroBgAlt: text('hero_bg_alt', existing.heroBgAlt),
+          aside: Object.fromEntries(
+            (Object.keys(DEFAULT_ASIDE) as (keyof ServiceAside)[]).map((key) => [
+              key,
+              text(`aside_${key}`, existing.aside[key]).trim(),
+            ])
+          ) as unknown as ServiceAside,
+          ...(form.has('hl_present') ? { highlights: readHighlights(form) } : {}),
+          ...(form.has('bl_present') ? { blocks: readBlocks(form) } : {}),
         },
         existing
       );
@@ -133,7 +194,7 @@ function formatDate(iso: string): string {
           >Conteúdo</button
         >
         <button type="button" class="tab" data-tab="detalhes" aria-selected="false"
-          >Blocos e listas</button
+          >Cards e lateral</button
         >
         <button type="button" class="tab" data-tab="midia" aria-selected="false"
           >Mídia e ícone</button
@@ -201,53 +262,143 @@ function formatDate(iso: string): string {
             <span class="hint">Cada linha vira um parágrafo na página do serviço.</span>
           </div>
         </div>
+        <div class="form-section">
+          <h3 class="form-section__title">Blocos de conteúdo (o texto principal da página)</h3>
+          <p class="hint">
+            Cada bloco tem título, um texto (opcional) e uma lista com marcadores (opcional, um
+            item por linha).
+          </p>
+          <input type="hidden" name="bl_present" value="1" />
+          <div class="rows" data-rows="bl">
+            {
+              service.blocks.map((block) => (
+                <div class="edit-row" data-row>
+                  <input type="hidden" name="bl_id" value={block.id ?? ''} />
+                  <div class="edit-row__head">
+                    <span class="label">Bloco</span>
+                    <span class="edit-row__tools">
+                      <button type="button" class="btn btn--ghost btn--sm" data-up aria-label="Subir">↑</button>
+                      <button type="button" class="btn btn--ghost btn--sm" data-down aria-label="Descer">↓</button>
+                      <button type="button" class="btn btn--ghost btn--sm" data-remove>
+                        <Icon name="trash" size={14} /> Remover
+                      </button>
+                    </span>
+                  </div>
+                  <input class="input" name="bl_title" value={block.title} placeholder="Título do bloco" />
+                  <textarea class="textarea" name="bl_text" placeholder="Texto do bloco (opcional)" style="min-height:96px">{block.text ?? ''}</textarea>
+                  <textarea class="textarea" name="bl_items" placeholder="Lista com marcadores — um item por linha (opcional)" style="min-height:96px">{(block.items ?? []).join('\n')}</textarea>
+                </div>
+              ))
+            }
+          </div>
+          <button type="button" class="btn btn--secondary btn--sm" data-add="bl">
+            <Icon name="plus" size={14} /> Adicionar bloco
+          </button>
+          <template data-template="bl">
+            <div class="edit-row" data-row>
+              <input type="hidden" name="bl_id" value="" />
+              <div class="edit-row__head">
+                <span class="label">Bloco</span>
+                <span class="edit-row__tools">
+                  <button type="button" class="btn btn--ghost btn--sm" data-up aria-label="Subir">↑</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-down aria-label="Descer">↓</button>
+                  <button type="button" class="btn btn--ghost btn--sm" data-remove>
+                    <Icon name="trash" size={14} /> Remover
+                  </button>
+                </span>
+              </div>
+              <input class="input" name="bl_title" placeholder="Título do bloco" />
+              <textarea class="textarea" name="bl_text" placeholder="Texto do bloco (opcional)" style="min-height:96px"></textarea>
+              <textarea class="textarea" name="bl_items" placeholder="Lista com marcadores — um item por linha (opcional)" style="min-height:96px"></textarea>
+            </div>
+          </template>
+        </div>
+
       </div>
 
       <!-- BLOCOS -->
       <div class="panel__body" data-tab-panel="detalhes" hidden>
-        <div class="form-alert form-alert--info" style="margin-bottom: var(--sp-5)">
-          <Icon name="info" size={16} />
-          <span>
-            Destaques e blocos de conteúdo ainda são editados só por aqui como referência — a
-            edição via formulário chega numa próxima fase. Ficam preservados ao salvar.
-          </span>
+        <div class="form-section">
+          <h3 class="form-section__title">Destaques (cards) — até {MAX_HIGHLIGHTS}</h3>
+          <p class="hint">
+            Os cards logo abaixo do topo da página. Altere, remova ou adicione, até {MAX_HIGHLIGHTS}.
+          </p>
+          <input type="hidden" name="hl_present" value="1" />
+          <div class="rows" data-rows="hl" data-max={MAX_HIGHLIGHTS}>
+            {
+              service.highlights.map((item) => (
+                <div class="edit-row" data-row>
+                  <input type="hidden" name="hl_id" value={item.id ?? ''} />
+                  <div class="edit-row__head">
+                    <select class="select" name="hl_icon" aria-label="Ícone do card">
+                      {iconNames.map((name) => (
+                        <option value={name} selected={name === item.icon}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" class="btn btn--ghost btn--sm" data-remove>
+                      <Icon name="trash" size={14} /> Remover
+                    </button>
+                  </div>
+                  <input class="input" name="hl_title" value={item.title} placeholder="Título do card" />
+                  <textarea class="textarea" name="hl_text" placeholder="Texto do card" style="min-height:72px">{item.text}</textarea>
+                </div>
+              ))
+            }
+          </div>
+          <button type="button" class="btn btn--secondary btn--sm" data-add="hl">
+            <Icon name="plus" size={14} /> Adicionar card
+          </button>
+          <template data-template="hl">
+            <div class="edit-row" data-row>
+              <input type="hidden" name="hl_id" value="" />
+              <div class="edit-row__head">
+                <select class="select" name="hl_icon" aria-label="Ícone do card">
+                  {iconNames.map((name) => (
+                    <option value={name} selected={name === 'check-circle'}>{name}</option>
+                  ))}
+                </select>
+                <button type="button" class="btn btn--ghost btn--sm" data-remove>
+                  <Icon name="trash" size={14} /> Remover
+                </button>
+              </div>
+              <input class="input" name="hl_title" placeholder="Título do card" />
+              <textarea class="textarea" name="hl_text" placeholder="Texto do card" style="min-height:72px"></textarea>
+            </div>
+          </template>
         </div>
 
         <div class="form-section">
-          <h3 class="form-section__title">Destaques (cards)</h3>
-          <ul class="list-clean">
-            {
-              service.highlights.map((item, index) => (
-                <li class="list-row">
-                  <span class="order">{index + 1}</span>
-                  <span class="list-row__main">
-                    <strong>{item.title}</strong>
-                    <span>{item.text}</span>
-                  </span>
-                  <span class="kbd">{item.icon}</span>
-                </li>
-              ))
-            }
-          </ul>
-        </div>
-
-        <div class="form-section">
-          <h3 class="form-section__title">Blocos de conteúdo</h3>
-          <ul class="list-clean">
-            {
-              service.blocks.map((block, index) => (
-                <li class="list-row">
-                  <span class="order">{index + 1}</span>
-                  <span class="list-row__main">
-                    <strong>{block.title}</strong>
-                    <span>
-                      {block.items ? `${block.items.length} itens em lista` : 'Bloco de texto'}
-                    </span>
-                  </span>
-                </li>
-              ))
-            }
-          </ul>
+          <h3 class="form-section__title">Barra lateral — textos</h3>
+          <div class="form-grid form-grid--2">
+            <div class="field">
+              <label class="label" for="aside_deliverablesTitle">Título da 1ª lista</label>
+              <input class="input" id="aside_deliverablesTitle" name="aside_deliverablesTitle" value={service.aside.deliverablesTitle} />
+            </div>
+            <div class="field">
+              <label class="label" for="aside_audienceTitle">Título da 2ª lista</label>
+              <input class="input" id="aside_audienceTitle" name="aside_audienceTitle" value={service.aside.audienceTitle} />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="aside_ctaTitle">Título do bloco de contato</label>
+            <input class="input" id="aside_ctaTitle" name="aside_ctaTitle" value={service.aside.ctaTitle} />
+          </div>
+          <div class="field">
+            <label class="label" for="aside_ctaText">Texto do bloco de contato</label>
+            <textarea class="textarea" id="aside_ctaText" name="aside_ctaText" style="min-height:80px">{service.aside.ctaText}</textarea>
+          </div>
+          <div class="form-grid form-grid--2">
+            <div class="field">
+              <label class="label" for="aside_whatsappLabel">Texto do botão WhatsApp</label>
+              <input class="input" id="aside_whatsappLabel" name="aside_whatsappLabel" value={service.aside.whatsappLabel} placeholder="vazio = telefone do site" />
+            </div>
+            <div class="field">
+              <label class="label" for="aside_ctaButtonLabel">Texto do 2º botão</label>
+              <input class="input" id="aside_ctaButtonLabel" name="aside_ctaButtonLabel" value={service.aside.ctaButtonLabel} />
+            </div>
+          </div>
         </div>
 
         <div class="form-section">
@@ -278,6 +429,18 @@ function formatDate(iso: string): string {
           <div class="field">
             <label class="label" for="alt">Texto alternativo</label>
             <input class="input" id="alt" name="alt" value={service.imageAlt} />
+          </div>
+
+          <ImageUploadField
+            id="hero_bg"
+            name="hero_bg"
+            value={service.heroBg}
+            label="Imagem de fundo do topo (substitui o fundo azul; vazio = azul)"
+          />
+
+          <div class="field">
+            <label class="label" for="hero_bg_alt">Texto alternativo do fundo do topo</label>
+            <input class="input" id="hero_bg_alt" name="hero_bg_alt" value={service.heroBgAlt} />
           </div>
 
           <div class="form-grid form-grid--2">
@@ -389,7 +552,70 @@ function formatDate(iso: string): string {
   </form>
 </AdminLayout>
 
+<script>
+  const form = document.getElementById('form-servico');
+  const rowsOf = (key: string) => form?.querySelector<HTMLElement>(`[data-rows="${key}"]`);
+
+  function refreshLimit(key: string) {
+    const rows = rowsOf(key);
+    const max = Number(rows?.dataset.max ?? 0);
+    const add = form?.querySelector<HTMLButtonElement>(`[data-add="${key}"]`);
+    if (rows && add && max) add.disabled = rows.querySelectorAll('[data-row]').length >= max;
+  }
+
+  form?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const add = target.closest<HTMLElement>('[data-add]');
+    if (add) {
+      const key = add.dataset.add!;
+      const rows = rowsOf(key);
+      const template = form.querySelector<HTMLTemplateElement>(`[data-template="${key}"]`);
+      const max = Number(rows?.dataset.max ?? 0);
+      if (!rows || !template || (max && rows.querySelectorAll('[data-row]').length >= max)) return;
+      rows.appendChild(template.content.cloneNode(true));
+      refreshLimit(key);
+      return;
+    }
+    const row = target.closest<HTMLElement>('[data-row]');
+    if (!row) return;
+    const rows = row.parentElement!;
+    if (target.closest('[data-remove]')) {
+      if (window.confirm('Remover este item? A alteração vale ao salvar.')) {
+        row.remove();
+        refreshLimit(rows.dataset.rows!);
+      }
+    } else if (target.closest('[data-up]') && row.previousElementSibling) {
+      rows.insertBefore(row, row.previousElementSibling);
+    } else if (target.closest('[data-down]') && row.nextElementSibling) {
+      rows.insertBefore(row.nextElementSibling, row);
+    }
+  });
+
+  refreshLimit('hl');
+</script>
+
 <style>
+  .edit-row {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .edit-row__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  .edit-row__head .select {
+    max-width: 220px;
+  }
+
   .order {
     display: grid;
     place-items: center;

@@ -1,8 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PageHero from '../components/PageHero.astro';
 import Icon from '../components/Icon.astro';
 import ContactForm from '../components/ContactForm.astro';
+import PageHero from '../components/PageHero.astro';
 import SectionOverlays from '../components/SectionOverlays.astro';
 import { waLink, seo } from '../data/site';
 import { getDB } from '../lib/db';
@@ -20,9 +20,6 @@ const {
   hero,
   formTitle,
   formDescription,
-  asideCtaTitle,
-  asideCtaText,
-  privacyNote,
   contactOverrides,
   pageStyle,
   sectionStyles,
@@ -63,18 +60,6 @@ const effectiveEmail = contactOverrides.email || company.email;
 // mensagem que o visitante escreve no formulário (são dados diferentes).
 const effectiveWhatsappMessage = contactOverrides.whatsappMessage || whatsapp.defaultMessage;
 const effectiveHours = contactOverrides.hours || company.hours;
-const effectiveAddressLines = contactOverrides.address
-  ? contactOverrides.address.split('\n').filter(Boolean)
-  : [
-      company.address.line1,
-      company.address.line2,
-      company.address.district,
-      `${company.address.city} - ${company.address.state}`,
-      `CEP ${company.address.zip}`,
-    ];
-
-const mapsQuery = encodeURIComponent(effectiveAddressLines.join(', '));
-
 const contactLd = {
   '@context': 'https://schema.org',
   '@type': 'ContactPage',
@@ -125,13 +110,34 @@ const channels = [
       title={hero.title}
       lead={hero.lead}
       crumbs={[{ label: 'Contato' }]}
-      image="/images/contato.svg"
-      imageAlt="Composição gráfica representando os canais de contato da Essencial Saúde"
+      bgImage={hero.bg}
+      bgImageAlt={hero.bgAlt}
+      bgEditPath={ed('hero.bg')}
       eyebrowEditPath={ed('hero.eyebrow')}
       titleEditPath={ed('hero.title')}
       leadEditPath={ed('hero.lead')}
     />
   </div>
+
+  <section
+    class:list={['section', 'section--tight', secClass('form')]}
+    style={secStyle('form', sectionStyles.form)}
+    data-section="form"
+    data-section-label={ed('Formulário e informações')}
+  >
+    <div class="container contact-layout">
+      <div data-reveal>
+        <ContactForm
+          variant="full"
+          id="form-contato"
+          title={formTitle}
+          description={formDescription}
+          origin="Página de contato"
+        />
+      </div>
+      <SectionOverlays section="form" overlays={overlays} />
+    </div>
+  </section>
 
   <section
     class:list={['section', 'section--tight', secClass('channels')]}
@@ -144,7 +150,7 @@ const channels = [
         {
           channels.map((channel) => (
             <a
-              class="channel"
+              class:list={['channel', channel.icon === 'whatsapp' && 'channel--whatsapp']}
               href={channel.href}
               target={channel.external ? '_blank' : undefined}
               rel={channel.external ? 'noopener' : undefined}
@@ -164,92 +170,6 @@ const channels = [
         }
       </div>
       <SectionOverlays section="channels" overlays={overlays} />
-    </div>
-  </section>
-
-  <section
-    class:list={['section', 'section--tight', secClass('form')]}
-    style={secStyle('form', sectionStyles.form)}
-    data-section="form"
-    data-section-label={ed('Formulário e informações')}
-  >
-    <div class="container contact-layout">
-      <div data-reveal>
-        <ContactForm
-          variant="full"
-          id="form-contato"
-          title={formTitle}
-          description={formDescription}
-          origin="Página de contato"
-        />
-      </div>
-
-      <aside class="contact-aside" data-reveal>
-        <div class="aside-card">
-          <h2 class="aside-card__title">
-            <Icon name="map-pin" size={18} />
-            Endereço
-          </h2>
-          <address>
-            <strong>{company.name}</strong>
-            <br />
-            {
-              effectiveAddressLines.map((line) => (
-                <>
-                  {line}
-                  <br />
-                </>
-              ))
-            }
-          </address>
-          <a
-            class="link-arrow"
-            href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
-            target="_blank"
-            rel="noopener"
-          >
-            Ver no mapa
-            <Icon name="arrow-up-right" size={16} />
-          </a>
-        </div>
-
-        <div class="aside-card">
-          <h2 class="aside-card__title">
-            <Icon name="clock" size={18} />
-            Atendimento
-          </h2>
-          <p>{effectiveHours}</p>
-          <p class="muted small">
-            Mensagens recebidas fora do horário são respondidas no próximo dia útil.
-          </p>
-        </div>
-
-        <div class="aside-card aside-card--brand">
-          <h2 class="title-sm" data-edit="asideCtaTitle">{asideCtaTitle}</h2>
-          <p data-edit="asideCtaText" data-edit-kind={ed('multiline')}>{asideCtaText}</p>
-          <a
-            href={waLink(effectiveWhatsappNumber, effectiveWhatsappMessage)}
-            class="btn btn--accent btn--block"
-            target="_blank"
-            rel="noopener"
-          >
-            <Icon name="whatsapp" size={18} />
-            {effectiveWhatsappDisplay}
-          </a>
-        </div>
-
-        <div class="aside-card aside-card--note">
-          <h2 class="aside-card__title">
-            <Icon name="lock" size={18} />
-            Privacidade
-          </h2>
-          <p class="muted small" data-edit="privacyNote" data-edit-kind={ed('multiline')}>
-            {privacyNote}
-            {' '}<a href="/politica-de-privacidade">Política de Privacidade</a>.
-          </p>
-        </div>
-      </aside>
-      <SectionOverlays section="form" overlays={overlays} />
     </div>
   </section>
 
@@ -274,6 +194,10 @@ const channels = [
   body.page-contato main > section {
     position: relative;
     container-type: inline-size;
+  }
+
+  body.page-contato main > section:first-of-type {
+    padding-top: clamp(1rem, 2.5vw, 2rem);
   }
 
   .is-section-off {
@@ -321,6 +245,24 @@ const channels = [
     transform: translateY(-3px);
   }
 
+  .channel--whatsapp {
+    border-color: color-mix(in srgb, var(--c-whatsapp-600) 34%, var(--line));
+  }
+
+  .channel--whatsapp .icon-badge {
+    color: var(--c-whatsapp-700);
+    background: var(--c-whatsapp-100);
+  }
+
+  .channel--whatsapp strong,
+  .channel--whatsapp .channel__arrow {
+    color: var(--c-whatsapp-700);
+  }
+
+  .channel--whatsapp:hover {
+    border-color: var(--c-whatsapp-600);
+  }
+
   .channel__body {
     display: grid;
     gap: 0.15rem;
@@ -356,73 +298,7 @@ const channels = [
 
   .contact-layout {
     display: grid;
-    gap: clamp(2rem, 4vw, 3rem);
+    max-width: 960px;
     align-items: start;
-  }
-
-  @media (min-width: 1000px) {
-    .contact-layout {
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
-    }
-  }
-
-  .contact-aside {
-    display: grid;
-    gap: var(--sp-4);
-  }
-
-  .aside-card {
-    padding: var(--sp-5);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-    background: var(--c-white);
-  }
-
-  .aside-card__title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: var(--font-text);
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-caps);
-    text-transform: uppercase;
-    color: var(--c-brand-600);
-    margin-bottom: var(--sp-3);
-  }
-
-  .aside-card address {
-    font-style: normal;
-    font-size: var(--fs-sm);
-    line-height: 1.7;
-    color: var(--text-muted);
-    margin-bottom: var(--sp-3);
-  }
-
-  .aside-card address strong {
-    color: var(--text-strong);
-  }
-
-  .aside-card p {
-    font-size: var(--fs-sm);
-    color: var(--text-muted);
-    line-height: var(--lh-relaxed);
-    white-space: pre-line;
-  }
-
-  .aside-card p + p {
-    margin-top: var(--sp-2);
-  }
-
-  .aside-card--brand {
-    display: grid;
-    gap: var(--sp-3);
-    background: linear-gradient(160deg, var(--c-brand-50), var(--c-white));
-    border-color: var(--c-brand-100);
-  }
-
-  .aside-card--note a {
-    color: var(--c-brand-600);
-    font-weight: var(--fw-medium);
   }
 </style>

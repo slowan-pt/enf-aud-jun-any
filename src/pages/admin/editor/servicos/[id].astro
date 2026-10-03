@@ -48,11 +48,14 @@ if (migration.changed) {
     {
       image: service.image,
       imageAlt: service.imageAlt,
+      heroBg: service.heroBg,
+      heroBgAlt: service.heroBgAlt,
       intro: service.intro,
       highlights: service.highlights,
       blocks: service.blocks,
       deliverables: service.deliverables,
       audience: service.audience,
+      aside: service.aside,
     },
     JSON.stringify(content)
   );
@@ -341,7 +344,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
                 <button type="button" class="ed-btn" data-align="left">E</button>
                 <button type="button" class="ed-btn" data-align="center">C</button>
                 <button type="button" class="ed-btn" data-align="right">D</button>
-                <button type="button" class="ed-btn" data-align="">—</button>
+                <button type="button" class="ed-btn" data-align="justify" title="Justificado">J</button>
+                <button type="button" class="ed-btn" data-align="" title="Padrão do site (títulos à esquerda, textos justificados)">—</button>
               </div>
 
               <div class="prop-row">
@@ -1620,6 +1624,8 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
       extra,
     });
     push(contentOp(value), contentOp(previous));
+    // Fundo do topo: colocar/tirar a imagem muda o desenho do topo inteiro.
+    if (selection.path === 'heroBg' && Boolean(value) !== Boolean(previous)) void reloadPreview();
   }
 
   window.addEventListener('message', (event) => {
@@ -2131,7 +2137,7 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     shapeField.hidden = current.kind !== 'shape';
     // Ajuste de imagem só faz sentido para imagem (não vídeo) — e só para a
     // imagem do hero (path "image"), a única imagem editável nesta página.
-    imageControlsField.hidden = !(isMedia && current.kind === 'image');
+    imageControlsField.hidden = !(isMedia && current.kind === 'image' && current.path === 'image');
 
     if (isText) textArea.value = current.value;
     if (isMedia) showMedia(current);
@@ -2367,6 +2373,15 @@ const bootstrapJson = JSON.stringify(bootstrap).replace(/</g, '\\u003c');
     if (!selection) return;
     const info = selection.path ? listOf(selection.path) : null;
     if (!info) return;
+    if (info.path === 'highlights') {
+      const total =
+        preview.contentDocument?.querySelectorAll('[data-edit-list="highlights"] > [data-edit-item]')
+          .length ?? 0;
+      if (total >= 4) {
+        window.alert('O máximo é de 4 cards. Exclua um card para poder adicionar outro.');
+        return;
+      }
+    }
     push({ op: 'duplicate', path: info.path, index: info.index });
     reloadPreview();
   });

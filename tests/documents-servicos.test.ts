@@ -1,3 +1,4 @@
+import { DEFAULT_ASIDE } from '../src/lib/service-template';
 /**
  * Moldura de Serviços (/servicos) — mesma família de garantias que
  * documents.test.ts já cobre para Contato: normalização, fallback,
@@ -350,6 +351,9 @@ describe('a grade de serviços continua vindo da tabela `services`', () => {
     blocks: [],
     deliverables: [],
     audience: [],
+    heroBg: '',
+    heroBgAlt: '',
+    aside: DEFAULT_ASIDE,
     whatsappMessage: '',
     seo: { title: '', description: '' },
     updatedAt: '',

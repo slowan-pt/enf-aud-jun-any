@@ -69,6 +69,9 @@ const itemListLd = {
       title={hero.title}
       lead={hero.lead}
       crumbs={[{ label: 'Serviços' }]}
+      bgImage={hero.bg}
+      bgImageAlt={hero.bgAlt}
+      bgEditPath={ed('hero.bg')}
       eyebrowEditPath={ed('hero.eyebrow')}
       titleEditPath={ed('hero.title')}
       leadEditPath={ed('hero.lead')}
@@ -187,6 +190,21 @@ const itemListLd = {
 </style>
 
 <style>
+  /* `.section-head` tem teto de 46rem por padrão — bem mais estreito que a
+     grade de serviços logo acima, que ocupa o container inteiro. Aqui ele
+     acompanha a mesma largura, para as bordas ficarem alinhadas. */
+  section[data-section='howWeWork'] .section-head {
+    max-width: none;
+  }
+
+  /* `text-wrap: balance` (regra sitewide de títulos) escolhe uma largura de
+     quebra mais estreita "equilibrada" — some com o teto de 46rem, mas aqui
+     o título precisa quebrar usando a largura cheia, igual ao parágrafo
+     logo abaixo. */
+  section[data-section='howWeWork'] .section-head h2 {
+    text-wrap: wrap;
+  }
+
   .audience {
     display: grid;
     gap: var(--sp-3);

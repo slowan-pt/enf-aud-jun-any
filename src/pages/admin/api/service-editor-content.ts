@@ -31,6 +31,7 @@ import {
 } from '../../../lib/pages';
 import { setByPath, reorderAtPath, duplicateAtPath, removeAtPath } from '../../../lib/editable';
 import { safeHref } from '../../../lib/urls';
+import { MAX_HIGHLIGHTS, type ServiceAside } from '../../../lib/service-template';
 import {
   migrateServiceItemIds,
   generateItemId,
@@ -62,6 +63,9 @@ interface ServiceDoc {
   heroLead: string;
   image: string;
   imageAlt: string;
+  heroBg: string;
+  heroBgAlt: string;
+  aside: ServiceAside;
   icon: string;
   whatsappMessage: string;
   intro: string[];
@@ -77,6 +81,9 @@ function toDoc(existing: NonNullable<Awaited<ReturnType<typeof getServiceById>>>
     heroLead: existing.heroLead,
     image: existing.image,
     imageAlt: existing.imageAlt,
+    heroBg: existing.heroBg,
+    heroBgAlt: existing.heroBgAlt,
+    aside: { ...existing.aside },
     icon: existing.icon,
     whatsappMessage: existing.whatsappMessage,
     intro: [...existing.intro],
@@ -121,6 +128,13 @@ function applyContentOp(doc: Record<string, unknown>, operation: EditOp): boolea
         operation.to as number
       );
     case 'duplicate':
+      // Os cards de destaque são no máximo 4 (modelo padrão de serviço).
+      if (
+        operation.path === 'highlights' &&
+        Array.isArray(doc.highlights) &&
+        doc.highlights.length >= MAX_HIGHLIGHTS
+      )
+        return false;
       return duplicateAtPath(doc, operation.path as string, operation.index as number);
     case 'remove':
       return removeAtPath(doc, operation.path as string, operation.index as number);
@@ -391,6 +405,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
       heroLead: String(doc.heroLead),
       image: String(doc.image),
       imageAlt: String(doc.imageAlt),
+      heroBg: String(doc.heroBg),
+      heroBgAlt: String(doc.heroBgAlt),
+      aside: doc.aside as ServiceAside,
       whatsappMessage: String(doc.whatsappMessage),
       seoTitle: existing.seo.title,
       seoDescription: existing.seo.description,

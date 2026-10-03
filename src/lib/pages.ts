@@ -16,6 +16,7 @@ import {
   bands as defaultBands,
   indicators as defaultIndicators,
   faqItems as defaultFaqItems,
+  heroSlides as defaultHeroSlides,
 } from '../data/institutional';
 import type { D1Database } from './cf-types';
 import { safeHref } from './urls';
@@ -29,6 +30,13 @@ export interface PromoVideo {
 export interface FaqItem {
   question: string;
   answer: string;
+}
+
+export interface HeroSlide {
+  title: string;
+  text: string;
+  image: string;
+  alt: string;
 }
 
 /**
@@ -237,6 +245,10 @@ export const MOBILE_BREAKPOINT = 768;
 
 export interface HomeContent {
   hero: typeof defaultHero;
+  /** Slides do carrossel principal da Home. */
+  heroSlides: HeroSlide[];
+  /** Tempo de troca automática do carrossel do topo, em segundos. */
+  heroSlideIntervalSeconds: number;
   valueProposition: typeof defaultValueProposition;
   elo: typeof defaultElo;
   benefits: typeof defaultBenefits;
@@ -292,6 +304,8 @@ const DEFAULT_SECTION_STYLES: SectionStyles = {
 
 const DEFAULT_HOME: HomeContent = {
   hero: defaultHero,
+  heroSlides: defaultHeroSlides,
+  heroSlideIntervalSeconds: 6,
   valueProposition: defaultValueProposition,
   elo: defaultElo,
   benefits: defaultBenefits,
@@ -472,6 +486,30 @@ function normalizeFaqItems(value: unknown): FaqItem[] {
     .filter((item) => item.question && item.answer);
 
   return items.length ? items : DEFAULT_HOME.faqItems;
+}
+
+function normalizeHeroSlides(value: unknown): HeroSlide[] {
+  if (!Array.isArray(value)) return DEFAULT_HOME.heroSlides;
+  const slides = value
+    .slice(0, 12)
+    .map((item) => {
+      const raw = (item ?? {}) as Record<string, unknown>;
+      return {
+        title: String(raw.title ?? '').trim().slice(0, 140),
+        text: String(raw.text ?? '').trim().slice(0, 360),
+        image: String(raw.image ?? '').trim().slice(0, 500),
+        alt: String(raw.alt ?? '').trim().slice(0, 260),
+      };
+    })
+    .filter((item) => item.title && item.text && item.image);
+
+  return slides.length ? slides : DEFAULT_HOME.heroSlides;
+}
+
+function normalizeHeroSlideInterval(value: unknown): number {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds)) return DEFAULT_HOME.heroSlideIntervalSeconds;
+  return Math.min(30, Math.max(3, Math.round(seconds)));
 }
 
 /**
@@ -718,6 +756,8 @@ export async function getHomeContent(
     const stored = JSON.parse(row.sections_json) as Partial<HomeContent>;
     return {
       hero: { ...DEFAULT_HOME.hero, ...stored.hero },
+      heroSlides: normalizeHeroSlides(stored.heroSlides),
+      heroSlideIntervalSeconds: normalizeHeroSlideInterval(stored.heroSlideIntervalSeconds),
       valueProposition: { ...DEFAULT_HOME.valueProposition, ...stored.valueProposition },
       elo: { ...DEFAULT_HOME.elo, ...stored.elo },
       benefits: { ...DEFAULT_HOME.benefits, ...stored.benefits },

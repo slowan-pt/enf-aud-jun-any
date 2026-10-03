@@ -3,40 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 
 import { publishedOnly as publishedServicesOnly } from '../lib/services';
+import { formatDate, publishedOnly as publishedPostsOnly } from '../lib/posts';
 import { getDB } from '../lib/db';
 import { getHomeContent } from '../lib/pages';
 import { waLink } from '../data/site';
 
-const { whatsapp } = Astro.locals.settings;
+const { whatsapp, clientSegments } = Astro.locals.settings;
 const publishedServices = publishedServicesOnly(Astro.locals.services);
-const { faqItems } = await getHomeContent(getDB());
-
-const heroSlides = [
-  {
-    title: 'Presença Técnica onde o cuidado acontece',
-    text: 'Atua na rede prestadora, conectando a operadora de saúde à realidade assistencial e apoiando decisões mais assertivas.',
-    image: '/images/home/presenca-tecnica.png',
-    alt: 'Criança internada sendo acompanhada por profissionais de saúde diversos em ambiente hospitalar',
-  },
-  {
-    title: 'Gestão da Jornada do Paciente',
-    text: 'Coordena a transição entre níveis de atenção, assegurando o cuidado adequado, no momento certo e pelo tempo necessário.',
-    image: '/images/home/jornada-paciente.png',
-    alt: 'Paciente cadeirante sendo acompanhado por profissionais de saúde em ambiente domiciliar',
-  },
-  {
-    title: 'Eficiência Sustentável',
-    text: 'Transforma dados fragmentados e cenários imprevisíveis em informação integrada para ampliar a previsibilidade e otimizar custos.',
-    image: '/images/home/eficiencia-sustentavel.png',
-    alt: 'Gráfico de eficiência e custos representando otimização sustentável em saúde',
-  },
-  {
-    title: 'Inteligência em Saúde',
-    text: 'Tecnologia Carefy processa dados com agilidade e precisão, protegendo informações sensíveis e sinalizando riscos e oportunidades.',
-    image: '/images/home/inteligencia-saude.png',
-    alt: 'Profissional médico utilizando tecnologia para integrar informações de saúde',
-  },
-];
+const publishedPosts = publishedPostsOnly(Astro.locals.posts);
+const { heroSlides, heroSlideIntervalSeconds, faqItems, finalCta } = await getHomeContent(getDB());
 
 ---
 
@@ -46,7 +21,7 @@ const heroSlides = [
   bodyClass="page-home"
 >
   <section class="hero-carousel" aria-label="Destaques da Essencial Saúde">
-    <div class="hero-carousel__track">
+    <div class="hero-carousel__track" data-hero-interval={heroSlideIntervalSeconds}>
       {
         heroSlides.map((slide, index) => (
           <article class:list={['hero-slide', index === 0 && 'is-active']} data-slide>
@@ -61,22 +36,23 @@ const heroSlides = [
             />
             <div class="hero-slide__shade" aria-hidden="true" />
             <div class="container hero-slide__content">
-              <p class="hero-slide__kicker">Auditoria em saúde com presença técnica</p>
-              <h1>{slide.title}</h1>
-              <p>{slide.text}</p>
-              <div class="hero-slide__actions">
-                <a href="#servicos" class="btn">
-                  Conhecer serviços
-                </a>
-                <a
-                  href={waLink(whatsapp.number, whatsapp.defaultMessage)}
-                  class="btn btn--on-brand"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  <Icon name="whatsapp" size={17} />
-                  Falar com especialista
-                </a>
+              <div class="hero-slide__copy">
+                <h1>{slide.title}</h1>
+                <p>{slide.text}</p>
+                <div class="hero-slide__actions">
+                  <a href="#servicos" class="btn">
+                    Conhecer serviços
+                  </a>
+                  <a
+                    href={waLink(whatsapp.number, whatsapp.defaultMessage)}
+                    class="btn btn--on-brand"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <Icon name="whatsapp" size={17} />
+                    Falar com especialista
+                  </a>
+                </div>
               </div>
             </div>
           </article>
@@ -137,7 +113,8 @@ const heroSlides = [
                   alt={service.imageAlt}
                   width="900"
                   height="680"
-                  loading="lazy"
+                  loading="eager"
+                  fetchpriority={index === 0 ? 'auto' : 'low'}
                   decoding="async"
                 />
               </div>
@@ -177,9 +154,36 @@ const heroSlides = [
     </div>
   </section>
 
+  <section class="section section--subtle segments-home" aria-labelledby="segments-title">
+    <div class="container">
+      <div class="section-head section-head--center" data-reveal>
+        <p class="eyebrow">{clientSegments.eyebrow}</p>
+        <h2 class="title-lg" id="segments-title">{clientSegments.title}</h2>
+        <p class="lead">{clientSegments.text}</p>
+      </div>
+
+      <div class="segments" data-reveal>
+        {
+          clientSegments.items.map((item, index) => (
+            <article class="segment" tabindex="0" data-card-key={`seg-${index}`}>
+              <span class="icon-badge icon-badge--sm">
+                <Icon name={item.icon} size={18} />
+              </span>
+              <h3>{item.label}</h3>
+              <p class="segment__detail">{item.detail}</p>
+              <div class="segment__more">
+                <p class="segment__behavior">{item.behavior}</p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
   <section class="section faq" aria-labelledby="faq-title">
     <div class="container">
-      <div class="section-head" data-reveal>
+      <div class="section-head section-head--center" data-reveal>
         <h2 class="title-lg" id="faq-title">Perguntas frequentes</h2>
       </div>
       <div class="faq__list" data-faq-list data-reveal>
@@ -200,15 +204,12 @@ const heroSlides = [
 
   <section class="section section--tight contact-home" id="contato">
     <div class="container contact-home__inner" data-reveal>
-      <p class="eyebrow">Contato</p>
-      <h2 class="title-lg">Solicite uma apresentação</h2>
-      <p class="lead">
-        Fale com um especialista e informe seus dados para receber uma conversa técnica sobre o
-        escopo mais adequado para sua operação.
-      </p>
+      <p class="eyebrow">{finalCta.eyebrow}</p>
+      <h2 class="title-lg">{finalCta.title}</h2>
+      <p class="lead">{finalCta.text}</p>
 
-      <a href="/contato#form-contato" class="btn contact-home__button">
-        Fale com um especialista
+      <a href={finalCta.primary.href} class="btn contact-home__button">
+        {finalCta.primary.label}
         <Icon name="arrow-right" size={16} class="icon--arrow" />
       </a>
     </div>
@@ -216,6 +217,114 @@ const heroSlides = [
 </BaseLayout>
 
 <style>
+  .segments {
+    display: grid;
+    gap: var(--sp-4);
+    padding-bottom: var(--sp-8);
+  }
+
+  @media (min-width: 640px) {
+    .segments {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 980px) {
+    .segments {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .segment {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: var(--sp-5);
+    border: 1px solid var(--card-border, var(--line));
+    border-top: 3px solid var(--card-accent, var(--line));
+    border-radius: var(--r-lg);
+    background: var(--card-bg, var(--c-white));
+    transition:
+      border-color 0.25s var(--ease),
+      box-shadow 0.25s var(--ease),
+      border-radius 0.25s var(--ease);
+  }
+
+  .segment h3 {
+    font-size: var(--fs-base);
+    margin-top: 0.25rem;
+  }
+
+  .segment__detail {
+    font-size: var(--fs-xs);
+    color: var(--text-faint);
+    line-height: var(--lh-normal);
+    white-space: pre-line;
+  }
+
+  /* A parte de baixo "desce" do próprio card: a altura da linha não muda,
+     então nada da página se mexe — o painel só se sobrepõe ao que vem abaixo. */
+  .segment__more {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% - 1px);
+    left: -1px;
+    right: -1px;
+    padding: var(--sp-4) var(--sp-5) var(--sp-5);
+    background: var(--card-bg, var(--c-white));
+    border: 1px solid var(--c-brand-200, var(--line));
+    border-top: 1px dashed var(--line);
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    box-shadow: 0 18px 32px -14px rgba(11, 37, 69, 0.28);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+      opacity 0.25s var(--ease),
+      transform 0.3s var(--ease),
+      visibility 0s linear 0.3s;
+  }
+
+  .segment:hover,
+  .segment:focus-within {
+    z-index: 6;
+    border-color: var(--c-brand-200, var(--line));
+    border-bottom-color: transparent;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    box-shadow: 0 -4px 20px -12px rgba(11, 37, 69, 0.25);
+  }
+
+  .segment:hover .segment__more,
+  .segment:focus-within .segment__more {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition-delay: 0s;
+  }
+
+  .segment__behavior {
+    font-size: var(--fs-sm);
+    color: var(--text-muted);
+    line-height: var(--lh-relaxed);
+    white-space: pre-line;
+  }
+
+  /* Sem mouse (celular/tablet) não há "passar por cima": mostra tudo, como antes. */
+  @media (hover: none) {
+    .segment__more {
+      position: static;
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      padding: var(--sp-3) 0 0;
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+
   .hero-carousel {
     position: relative;
     background: var(--c-brand-900);
@@ -267,34 +376,39 @@ const heroSlides = [
     inset: 0;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: flex-start;
     color: #fff;
-    padding-block: clamp(3rem, 8vw, 6rem);
+    padding-top: clamp(2.2rem, 5.6vw, 4rem);
+    padding-bottom: clamp(3rem, 6vw, 5rem);
+    /* `.container` (max-width 1200px + margin auto) centraliza este bloco
+       dentro da foto full-bleed, deixando uma faixa vazia à esquerda em
+       telas largas. O texto em si não é centralizado, então tirar o teto
+       de largura aqui faz ele se aproximar da borda real da viewport — com
+       um respiro maior que o gutter padrão para não colar na borda. */
+    max-width: none;
+    padding-left: clamp(1.5rem, 6vw, 5rem);
   }
 
-  .hero-slide__kicker {
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tracking-caps);
-    text-transform: uppercase;
-    color: rgba(234, 243, 251, 0.86);
+  .hero-slide__copy {
+    width: min(100%, 430px);
   }
 
   .hero-slide h1 {
-    max-width: 12ch;
-    margin-top: var(--sp-3);
+    max-width: 14ch;
     color: #fff;
-    font-size: clamp(2rem, 4.8vw, 4.2rem);
+    /* Mesma escala do topo das páginas de serviço. */
+    font-size: clamp(1.6rem, 3vw, 2.6rem);
     line-height: 1.05;
     letter-spacing: 0;
   }
 
-  .hero-slide__content > p:not(.hero-slide__kicker) {
-    max-width: 44rem;
+  .hero-slide__copy > p {
+    max-width: 31rem;
     margin-top: var(--sp-4);
     color: rgba(234, 243, 251, 0.9);
-    font-size: var(--fs-lg);
+    font-size: clamp(0.875rem, 1.15vw, 1rem);
+    line-height: 1.55;
   }
 
   .hero-slide__actions {
@@ -311,22 +425,22 @@ const heroSlides = [
     bottom: var(--sp-6);
     transform: translateX(-50%);
     display: flex;
-    gap: var(--sp-2);
+    gap: 0.55rem;
   }
 
   .hero-dot {
-    width: 42px;
-    height: 4px;
+    width: 9px;
+    height: 9px;
     border-radius: var(--r-pill);
     background: rgba(255, 255, 255, 0.42);
     transition:
       background var(--dur) var(--ease),
-      width var(--dur) var(--ease);
+      transform var(--dur) var(--ease);
   }
 
   .hero-dot.is-active {
-    width: 64px;
     background: #fff;
+    transform: scale(1.25);
   }
 
   .service-icons {
@@ -336,7 +450,7 @@ const heroSlides = [
 
   .service-icons__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
     gap: var(--sp-3);
     scroll-margin-top: 92px;
   }
@@ -344,12 +458,12 @@ const heroSlides = [
   .service-icon-card {
     appearance: none;
     position: relative;
-    min-height: 132px;
+    min-height: 128px;
     display: grid;
     place-items: center;
     align-content: center;
     gap: var(--sp-3);
-    padding: var(--sp-4);
+    padding: var(--sp-3);
     border-radius: 8px;
     background: var(--c-white);
     color: var(--c-brand-800);
@@ -394,10 +508,15 @@ const heroSlides = [
   }
 
   .service-icon-card span {
-    max-width: 13ch;
+    display: block;
+    width: 100%;
     font-family: var(--font-display);
-    font-size: var(--fs-base);
+    font-size: clamp(0.82rem, 1.15vw, 1rem);
     line-height: 1.15;
+    /* Quebra só entre palavras — nunca no meio de uma, com ou sem hífen. */
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
   }
 
   .service-tabs {
@@ -485,6 +604,183 @@ const heroSlides = [
     color: var(--text-strong);
   }
 
+  .latest-posts {
+    background: var(--bg-subtle);
+  }
+
+  .latest-posts .section-head {
+    margin-bottom: var(--sp-4);
+  }
+
+  .latest-posts .title-lg {
+    font-size: clamp(1.75rem, 3.4vw, 2.65rem);
+    line-height: 1.05;
+  }
+
+  .latest-posts__shell {
+    position: relative;
+  }
+
+  .latest-posts__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.85rem, 1.6vw, 1.1rem);
+  }
+
+  .latest-card {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--c-white);
+    box-shadow: 0 18px 36px -30px rgba(9, 44, 78, 0.34);
+    animation: latest-card-in 260ms var(--ease-out);
+  }
+
+  .latest-card[hidden] {
+    display: none;
+  }
+
+  @keyframes latest-card-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .latest-card__media {
+    display: block;
+    overflow: hidden;
+    background: var(--c-brand-50);
+  }
+
+  .latest-card__media img {
+    width: 100%;
+    aspect-ratio: 16 / 8.4;
+    object-fit: cover;
+    transition: transform var(--dur-slow) var(--ease-out);
+  }
+
+  .latest-card:hover .latest-card__media img {
+    transform: scale(1.035);
+  }
+
+  .latest-card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: clamp(0.85rem, 1.5vw, 1.05rem);
+  }
+
+  .latest-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+  }
+
+  .latest-card h3 {
+    color: var(--c-brand-800);
+    font-size: clamp(1rem, 1.45vw, 1.18rem);
+    line-height: var(--lh-snug);
+  }
+
+  .latest-card h3 a,
+  .latest-card__link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .latest-card p {
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .latest-card__link {
+    margin-top: auto;
+    color: var(--text-strong);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+  }
+
+  .latest-card__link:hover,
+  .latest-card h3 a:hover {
+    color: var(--c-brand-600);
+  }
+
+  .latest-posts__arrow {
+    position: absolute;
+    top: 42%;
+    z-index: 2;
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r-pill);
+    background: var(--c-white);
+    color: var(--c-brand-800);
+    box-shadow: 0 12px 28px -18px rgba(9, 44, 78, 0.5);
+    transform: translateY(-50%);
+    transition:
+      transform var(--dur) var(--ease),
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+
+  .latest-posts__arrow:hover,
+  .latest-posts__arrow:focus-visible {
+    background: var(--c-brand-700);
+    color: #fff;
+    transform: translateY(-50%) scale(1.04);
+  }
+
+  .latest-posts__arrow--prev {
+    left: -21px;
+  }
+
+  .latest-posts__arrow--next {
+    right: -21px;
+  }
+
+  .latest-posts__dots {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    margin-top: var(--sp-4);
+  }
+
+  .latest-posts__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: var(--r-pill);
+    background: var(--c-ink-300);
+    transition:
+      width var(--dur) var(--ease),
+      background var(--dur) var(--ease);
+  }
+
+  .latest-posts__dot.is-active {
+    width: 18px;
+    background: var(--c-brand-700);
+  }
+
   .faq {
     background: linear-gradient(180deg, var(--c-ink-50), var(--c-white));
   }
@@ -552,30 +848,71 @@ const heroSlides = [
     text-align: center;
   }
 
+  .contact-home__inner h2 {
+    text-align: center;
+  }
+
   .contact-home__button {
     margin-top: var(--sp-6);
   }
 
   @media (max-width: 700px) {
+    /* Celular: cada destaque vira "foto em cima, texto embaixo" (sem texto sobre a
+       imagem). Todos os destaques ocupam a mesma célula da grade, então a altura
+       do carrossel acompanha o mais alto e o texto nunca é cortado. */
     .hero-carousel__track {
-      min-height: 560px;
+      min-height: 0;
+      display: grid;
+    }
+
+    .hero-slide {
+      position: relative;
+      inset: auto;
+      grid-area: 1 / 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero-slide img {
+      height: auto;
+      aspect-ratio: 16 / 11;
+      flex: none;
+      /* As artes têm o espaço escuro do texto à esquerda e o assunto à direita:
+         no recorte estreito do celular o foco vai para a direita. */
+      object-position: 78% 50%;
     }
 
     .hero-slide__shade {
-      background: linear-gradient(0deg, rgba(6, 32, 58, 0.78), rgba(6, 32, 58, 0.28));
+      display: none;
     }
 
     .hero-slide__content {
-      justify-content: flex-end;
-      padding-bottom: 5.5rem;
+      position: static;
+      justify-content: flex-start;
+      padding-top: 1.5rem;
+      padding-bottom: 3.5rem;
+    }
+
+    .hero-slide__copy {
+      width: min(100%, 360px);
     }
 
     .hero-slide h1 {
       max-width: 14ch;
+      font-size: clamp(1.6rem, 7vw, 2.4rem);
+    }
+
+    .hero-slide__copy > p {
+      max-width: 34ch;
+      font-size: 0.95rem;
+      line-height: 1.5;
     }
 
     .hero-slide__actions .btn {
-      width: 100%;
+      width: auto;
+      min-width: 0;
+      padding-inline: 1rem;
+      font-size: 0.85rem;
     }
 
     .service-icons__grid {
@@ -591,7 +928,7 @@ const heroSlides = [
     }
 
     .service-icon-card {
-      flex: 0 0 min(38vw, 126px);
+      flex: 0 0 clamp(132px, 40vw, 150px);
       min-height: 118px;
       scroll-snap-align: center;
     }
@@ -603,14 +940,42 @@ const heroSlides = [
     .service-panel__body {
       scroll-margin-top: 84px;
     }
+
+    .latest-posts__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .latest-posts__arrow {
+      top: auto;
+      bottom: -0.2rem;
+      transform: none;
+    }
+
+    .latest-posts__arrow:hover,
+    .latest-posts__arrow:focus-visible {
+      transform: scale(1.04);
+    }
+
+    .latest-posts__arrow--prev {
+      left: 0;
+    }
+
+    .latest-posts__arrow--next {
+      right: 0;
+    }
   }
 </style>
 
 <script>
+  const heroTrack = document.querySelector<HTMLElement>('[data-hero-interval]');
   const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-slide]'));
   const buttons = Array.from(
     document.querySelectorAll<HTMLButtonElement>('[data-slide-button]')
   );
+  const heroIntervalSeconds = Number(heroTrack?.dataset.heroInterval ?? 6);
+  const heroIntervalMs =
+    Math.min(30, Math.max(3, Number.isFinite(heroIntervalSeconds) ? heroIntervalSeconds : 6)) *
+    1000;
   let activeSlide = 0;
   let timer = 0;
 
@@ -627,7 +992,7 @@ const heroSlides = [
   const startCarousel = () => {
     window.clearInterval(timer);
     if (slides.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      timer = window.setInterval(() => showSlide(activeSlide + 1), 5600);
+      timer = window.setInterval(() => showSlide(activeSlide + 1), heroIntervalMs);
     }
   };
 
@@ -697,4 +1062,55 @@ const heroSlides = [
       });
     });
   });
+
+  const postCards = Array.from(document.querySelectorAll<HTMLElement>('[data-post-card]'));
+  const postDots = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-post-dot]'));
+  const postPrev = document.querySelector<HTMLButtonElement>('[data-post-prev]');
+  const postNext = document.querySelector<HTMLButtonElement>('[data-post-next]');
+  const postsPerPage = 3;
+  const postPageCount = Math.max(1, Math.ceil(postCards.length / postsPerPage));
+  let activePostPage = 0;
+  let postTimer = 0;
+
+  const showPostPage = (page: number) => {
+    activePostPage = (page + postPageCount) % postPageCount;
+    const start = activePostPage * postsPerPage;
+    const end = start + postsPerPage;
+
+    postCards.forEach((card, index) => {
+      card.hidden = index < start || index >= end;
+    });
+    postDots.forEach((dot, index) => {
+      dot.classList.toggle('is-active', index === activePostPage);
+    });
+  };
+
+  const startPostCarousel = () => {
+    window.clearInterval(postTimer);
+    if (postPageCount > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      postTimer = window.setInterval(() => showPostPage(activePostPage + 1), 10000);
+    }
+  };
+
+  postPrev?.addEventListener('click', () => {
+    showPostPage(activePostPage - 1);
+    startPostCarousel();
+  });
+
+  postNext?.addEventListener('click', () => {
+    showPostPage(activePostPage + 1);
+    startPostCarousel();
+  });
+
+  postDots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      showPostPage(Number(dot.dataset.postDot ?? 0));
+      startPostCarousel();
+    });
+  });
+
+  if (postCards.length) {
+    showPostPage(0);
+    startPostCarousel();
+  }
 </script>

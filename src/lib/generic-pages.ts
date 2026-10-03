@@ -94,6 +94,7 @@ export const RESERVED_PAGE_SEGMENTS = new Set([
   'conteudos',
   'quem-somos',
   'contato',
+  'trabalhe-conosco',
   'politica-de-privacidade',
 ]);
 

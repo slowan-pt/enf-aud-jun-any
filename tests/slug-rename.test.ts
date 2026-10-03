@@ -1,3 +1,4 @@
+import { DEFAULT_ASIDE } from '../src/lib/service-template';
 /**
  * Renomear o slug de um serviço ou matéria (item 5 do escopo: "slug com
  * redirecionamento seguro quando o slug muda") — cobre só a parte
@@ -54,6 +55,9 @@ const service: Service = {
   blocks: [],
   deliverables: [],
   audience: [],
+  heroBg: '',
+  heroBgAlt: '',
+  aside: DEFAULT_ASIDE,
   whatsappMessage: 'mensagem',
   seo: { title: 'SEO', description: 'SEO desc' },
   updatedAt: '2026-01-01',
