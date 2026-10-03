@@ -40,6 +40,8 @@ export interface ThemeSettings {
   headingColor: string;
 }
 
+import { DEFAULT_CARD_STYLE, normalizeCardStyle, type CardStyle } from './card-style';
+
 export interface SiteSettings {
   company: typeof defaultCompany;
   whatsapp: typeof defaultWhatsapp;
@@ -57,6 +59,8 @@ export interface SiteSettings {
   howWeWork: typeof defaultHowWeWork;
   missionVisionValues: typeof defaultMissionVisionValues;
   clientSegments: typeof defaultClientSegments;
+  /** Cor dos cards (tom geral + exceções por card) — ver src/lib/card-style.ts. */
+  cardStyle: CardStyle;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -66,7 +70,7 @@ const DEFAULT_SEO: SeoSettings = {
 };
 
 const DEFAULT_BRAND: BrandSettings = {
-  markUrl: '/logo/essencial-saude-mark.png',
+  markUrl: '/logo/essencial-saude-logo.webp',
   logoUrl: '',
 };
 
@@ -88,13 +92,14 @@ const DEFAULTS: SiteSettings = {
   howWeWork: defaultHowWeWork,
   missionVisionValues: defaultMissionVisionValues,
   clientSegments: defaultClientSegments,
+  cardStyle: DEFAULT_CARD_STYLE,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
       .prepare(
-        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)'
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)'
       )
       .bind(
         'company',
@@ -105,7 +110,8 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         'theme',
         'howWeWork',
         'missionVisionValues',
-        'clientSegments'
+        'clientSegments',
+        'cardStyle'
       )
       .all<{ key: string; value_json: string }>();
 
@@ -119,6 +125,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       howWeWork: DEFAULTS.howWeWork,
       missionVisionValues: DEFAULTS.missionVisionValues,
       clientSegments: DEFAULTS.clientSegments,
+      cardStyle: DEFAULTS.cardStyle,
     };
 
     for (const row of results) {
@@ -137,6 +144,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         if (row.key === 'clientSegments') {
           out.clientSegments = { ...DEFAULTS.clientSegments, ...value };
         }
+        if (row.key === 'cardStyle') out.cardStyle = normalizeCardStyle(value);
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -159,7 +167,8 @@ export async function updateSetting(
     | 'theme'
     | 'howWeWork'
     | 'missionVisionValues'
-    | 'clientSegments',
+    | 'clientSegments'
+    | 'cardStyle',
   value: unknown,
   userId?: number
 ): Promise<void> {
