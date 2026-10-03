@@ -1,0 +1,210 @@
+---
+/**
+ * Lista editável de itens (cards, princípios, etapas...) para formulários do
+ * painel: cada item vira uma linha com os campos pedidos; dá para adicionar,
+ * remover e reordenar. Os valores voltam ao servidor como campos de mesmo nome
+ * (`<name>_<chave>`) — ver `readRows` em src/lib/form-rows.ts.
+ */
+import Icon from '../Icon.astro';
+import { iconPaths } from '../../data/icons';
+
+interface Field {
+  key: string;
+  label: string;
+  kind?: 'text' | 'textarea' | 'icon' | 'hidden' | 'checkbox';
+  /** Só para kind:'icon' — restringe as opções (ex.: só ícones de rede social) em vez da biblioteca inteira. */
+  iconOptions?: string[];
+}
+
+interface Props {
+  name: string;
+  items: Record<string, string>[];
+  fields: Field[];
+  max?: number;
+  addLabel?: string;
+}
+
+const { name, items, fields, max = 0, addLabel = 'Adicionar item' } = Astro.props;
+const iconNames = Object.keys(iconPaths).sort();
+const blank: Record<string, string> = Object.fromEntries(
+  fields.map((field) => [
+    field.key,
+    field.kind === 'icon' ? (field.iconOptions?.[0] ?? 'check-circle') : '',
+  ])
+);
+---
+
+<div class="rows-editor" data-rows-editor data-max={max}>
+  <div class="rows-editor__list" data-rows-list>
+    {
+      items.map((item) => (
+        <div class="rows-editor__row" data-row>
+          <div class="rows-editor__tools">
+            <button type="button" class="btn btn--ghost btn--sm" data-up aria-label="Subir">↑</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-down aria-label="Descer">↓</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-remove>
+              <Icon name="trash" size={14} /> Remover
+            </button>
+          </div>
+          {fields.map((field) =>
+            field.kind === 'hidden' ? (
+              <input type="hidden" name={`${name}_${field.key}`} value={item[field.key] ?? ''} />
+            ) : field.kind === 'checkbox' ? (
+              <label class="field rows-editor__checkbox">
+                <input type="hidden" name={`${name}_${field.key}`} value={item[field.key] === 'on' ? 'on' : ''} data-checkbox-hidden />
+                <input type="checkbox" checked={item[field.key] === 'on'} data-checkbox-visual />
+                <span>{field.label}</span>
+              </label>
+            ) : field.kind === 'icon' ? (
+              <div class="field">
+                <label class="label">{field.label}</label>
+                <select class="select" name={`${name}_${field.key}`}>
+                  {(field.iconOptions ?? iconNames).map((icon) => (
+                    <option value={icon} selected={icon === item[field.key]}>{icon}</option>
+                  ))}
+                </select>
+              </div>
+            ) : field.kind === 'textarea' ? (
+              <div class="field">
+                <label class="label">{field.label}</label>
+                <textarea class="textarea" name={`${name}_${field.key}`} rows="3">{item[field.key] ?? ''}</textarea>
+              </div>
+            ) : (
+              <div class="field">
+                <label class="label">{field.label}</label>
+                <input class="input" name={`${name}_${field.key}`} value={item[field.key] ?? ''} />
+              </div>
+            )
+          )}
+        </div>
+      ))
+    }
+  </div>
+  <button type="button" class="btn btn--secondary btn--sm" data-add>
+    <Icon name="plus" size={14} />
+    {addLabel}
+  </button>
+  <template data-row-template>
+    <div class="rows-editor__row" data-row>
+      <div class="rows-editor__tools">
+        <button type="button" class="btn btn--ghost btn--sm" data-up aria-label="Subir">↑</button>
+        <button type="button" class="btn btn--ghost btn--sm" data-down aria-label="Descer">↓</button>
+        <button type="button" class="btn btn--ghost btn--sm" data-remove>
+          <Icon name="trash" size={14} /> Remover
+        </button>
+      </div>
+      {fields.map((field) =>
+        field.kind === 'hidden' ? (
+          <input type="hidden" name={`${name}_${field.key}`} value="" />
+        ) : field.kind === 'checkbox' ? (
+          <label class="field rows-editor__checkbox">
+            <input type="hidden" name={`${name}_${field.key}`} value="on" data-checkbox-hidden />
+            <input type="checkbox" checked data-checkbox-visual />
+            <span>{field.label}</span>
+          </label>
+        ) : field.kind === 'icon' ? (
+          <div class="field">
+            <label class="label">{field.label}</label>
+            <select class="select" name={`${name}_${field.key}`}>
+              {(field.iconOptions ?? iconNames).map((icon) => (
+                <option value={icon} selected={icon === blank[field.key]}>{icon}</option>
+              ))}
+            </select>
+          </div>
+        ) : field.kind === 'textarea' ? (
+          <div class="field">
+            <label class="label">{field.label}</label>
+            <textarea class="textarea" name={`${name}_${field.key}`} rows="3"></textarea>
+          </div>
+        ) : (
+          <div class="field">
+            <label class="label">{field.label}</label>
+            <input class="input" name={`${name}_${field.key}`} value="" />
+          </div>
+        )
+      )}
+    </div>
+  </template>
+</div>
+
+<script>
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const editor = target.closest<HTMLElement>('[data-rows-editor]');
+    if (!editor) return;
+    const list = editor.querySelector<HTMLElement>('[data-rows-list]')!;
+    const max = Number(editor.dataset.max ?? 0);
+    const addButton = editor.querySelector<HTMLButtonElement>('[data-add]')!;
+    const refresh = () => {
+      addButton.disabled = max > 0 && list.querySelectorAll('[data-row]').length >= max;
+    };
+
+    if (target.closest('[data-add]')) {
+      const template = editor.querySelector<HTMLTemplateElement>('[data-row-template]')!;
+      if (max > 0 && list.querySelectorAll('[data-row]').length >= max) return;
+      list.appendChild(template.content.cloneNode(true));
+      refresh();
+      return;
+    }
+
+    const row = target.closest<HTMLElement>('[data-row]');
+    if (!row) return;
+    if (target.closest('[data-remove]')) {
+      if (window.confirm('Remover este item? A alteração vale ao salvar.')) {
+        row.remove();
+        refresh();
+      }
+    } else if (target.closest('[data-up]') && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+    } else if (target.closest('[data-down]') && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+    }
+  });
+
+  // O checkbox visível não tem "name" (senão um desmarcado simplesmente não
+  // enviaria nada, desalinhando a posição dos outros campos da mesma linha
+  // no servidor). Em vez disso, um input escondido — sempre presente — guarda
+  // "on"/"" e acompanha o checkbox.
+  document.addEventListener('change', (event) => {
+    const box = (event.target as HTMLElement).closest<HTMLInputElement>('[data-checkbox-visual]');
+    if (!box) return;
+    const hidden = box.parentElement?.querySelector<HTMLInputElement>('[data-checkbox-hidden]');
+    if (hidden) hidden.value = box.checked ? 'on' : '';
+  });
+</script>
+
+<style>
+  .rows-editor {
+    display: grid;
+    gap: var(--sp-3);
+    justify-items: start;
+  }
+
+  .rows-editor__list {
+    display: grid;
+    gap: var(--sp-3);
+    width: 100%;
+  }
+
+  .rows-editor__row {
+    display: grid;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--c-ink-50);
+  }
+
+  .rows-editor__checkbox {
+    flex-direction: row !important;
+    align-items: center;
+    gap: var(--sp-2);
+    cursor: pointer;
+  }
+
+  .rows-editor__tools {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
+</style>

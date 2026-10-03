@@ -4,6 +4,11 @@ import Icon from '../../components/Icon.astro';
 import { seo } from '../../data/site';
 import { getDB, writeAuditLog } from '../../lib/db';
 import { updateSetting } from '../../lib/settings';
+import RowsEditor from '../../components/admin/RowsEditor.astro';
+import { readRows } from '../../lib/form-rows';
+
+/** Ícones oferecidos no seletor de redes sociais — mesma biblioteca de sempre, sem precisar digitar nome de ícone. */
+const SOCIAL_ICONS = ['instagram', 'facebook', 'linkedin', 'whatsapp', 'youtube', 'x'] as const;
 
 const { company, whatsapp, social, brand } = Astro.locals.settings;
 const userId = Astro.locals.user?.id;
@@ -65,11 +70,16 @@ if (Astro.request.method === 'POST') {
   }
 
   if (formName === 'redes') {
-    const updatedSocial = social.map((item) => ({
-      ...item,
-      href: text(`rede-${item.icon}-href`, item.href),
-      enabled: form.get(`rede-${item.icon}-enabled`) === 'on',
-    }));
+    // Lista livre agora (ver RowsEditor abaixo): adicionar, remover, reordenar
+    // e trocar o ícone deixaram de exigir uma linha de código por rede nova.
+    const updatedSocial = readRows(form, 'social', ['icon', 'label', 'href', 'enabled'] as const, 12).map(
+      (row) => ({
+        icon: row.icon || 'instagram',
+        label: row.label || row.icon,
+        href: row.href,
+        enabled: row.enabled === 'on',
+      })
+    );
     await updateSetting(db, 'social', updatedSocial, userId);
     await writeAuditLog(db, {
       userId,
@@ -344,37 +354,26 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
       <div class="form-section">
         <h2 class="form-section__title">Perfis</h2>
         <p class="hint">
-          Redes desativadas não aparecem no rodapé. Ative apenas quando houver perfil oficial.
+          Aparecem no topo do cabeçalho (ao lado do e-mail e telefone) e no rodapé. Ative apenas
+          quando houver perfil oficial. Adicione quantas redes quiser, remova as que não usa e
+          escolha o ícone certo para cada uma.
         </p>
-        {
-          social.map((item) => (
-            <div class="social-row">
-              <span class="icon-badge icon-badge--sm">
-                <Icon name={item.icon} size={18} />
-              </span>
-              <div class="field">
-                <label class="label" for={`rede-${item.icon}`}>
-                  {item.label}
-                </label>
-                <input
-                  class="input"
-                  id={`rede-${item.icon}`}
-                  name={`rede-${item.icon}-href`}
-                  placeholder="https://"
-                  value={item.href === '#' ? '' : item.href}
-                />
-              </div>
-              <label class="checkbox social-row__toggle">
-                <input
-                  type="checkbox"
-                  name={`rede-${item.icon}-enabled`}
-                  checked={item.enabled}
-                />
-                <span>Exibir</span>
-              </label>
-            </div>
-          ))
-        }
+        <RowsEditor
+          name="social"
+          items={social.map((item) => ({
+            icon: item.icon,
+            label: item.label,
+            href: item.href === '#' ? '' : item.href,
+            enabled: item.enabled ? 'on' : '',
+          }))}
+          fields={[
+            { key: 'icon', label: 'Ícone', kind: 'icon', iconOptions: [...SOCIAL_ICONS] },
+            { key: 'label', label: 'Nome (ex.: Instagram)' },
+            { key: 'href', label: 'Link do perfil (https://…)' },
+            { key: 'enabled', label: 'Exibir no site', kind: 'checkbox' },
+          ]}
+          addLabel="Adicionar rede social"
+        />
       </div>
 
       <button type="submit" class="btn">
@@ -483,36 +482,6 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-  }
-
-  .social-row {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: var(--sp-4);
-    align-items: end;
-    padding: var(--sp-4) 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .social-row:last-of-type {
-    border-bottom: 0;
-  }
-
-  .social-row__toggle {
-    font-size: var(--fs-xs);
-    white-space: nowrap;
-    padding-bottom: 0.6rem;
-  }
-
-  @media (max-width: 640px) {
-    .social-row {
-      grid-template-columns: auto 1fr;
-    }
-
-    .social-row__toggle {
-      grid-column: 1 / -1;
-      padding-bottom: 0;
-    }
   }
 
   .brand-grid {

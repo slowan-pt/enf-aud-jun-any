@@ -63,6 +63,7 @@ const aria = label
       height={size}
       alt={label ?? ''}
       class={`icon icon--custom ${className}`.trim()}
+      data-icon={name}
       loading="lazy"
       {...attrs}
       {...(label ? {} : { 'aria-hidden': 'true' })}
@@ -79,6 +80,7 @@ const aria = label
       stroke-linecap="round"
       stroke-linejoin="round"
       class={`icon ${className}`.trim()}
+      data-icon={builtIn || name}
       focusable="false"
       {...attrs}
       {...aria}

@@ -21,6 +21,7 @@
   var style = document.createElement('style');
   style.textContent = [
     '[data-edit]{cursor:pointer}',
+    '[data-edit]:empty{min-height:1.5em;min-width:3ch;outline:1px dashed #94a3b8}',
     '[data-edit].is-edit-hover{outline:2px dashed rgba(37,99,235,.65);outline-offset:3px}',
     '[data-edit].is-edit-selected{outline:2px solid #2563eb;outline-offset:3px;border-radius:2px}',
     '[data-edit][contenteditable="true"]{outline:2px solid #2563eb;outline-offset:3px;cursor:text}',
@@ -54,6 +55,9 @@
 
   function valueOf(element) {
     var kind = kindOf(element);
+    // Botão de imagem sem foto própria (ex.: fundo do topo): o valor real fica em data-edit-value.
+    if (kind === 'image' && element.hasAttribute('data-edit-value'))
+      return element.getAttribute('data-edit-value') || '';
     if (kind === 'image' || kind === 'video') return element.getAttribute('src') || '';
     if (kind === 'icon') return element.getAttribute('data-edit-value') || '';
     return element.textContent.trim();
@@ -664,6 +668,7 @@
     if (!selected) return;
     var editable = editableTargetOf(selected);
     if (editable.isContentEditable) editable.removeAttribute('contenteditable');
+    restoreDraggables();
     selected.classList.remove('is-edit-selected');
     selected = null;
     editingText = false;
@@ -704,6 +709,7 @@
     if (kind !== 'text' && kind !== 'multiline' && kind !== 'shape') return;
     detachMoveable();
     editingText = true;
+    releaseDraggables(element);
     var editable = editableTargetOf(element);
     editable.setAttribute('contenteditable', 'true');
     editable.spellcheck = false;
@@ -714,14 +720,40 @@
     if (!editingText || !selected) return;
     editableTargetOf(selected).removeAttribute('contenteditable');
     editingText = false;
+    restoreDraggables();
     attachMoveable(selected);
   }
 
   // -------------------------------------------------------------- eventos
+  /** Clicar no ícone/marcador ou na folga de um item de lista seleciona o texto dele. */
+  function closestEditable(node) {
+    var direct = node.closest(SELECTABLE);
+    if (direct) return direct;
+    var item = node.closest('[data-edit-item]');
+    return item ? item.querySelector('[data-edit]') : null;
+  }
+
+  /** Um ancestral arrastável impede selecionar/posicionar o cursor no texto: solta durante a digitação. */
+  var undraggable = [];
+  function releaseDraggables(element) {
+    var node = element.closest('[draggable="true"]');
+    while (node) {
+      node.draggable = false;
+      undraggable.push(node);
+      node = node.parentElement && node.parentElement.closest('[draggable="true"]');
+    }
+  }
+  function restoreDraggables() {
+    undraggable.forEach(function (node) {
+      node.draggable = true;
+    });
+    undraggable = [];
+  }
+
   document.addEventListener(
     'mouseover',
     function (event) {
-      var target = event.target.closest(SELECTABLE);
+      var target = closestEditable(event.target);
       if (hovered && hovered !== target) hovered.classList.remove('is-edit-hover');
       if (target && target !== selected) {
         target.classList.add('is-edit-hover');
@@ -768,7 +800,8 @@
   document.addEventListener(
     'click',
     function (event) {
-      var target = event.target.closest(SELECTABLE);
+      if (event.target.closest('[data-ecc]')) return;
+      var target = closestEditable(event.target);
 
       // Em modo de edição nenhum link navega: clicar num botão seleciona o botão.
       var link = event.target.closest('a, button');
@@ -815,7 +848,8 @@
   document.addEventListener(
     'dblclick',
     function (event) {
-      var target = event.target.closest(SELECTABLE);
+      if (event.target.closest('[data-ecc]')) return;
+      var target = closestEditable(event.target);
       if (!target) return;
 
       // Duplo clique num campo de um bloco de formulário é seleção nativa
@@ -1078,6 +1112,11 @@
 
   function applySetTo(element, path, value, extra) {
     var kind = kindOf(element);
+
+    if (kind === 'image' && element.hasAttribute('data-edit-value')) {
+      element.setAttribute('data-edit-value', value);
+      return;
+    }
 
     if (kind === 'image' || kind === 'video') {
       element.setAttribute('src', value);
@@ -1590,6 +1629,11 @@
     });
     post({ type: 'editor:ready', sections: sections });
   }
+
+  // Cor dos cards: módulo à parte (grava em /admin/api/card-style).
+  var cardColors = document.createElement('script');
+  cardColors.src = '/editor-card-colors.js';
+  document.body.appendChild(cardColors);
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     announce();

@@ -1,0 +1,139 @@
+---
+/**
+ * Cor dos cards — escolha global. "Aplicar em todos" grava o tom geral e limpa as
+ * exceções por card. A cor de UM card específico se escolhe no Editor Visual
+ * (passe o mouse sobre o card → "Cor do card"). Ver src/lib/card-style.ts.
+ */
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { updateSetting } from '../../lib/settings';
+import { CARD_TONES, isTone, normalizeCardStyle } from '../../lib/card-style';
+
+const db = getDB();
+let style = normalizeCardStyle(Astro.locals.settings.cardStyle);
+let saved = false;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const color = String(form.get('color') ?? '');
+  if (isTone(color)) {
+    style = { all: color, overrides: {} };
+    await updateSetting(db, 'cardStyle', style, Astro.locals.user?.id);
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'settings.card_style',
+      target: `Cor dos cards: todos → ${color}`,
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    saved = true;
+  }
+}
+
+const exceptions = Object.keys(style.overrides).length;
+---
+
+<AdminLayout
+  title="Cor dos cards"
+  description="Um tom para todos os cards do site. A cor de um card específico se escolhe no Editor Visual."
+  active="/admin/cartoes"
+>
+  {
+    saved && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>Aplicado em todos os cards do site.</span>
+      </div>
+    )
+  }
+
+  <form method="post" class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Tom de todos os cards</h2>
+    </div>
+    <div class="panel__body stack">
+      <p class="muted small">
+        Recomendação: um único tom em todo o site deixa a leitura coerente; use uma cor diferente
+        só em cards que precisam de destaque. {
+          exceptions > 0
+            ? `Hoje há ${exceptions} card(s) com cor própria — "Aplicar em todos" substitui essas cores.`
+            : 'Hoje nenhum card tem cor própria.'
+        }
+      </p>
+
+      <div class="tones">
+        {
+          CARD_TONES.map((tone) => (
+            <label class="tone">
+              <input type="radio" name="color" value={tone.id} checked={tone.id === style.all} />
+              <span
+                class="tone__card"
+                style={`--bg:${tone.bg};--border:${tone.border};--accent:${tone.accent}`}
+              >
+                <strong>Título do card</strong>
+                <small>Texto de exemplo</small>
+              </span>
+              <span class="tone__name">{tone.label}</span>
+            </label>
+          ))
+        }
+      </div>
+
+      <div>
+        <button type="submit" class="btn">
+          <Icon name="check-circle" size={16} />
+          Aplicar em todos os cards
+        </button>
+      </div>
+    </div>
+  </form>
+</AdminLayout>
+
+<style>
+  .tones {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--sp-4);
+  }
+
+  .tone {
+    display: grid;
+    gap: var(--sp-2);
+    cursor: pointer;
+  }
+
+  .tone input {
+    position: absolute;
+    opacity: 0;
+  }
+
+  .tone__card {
+    display: grid;
+    gap: 4px;
+    padding: var(--sp-4);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--r-md);
+    color: #0b2545;
+  }
+
+  .tone__card small {
+    color: #475569;
+  }
+
+  .tone input:checked + .tone__card {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  .tone input:focus-visible + .tone__card {
+    outline: 3px solid #2563eb;
+  }
+
+  .tone__name {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+  }
+</style>

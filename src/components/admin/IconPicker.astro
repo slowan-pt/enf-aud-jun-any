@@ -7,7 +7,7 @@
  * "/media/arquivo.svg") — o componente <Icon> já entende os dois formatos.
  */
 import Icon from '../Icon.astro';
-import { iconPaths } from '../../data/icons';
+import { iconLabels, iconPaths } from '../../data/icons';
 
 interface Props {
   name: string;
@@ -38,7 +38,7 @@ const inputId = `icon-${name}`;
       {
         builtIn.map((n) => (
           <option value={n} selected={n === value}>
-            {n}
+            {iconLabels[n] ?? n} ({n})
           </option>
         ))
       }
