@@ -267,7 +267,7 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
           <span>
             Autorizo o tratamento dos meus dados pessoais informados neste formulário para que a
             Essencial Saúde Auditoria possa responder a este contato, conforme a
-            <a href="/politica-de-privacidade"> Política de Privacidade</a> e a LGPD (Lei 13.709/2018).
+            <a href="/politica-de-privacidade" data-popup target="_blank" rel="noopener"> Política de Privacidade</a> e a LGPD (Lei 13.709/2018).
             <span class="req">*</span>
           </span>
         </label>
@@ -635,6 +635,10 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
           setFieldState(control, 'invalid', message);
         } else {
           setFieldState(control, fieldValue(control) ? 'valid' : 'idle');
+          // Mesma lógica do listener de "input" abaixo: sem nenhum campo
+          // inválido restante, o aviso geral não tem mais o que apontar.
+          const stillInvalid = form.querySelector('[data-field][data-state="invalid"]');
+          if (!stillInvalid) errorBox?.setAttribute('hidden', '');
         }
       };
       control.addEventListener('blur', check);
@@ -643,6 +647,11 @@ const ed = <T,>(value: T): T | undefined => (edit ? value : undefined);
         const field = control.closest<HTMLElement>('[data-field]');
         if (field?.getAttribute('data-state') === 'invalid' && !validateControl(control)) {
           setFieldState(control, 'valid');
+          // Corrigiu o último campo destacado: o aviso "Não foi possível enviar"
+          // não faz mais sentido parado na tela — some assim que não sobra
+          // nenhum campo marcado como inválido (sem esperar um novo envio).
+          const stillInvalid = form.querySelector('[data-field][data-state="invalid"]');
+          if (!stillInvalid) errorBox?.setAttribute('hidden', '');
         }
       });
     });

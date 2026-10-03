@@ -91,9 +91,43 @@ const { whatsappMessage, bodyClass = '', ...head } = Astro.props;
       }
     </style>
 
+    <style is:global>
+      /* Janela popup da Política de Privacidade: só o texto, sem o menu/rodapé do site. */
+      html.is-popup :is(.site-header, .footer, .skip-link, .wa),
+      html.is-popup .cta-band {
+        display: none !important;
+      }
+    </style>
+
     <script>
       // marca que há JS disponível (usado pelas animações progressivas)
       document.documentElement.classList.add('js');
+
+      // Links com data-popup (ex.: Política de Privacidade nos formulários) abrem
+      // numa janela popup — o visitante não perde o que já digitou. Se o navegador
+      // bloquear o popup, o link abre normalmente numa nova aba.
+      const POPUP_NAME = 'popup-privacidade';
+      if (window.name === POPUP_NAME) document.documentElement.classList.add('is-popup');
+      document.addEventListener('click', (event) => {
+        const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[data-popup]');
+        if (!link || event.defaultPrevented) return;
+        if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const screenW = window.screen.availWidth || 1280;
+        const screenH = window.screen.availHeight || 800;
+        const width = Math.max(360, Math.min(860, screenW - 40));
+        const height = Math.max(400, Math.min(780, screenH - 40));
+        const left = Math.max(0, Math.round((screenW - width) / 2));
+        const top = Math.max(0, Math.round((screenH - height) / 2));
+        const popup = window.open(
+          link.href,
+          POPUP_NAME,
+          `popup=yes,width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+        if (popup) {
+          event.preventDefault();
+          popup.focus();
+        }
+      });
 
       // revelação suave de blocos ao entrar na viewport
       const targets = document.querySelectorAll('[data-reveal]');

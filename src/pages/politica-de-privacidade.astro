@@ -77,23 +77,31 @@ function parseBody(body: string): { kind: 'p' | 'ul'; lines: string[] }[] {
     />
   </div>
 
-  <section
-    class:list={['section', secClass('nota')]}
-    style={secStyle('nota', sectionStyles.nota)}
-    data-section="nota"
-    data-section-label={ed('Aviso')}
-  >
-    <div class="container container--narrow">
-      <p class="note">
-        <Icon name="info" size={16} />
-        <span>
-          <span data-edit="noteText" data-edit-kind={ed('multiline')}>{noteText}</span>
-          {' '}Última atualização: <span data-edit="updatedAt">{updatedAt}</span>.
-        </span>
-      </p>
-      <SectionOverlays section="nota" overlays={overlays} />
-    </div>
-  </section>
+  {
+    (noteText || edit) && (
+      <section
+        class:list={['section', secClass('nota')]}
+        style={secStyle('nota', sectionStyles.nota)}
+        data-section="nota"
+        data-section-label={ed('Aviso')}
+      >
+        <div class="container container--narrow">
+          <p class="note">
+            <Icon name="info" size={16} />
+            <span>
+              <span data-edit="noteText" data-edit-kind={ed('multiline')}>{noteText}</span>
+              {updatedAt && (
+                <>
+                  {' '}Última atualização: <span data-edit="updatedAt">{updatedAt}</span>.
+                </>
+              )}
+            </span>
+          </p>
+          <SectionOverlays section="nota" overlays={overlays} />
+        </div>
+      </section>
+    )
+  }
 
   <section
     class:list={['section', secClass('conteudo')]}
