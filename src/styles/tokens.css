@@ -26,6 +26,17 @@
   --c-accent-100: #d8f1ee;
   --c-accent-50: #f0fbf9;
 
+  /* ---------- Ações ---------- */
+  --c-action-700: #0e7490;
+  --c-action-600: #0891b2;
+  --c-action-500: #06a6c9;
+  --c-action-100: #cffafe;
+  --c-action-50: #ecfeff;
+  --c-whatsapp-700: #128c4a;
+  --c-whatsapp-600: #16a34a;
+  --c-whatsapp-500: #25d366;
+  --c-whatsapp-100: #dcfce7;
+
   /* ---------- Neutros ---------- */
   --c-ink-900: #0e1720;
   --c-ink-800: #1b2836;

@@ -1,69 +1,45 @@
 ---
 /**
- * MARCA OFICIAL — extraída do material institucional fornecido
- * ("Resumo da Essencial Saúde Auditoria.pdf").
+ * MARCA OFICIAL — logo "ES+ AUDITORIA" (public/logo/essencial-saude-logo.webp).
  *
- * O ícone (prancheta + gráfico + lupa com leito hospitalar) é a arte
- * original enviada, recortada em alta resolução com fundo transparente
- * (ver public/logo/essencial-saude-mark.png). O wordmark ao lado é
- * tipografado em Sora — a mesma fonte de título do site — para permanecer
- * nítido em qualquer tamanho e legível tanto sobre fundo claro quanto
- * sobre fundo escuro (o lockup original é todo em azul-marinho e perde
- * contraste sobre o rodapé/sidebar escuros).
+ * A imagem (ícone + a palavra AUDITORIA) vem acompanhada do nome "Essencial / Saúde Auditoria" em texto, usada no cabeçalho, no menu móvel,
+ * no rodapé, na barra lateral do painel e no login. O arquivo pode ser trocado em
+ * Configurações → Logotipo (`brand.logoUrl`); sem troca, vale `brand.markUrl`.
  *
- * ETAPA 2: se a Essencial Saúde fornecer uma versão vetorial (SVG) do
- * logotipo, ela substitui diretamente o arquivo em public/logo/.
+ * Sobre fundo escuro (`inverse`) a arte, que é azul, vai sobre uma placa clara.
  */
 interface Props {
   variant?: 'default' | 'inverse';
   size?: 'sm' | 'md' | 'lg';
   class?: string;
-  /** Mostra apenas o ícone (uso em favicon, avatar, mobile compacto). */
+  /** Só a imagem, sem o nome ao lado (uso em espaços curtos). */
   markOnly?: boolean;
 }
 
-const {
-  variant = 'default',
-  size = 'md',
-  class: className = '',
-  markOnly = false,
-} = Astro.props;
+const { variant = 'default', size = 'md', class: className = '', markOnly = false } = Astro.props;
 
 const { brand } = Astro.locals.settings;
+const src = brand.logoUrl || brand.markUrl;
 ---
 
 <span class={`logo logo--${variant} logo--${size} ${className}`.trim()}>
+  <span class="logo__plate">
+    <img
+      class="logo__image"
+      src={src}
+      width="640"
+      height="566"
+      alt="Essencial Saúde Auditoria"
+      loading="eager"
+      decoding="async"
+    />
+  </span>
   {
-    brand.logoUrl && !markOnly ? (
-      <span class="logo__plate logo__plate--full">
-        <img
-          class="logo__image"
-          src={brand.logoUrl}
-          alt="Essencial Saúde Auditoria"
-          loading="eager"
-          decoding="async"
-        />
+    !markOnly && (
+      <span class="logo__type">
+        <span class="logo__name">Essencial</span>
+        <span class="logo__sub">Saúde Auditoria</span>
       </span>
-    ) : (
-      <>
-        <span class="logo__plate">
-          <img
-            class="logo__mark"
-            src={brand.markUrl}
-            width="534"
-            height="403"
-            alt="Essencial Saúde Auditoria"
-            loading="eager"
-            decoding="async"
-          />
-        </span>
-        {!markOnly && (
-          <span class="logo__type">
-            <span class="logo__name">Essencial</span>
-            <span class="logo__sub">Saúde Auditoria</span>
-          </span>
-        )}
-      </>
     )
   }
 </span>
@@ -83,32 +59,33 @@ const { brand } = Astro.locals.settings;
     align-items: center;
     justify-content: center;
     border-radius: var(--r-sm);
-    padding: 2px;
-    /* transparente sobre fundo claro: o ícone (azul-marinho) já contrasta */
     background: transparent;
-    transition: background var(--dur) var(--ease);
-  }
-
-  .logo__mark {
-    display: block;
-    width: 40px;
-    height: auto;
   }
 
   .logo__image {
     display: block;
     width: auto;
-    max-width: 210px;
-    height: 44px;
+    height: 60px;
     object-fit: contain;
   }
 
-  /* sobre fundo escuro (rodapé, sidebar do CMS, login) o ícone original —
-     todo em azul-marinho — perde contraste; uma placa clara por trás
-     devolve a legibilidade sem alterar a arte fornecida. */
+  @media (min-width: 768px) {
+    .logo__image {
+      height: 68px;
+    }
+  }
+
   .logo--inverse .logo__plate {
     background: #fff;
-    padding: 4px;
+    padding: 6px;
+  }
+
+  .logo--sm .logo__image {
+    height: 52px;
+  }
+
+  .logo--lg .logo__image {
+    height: 96px;
   }
 
   .logo__type {
@@ -120,61 +97,38 @@ const { brand } = Astro.locals.settings;
   .logo__name {
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 1.125rem;
+    font-size: 1.3rem;
     letter-spacing: -0.02em;
     color: var(--c-brand-900);
   }
 
   .logo__sub {
     font-family: var(--font-display);
-    font-size: 0.625rem;
+    font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--c-brand-900);
   }
 
-  /* variante para fundos escuros (rodapé, sidebar do CMS) */
-  .logo--inverse .logo__name {
-    color: #fff;
-  }
-
+  .logo--inverse .logo__name,
   .logo--inverse .logo__sub {
     color: #fff;
   }
 
-  /* tamanhos */
-  .logo--sm .logo__mark {
-    width: 32px;
-  }
-
-  .logo--sm .logo__image {
-    max-width: 175px;
-    height: 36px;
-  }
-
   .logo--sm .logo__name {
-    font-size: 0.95rem;
+    font-size: 1.05rem;
   }
 
   .logo--sm .logo__sub {
-    font-size: 0.5rem;
-  }
-
-  .logo--lg .logo__mark {
-    width: 56px;
-  }
-
-  .logo--lg .logo__image {
-    max-width: 260px;
-    height: 58px;
+    font-size: 0.55rem;
   }
 
   .logo--lg .logo__name {
-    font-size: 1.375rem;
+    font-size: 1.5rem;
   }
 
   .logo--lg .logo__sub {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 </style>

@@ -30,7 +30,7 @@ export const company = {
   segment: 'Gestão e Auditoria em Saúde / Gestão Hospitalar',
   description:
     'Empresa de gestão e auditoria em saúde que atua de forma colaborativa e preventiva, com visitas técnicas presenciais aos prestadores, estabelecendo um canal de comunicação fluido e seguro entre o beneficiário, a operadora de saúde e o prestador de serviço.',
-  email: 'essencialsaude2026@gmail.com',
+  email: 'essencialsaudeauditoria@gmail.com',
   phone: '+55 61 98244-4083',
   phoneRaw: '5561982444083',
   phoneDisplay: '(61) 98244-4083',
@@ -97,6 +97,7 @@ export const footerLinks = {
     { label: 'Serviços', href: '/servicos' },
     { label: 'Conteúdos', href: '/conteudos' },
     { label: 'Contato', href: '/contato' },
+    { label: 'Trabalhe conosco', href: '/trabalhe-conosco' },
     { label: 'Política de Privacidade', href: '/politica-de-privacidade' },
   ],
 };

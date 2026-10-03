@@ -1,5 +1,6 @@
 ---
 import { seo } from '../data/site';
+import { cardStyleCss } from '../lib/card-style';
 
 const { company, seo: seoSettings, theme } = Astro.locals.settings;
 
@@ -136,6 +137,7 @@ const heading = safeHex(colorOverride?.headingColor, safeHex(theme.headingColor,
   --focus: ${accent} !important;
 }`}
 ></style>
+<style id="card-style" set:html={cardStyleCss(Astro.locals.settings.cardStyle)}></style>
 {
   seoSettings.gscVerification && (
     <meta name="google-site-verification" content={seoSettings.gscVerification} />

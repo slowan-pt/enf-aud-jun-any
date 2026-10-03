@@ -234,15 +234,6 @@ a {
   margin-bottom: var(--sp-3);
 }
 
-.eyebrow::before {
-  content: '';
-  width: 22px;
-  height: 2px;
-  background: currentColor;
-  border-radius: 2px;
-  flex: none;
-}
-
 .title-xl {
   font-size: var(--fs-4xl);
 }
@@ -291,15 +282,23 @@ a {
   justify-content: center;
 }
 
+/* O padrão sitewide de título à esquerda (mais acima neste arquivo) declara
+   `text-align` diretamente no elemento — isso sempre vence um valor apenas
+   herdado, então sem esta regra o título de uma seção centralizada "puxava"
+   para a esquerda enquanto o selo acima dele continuava centralizado. */
+.section-head--center :is(h1, h2, h3, h4, h5, h6) {
+  text-align: center;
+}
+
 .section-head p {
   margin-top: var(--sp-4);
 }
 
 /* ------------------------------------------------------------ botões */
 .btn {
-  --btn-bg: var(--c-brand-600);
+  --btn-bg: var(--c-action-600);
   --btn-fg: var(--c-white);
-  --btn-bd: var(--c-brand-600);
+  --btn-bd: var(--c-action-600);
 
   display: inline-flex;
   align-items: center;
@@ -325,10 +324,10 @@ a {
 }
 
 .btn:hover {
-  --btn-bg: var(--c-brand-700);
-  --btn-bd: var(--c-brand-700);
+  --btn-bg: var(--c-action-700);
+  --btn-bd: var(--c-action-700);
 
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 16px 28px -18px rgba(8, 145, 178, 0.68);
 }
 
 .btn:active {
@@ -344,15 +343,15 @@ a {
 }
 
 .btn--secondary {
-  --btn-bg: transparent;
-  --btn-fg: var(--c-brand-700);
-  --btn-bd: var(--c-brand-200);
+  --btn-bg: var(--c-action-50);
+  --btn-fg: var(--c-action-700);
+  --btn-bd: color-mix(in srgb, var(--c-action-600) 42%, var(--c-white));
 }
 
 .btn--secondary:hover {
-  --btn-bg: var(--c-brand-50);
-  --btn-fg: var(--c-brand-800);
-  --btn-bd: var(--c-brand-300);
+  --btn-bg: var(--c-action-600);
+  --btn-fg: var(--c-white);
+  --btn-bd: var(--c-action-600);
 }
 
 .btn--ghost {
@@ -380,15 +379,34 @@ a {
 }
 
 .btn--on-brand {
-  --btn-bg: var(--c-white);
-  --btn-fg: var(--c-brand-800);
-  --btn-bd: var(--c-white);
+  --btn-bg: var(--c-action-50);
+  --btn-fg: var(--c-action-700);
+  --btn-bd: var(--c-action-50);
 }
 
 .btn--on-brand:hover {
-  --btn-bg: var(--c-brand-50);
-  --btn-bd: var(--c-brand-50);
-  --btn-fg: var(--c-brand-900);
+  --btn-bg: var(--c-action-600);
+  --btn-bd: var(--c-action-600);
+  --btn-fg: var(--c-white);
+}
+
+.btn[href*='wa.me'],
+.btn[href*='api.whatsapp.com'],
+.btn:has(.icon use[href*='whatsapp']),
+.btn:has(.icon[data-icon='whatsapp']) {
+  --btn-bg: var(--c-whatsapp-600);
+  --btn-fg: var(--c-white);
+  --btn-bd: var(--c-whatsapp-600);
+}
+
+.btn[href*='wa.me']:hover,
+.btn[href*='api.whatsapp.com']:hover,
+.btn:has(.icon use[href*='whatsapp']):hover,
+.btn:has(.icon[data-icon='whatsapp']):hover {
+  --btn-bg: var(--c-whatsapp-700);
+  --btn-bd: var(--c-whatsapp-700);
+  --btn-fg: var(--c-white);
+  box-shadow: 0 16px 28px -18px rgba(22, 163, 74, 0.7);
 }
 
 .btn--outline-on-brand {
@@ -429,13 +447,23 @@ a {
   gap: var(--sp-2);
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
-  color: var(--c-brand-600);
+  color: var(--c-action-700);
   text-decoration: none;
 }
 
 .link-arrow:hover {
-  color: var(--c-brand-800);
+  color: var(--c-action-600);
   text-decoration: underline;
+}
+
+.link-arrow[href*='wa.me'],
+.link-arrow[href*='api.whatsapp.com'] {
+  color: var(--c-whatsapp-700);
+}
+
+.link-arrow[href*='wa.me']:hover,
+.link-arrow[href*='api.whatsapp.com']:hover {
+  color: var(--c-whatsapp-600);
 }
 
 .link-arrow .icon {
@@ -453,8 +481,10 @@ a {
   flex-direction: column;
   gap: var(--sp-3);
   padding: clamp(1.35rem, 2.4vw, 2rem);
-  background: var(--c-white);
-  border: 1px solid var(--line);
+  /* Cor vem de src/lib/card-style.ts (tom geral + exceção por card). */
+  background: var(--card-bg, var(--c-white));
+  border: 1px solid var(--card-border, var(--line));
+  border-top: 3px solid var(--card-accent, var(--line));
   border-radius: var(--r-lg);
   transition:
     border-color var(--dur) var(--ease),
@@ -473,6 +503,8 @@ a {
 }
 
 .card p {
+  /* Texto curto em caixa estreita: justificado abre buracos enormes entre as palavras. */
+  text-align: left;
   color: var(--text-muted);
   font-size: var(--fs-sm);
   line-height: var(--lh-relaxed);
@@ -616,6 +648,14 @@ a {
   }
 }
 
+/* Caixas estreitas (passos, nós do diagrama, listas laterais): texto à esquerda, sem
+   justificar — mesmo motivo dos cartões acima. */
+.elo__node p,
+.aside-list li,
+.service-icon-card span {
+  text-align: left;
+}
+
 /* ------------------------------------------------------- listas ricas */
 .check-list {
   display: grid;
@@ -643,6 +683,16 @@ a {
   color: var(--c-accent-600);
   margin-top: 2px;
   flex: none;
+}
+
+/* Marcador em caixinha (mesmo padrão usado no card do fundador e nos
+   ícones de "missão/valores"), no lugar do ícone solto. */
+.check-list .icon-badge {
+  margin-top: 0;
+}
+
+.check-list .icon-badge .icon {
+  margin-top: 0;
 }
 
 .section--brand .check-list li {
@@ -995,4 +1045,25 @@ a {
     opacity: 1;
     transform: none;
   }
+}
+
+
+/* Padrão do site: títulos à esquerda, demais textos justificados. `:where` zera a
+   especificidade: qualquer componente que defina o próprio alinhamento (centralizado,
+   etc.) e o alinhamento escolhido por elemento no Editor Visual continuam valendo. */
+:where(main) :is(h1, h2, h3, h4, h5, h6) {
+  text-align: left;
+  /* Título nunca é hifenizado nem quebrado no meio da palavra. */
+  hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: balance;
+}
+:where(main) :is(p, li, blockquote) {
+  text-align: justify;
+  /* Nunca quebra palavra com hífen ("cimen-to") — continua justificado, só
+     empurra a palavra inteira para a linha seguinte quando não cabe. */
+  hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
 }

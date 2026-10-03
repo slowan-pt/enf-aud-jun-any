@@ -4,7 +4,8 @@ import Icon from './Icon.astro';
 import { mainNav, headerCta, waLink } from '../data/site';
 import { publishedOnly } from '../lib/services';
 
-const { company, whatsapp } = Astro.locals.settings;
+const { company, whatsapp, social } = Astro.locals.settings;
+const activeSocial = social.filter((item) => item.enabled && item.href && item.href !== '#');
 const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
 
 function isActive(href: string): boolean {
@@ -55,24 +56,47 @@ const nav = baseNav.map((item) =>
 <header class="site-header" id="site-header" data-header>
   <div class="topbar">
     <div class="container topbar__inner">
-      <span class="topbar__item">
+      <span class="topbar__item topbar__item--city">
         <Icon name="map-pin" size={15} />
-        {company.address.city} - {company.address.state}
+        <span class="topbar__label">{company.address.city} - {company.address.state}</span>
       </span>
       <div class="topbar__right">
-        <a class="topbar__item" href={`mailto:${company.email}`}>
+        <a
+          class="topbar__item"
+          href={`mailto:${company.email}`}
+          aria-label={`Enviar e-mail para ${company.email}`}
+        >
           <Icon name="mail" size={15} />
-          {company.email}
+          <span class="topbar__label">{company.email}</span>
         </a>
         <a
           class="topbar__item"
           href={waLink(whatsapp.number, whatsapp.defaultMessage)}
           target="_blank"
           rel="noopener"
+          aria-label={`Falar no WhatsApp — ${company.phoneDisplay}`}
         >
           <Icon name="whatsapp" size={15} />
-          {company.phoneDisplay}
+          <span class="topbar__label">{company.phoneDisplay}</span>
         </a>
+        {
+          activeSocial.length > 0 && (
+            <div class="topbar__social" aria-label="Redes sociais">
+              {activeSocial.map((item) => (
+                <a
+                  class="topbar__social-link"
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener"
+                  aria-label={item.label}
+                  title={item.label}
+                >
+                  <Icon name={item.icon} size={15} />
+                </a>
+              ))}
+            </div>
+          )
+        }
       </div>
     </div>
   </div>
@@ -256,6 +280,17 @@ const nav = baseNav.map((item) =>
         <Icon name="mail" size={16} />
         {company.email}
       </a>
+      {
+        activeSocial.length > 0 && (
+          <div class="drawer__social" aria-label="Redes sociais">
+            {activeSocial.map((item) => (
+              <a href={item.href} target="_blank" rel="noopener" aria-label={item.label} title={item.label}>
+                <Icon name={item.icon} size={18} />
+              </a>
+            ))}
+          </div>
+        )
+      }
     </div>
   </div>
 </div>
@@ -275,24 +310,33 @@ const nav = baseNav.map((item) =>
   }
 
   /* ---------------- topbar ---------------- */
+  /* Sempre visível, em qualquer tamanho de tela — no celular fica compacta
+     (só os ícones; texto/cidade somem) em vez de ficar escondida dentro do
+     menu. Continua recolhendo ao rolar a página (ver .is-topbar-hidden),
+     agora em qualquer largura. */
   .topbar {
-    display: none;
+    display: block;
+    max-height: 36px;
+    overflow: hidden;
     background: var(--c-brand-900);
     color: rgba(234, 243, 251, 0.82);
     font-size: var(--fs-xs);
+    opacity: 1;
+    transition:
+      max-height var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
   }
 
-  @media (min-width: 1000px) {
-    .topbar {
-      display: block;
-    }
+  .site-header.is-topbar-hidden .topbar {
+    max-height: 0;
+    opacity: 0;
   }
 
   .topbar__inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 40px;
+    min-height: 36px;
     gap: var(--sp-4);
   }
 
@@ -300,6 +344,31 @@ const nav = baseNav.map((item) =>
     display: flex;
     align-items: center;
     gap: var(--sp-6);
+  }
+
+  @media (max-width: 999px) {
+    /* Sem espaço para tudo: some o texto (endereço, e-mail, telefone) e a
+       cidade — sobram só os ícones, que continuam clicáveis (ligar, e-mail,
+       WhatsApp, redes sociais). */
+    .topbar__item--city {
+      display: none;
+    }
+
+    .topbar__label {
+      display: none;
+    }
+
+    .topbar__inner {
+      justify-content: center;
+    }
+
+    .topbar__right {
+      gap: var(--sp-5);
+    }
+
+    .topbar__item {
+      padding-block: 0.35rem;
+    }
   }
 
   .topbar__item {
@@ -315,13 +384,31 @@ const nav = baseNav.map((item) =>
     color: var(--c-white);
   }
 
+  .topbar__social {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding-left: var(--sp-4);
+    border-left: 1px solid rgba(234, 243, 251, 0.25);
+  }
+
+  .topbar__social-link {
+    display: inline-flex;
+    color: rgba(234, 243, 251, 0.82);
+    transition: color var(--dur) var(--ease);
+  }
+
+  .topbar__social-link:hover {
+    color: var(--c-white);
+  }
+
   /* ---------------- barra principal ---------------- */
   .bar__inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-4);
-    min-height: 72px;
+    min-height: 84px;
   }
 
   .bar__logo {
@@ -686,12 +773,37 @@ const nav = baseNav.map((item) =>
     color: var(--c-ink-600);
     text-decoration: none;
   }
+
+  .drawer__social {
+    display: flex;
+    justify-content: center;
+    gap: var(--sp-4);
+    padding-top: var(--sp-3);
+    margin-top: var(--sp-1);
+    border-top: 1px solid var(--line);
+  }
+
+  .drawer__social a {
+    display: inline-flex;
+    color: var(--c-ink-600);
+  }
+
+  .drawer__social a:hover {
+    color: var(--c-brand-700);
+  }
 </style>
 
 <script>
   // ---- sombra do header ao rolar --------------------------------------
   const header = document.querySelector<HTMLElement>('[data-header]');
-  const onScroll = () => header?.classList.toggle('is-stuck', window.scrollY > 8);
+  let topbarHidden = false;
+  const onScroll = () => {
+    const y = window.scrollY;
+    if (!topbarHidden && y > 80) topbarHidden = true;
+    if (topbarHidden && y < 8) topbarHidden = false;
+    header?.classList.toggle('is-stuck', y > 8);
+    header?.classList.toggle('is-topbar-hidden', topbarHidden);
+  };
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
 
