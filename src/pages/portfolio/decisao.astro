@@ -1,0 +1,160 @@
+---
+/**
+ * Página aberta pelo link do e-mail de aviso: a Essencial vê quem pediu o Portfólio
+ * e aprova ou recusa. GET só mostra o pedido (programas de segurança de e-mail
+ * "clicam" nos links); a decisão acontece no POST dos botões.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getDB } from '../../lib/db';
+import { getByApproveToken, type PortfolioRequest } from '../../lib/portfolio';
+import { approveAndSend, downloadUrl, refuse } from '../../lib/portfolio-flow';
+
+export const prerender = false;
+
+const db = getDB();
+const token = (Astro.url.searchParams.get('token') ?? '').toLowerCase();
+let request: PortfolioRequest | null = await getByApproveToken(db, token);
+const { company } = Astro.locals.settings;
+
+let outcome: { kind: 'aprovado' | 'recusado'; mailOk?: boolean; error?: string } | null = null;
+
+if (request && Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+  if (action === 'aprovar') {
+    const result = await approveAndSend(db, request.id, company.name, company.email);
+    request = result.request ?? request;
+    outcome = { kind: 'aprovado', mailOk: result.mail.ok, error: result.mail.error };
+  } else if (action === 'recusar') {
+    await refuse(db, request.id);
+    request = await getByApproveToken(db, token);
+    outcome = { kind: 'recusado' };
+  }
+}
+
+const statusLabel = { pendente: 'Pendente', aprovado: 'Aprovado', recusado: 'Recusado' } as const;
+const manualLink =
+  request?.status === 'aprovado' && request.download_token ? downloadUrl(request.download_token) : '';
+---
+
+<BaseLayout
+  title="Pedido de Portfólio"
+  description="Aprovar ou recusar um pedido de download do Portfólio."
+  path="/portfolio/decisao"
+  noindex
+  bodyClass="page-portfolio-decisao"
+>
+  <section class="section">
+    <div class="container container--narrow decisao">
+      {
+        !request && (
+          <>
+            <h1 class="title-md">Pedido não encontrado</h1>
+            <p>O link está incompleto ou não existe mais.</p>
+          </>
+        )
+      }
+      {
+        request && (
+          <>
+            <h1 class="title-md">Pedido de download do Portfólio</h1>
+
+            {outcome?.kind === 'aprovado' && outcome.mailOk && (
+              <p class="msg msg--ok">Aprovado. O link de download foi enviado para {request.email}.</p>
+            )}
+            {outcome?.kind === 'aprovado' && !outcome.mailOk && (
+              <p class="msg msg--error">
+                Aprovado, mas o e-mail não saiu ({outcome.error ?? 'erro desconhecido'}). Envie
+                este link manualmente para {request.email}:
+                <br /><code>{manualLink}</code>
+              </p>
+            )}
+            {outcome?.kind === 'recusado' && <p class="msg msg--ok">Pedido recusado. Nada foi enviado.</p>}
+
+            <dl class="dados">
+              <div><dt>Nome</dt><dd>{request.name}</dd></div>
+              <div><dt>E-mail</dt><dd><a href={`mailto:${request.email}`}>{request.email}</a></dd></div>
+              <div><dt>Telefone</dt><dd>{request.phone || '—'}</dd></div>
+              <div><dt>Empresa</dt><dd>{request.company || '—'}</dd></div>
+              <div><dt>Cargo</dt><dd>{request.role || '—'}</dd></div>
+              <div><dt>Situação</dt><dd><strong>{statusLabel[request.status]}</strong></dd></div>
+            </dl>
+
+            <form method="post" class="acoes">
+              {request.status !== 'aprovado' && (
+                <button type="submit" name="action" value="aprovar" class="btn btn--primary">
+                  Aprovar e enviar o PDF
+                </button>
+              )}
+              {request.status === 'aprovado' && (
+                <button type="submit" name="action" value="aprovar" class="btn btn--secondary">
+                  Enviar um novo link
+                </button>
+              )}
+              {request.status !== 'recusado' && (
+                <button type="submit" name="action" value="recusar" class="btn btn--ghost">
+                  {request.status === 'aprovado' ? 'Revogar acesso' : 'Recusar'}
+                </button>
+              )}
+            </form>
+          </>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .decisao {
+    display: grid;
+    gap: var(--sp-5);
+    min-height: 45vh;
+    align-content: start;
+  }
+
+  .dados {
+    display: grid;
+    gap: var(--sp-2);
+    margin: 0;
+  }
+
+  .dados div {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .dados dt {
+    color: var(--text-faint);
+  }
+
+  .dados dd {
+    margin: 0;
+  }
+
+  .acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+
+  .msg {
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--r-md);
+    margin: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .msg--ok {
+    background: var(--c-accent-50);
+    color: var(--c-accent-700);
+  }
+
+  .msg--error {
+    background: #fdecec;
+    color: var(--c-danger-600);
+  }
+</style>

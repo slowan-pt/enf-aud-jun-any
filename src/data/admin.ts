@@ -37,6 +37,7 @@ export const adminNav: AdminNavItem[] = [
   },
   { label: 'Comentários', href: '/admin/comentarios', icon: 'message' },
   { label: 'Inscritos', href: '/admin/inscritos', icon: 'mail' },
+  { label: 'Portfólio', href: '/admin/portfolio', icon: 'download' },
   { label: 'Mídia', href: '/admin/midia', icon: 'image' },
   { label: 'Cor dos cards', href: '/admin/cartoes', icon: 'palette' },
   { label: 'Contatos', href: '/admin/contatos', icon: 'inbox', badge: 3 },

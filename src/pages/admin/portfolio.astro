@@ -1,0 +1,195 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { listPortfolioRequests, type PortfolioStatus } from '../../lib/portfolio';
+import { approveAndSend, downloadUrl, refuse } from '../../lib/portfolio-flow';
+
+const db = getDB();
+const { company } = Astro.locals.settings;
+
+const labels: Record<PortfolioStatus, string> = {
+  pendente: 'Pendente',
+  aprovado: 'Aprovado',
+  recusado: 'Recusado',
+};
+const tone: Record<PortfolioStatus, string> = {
+  pendente: 'badge--warning',
+  aprovado: 'badge--success',
+  recusado: 'badge--neutral',
+};
+
+let notice: { ok: boolean; text: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = Number(form.get('id'));
+  const action = String(form.get('action') ?? '');
+  if (Number.isInteger(id) && id > 0) {
+    let logged = '';
+    if (action === 'aprovar') {
+      const result = await approveAndSend(db, id, company.name, company.email);
+      logged = 'aprovado';
+      notice = result.mail.ok
+        ? { ok: true, text: `Aprovado. Link enviado para ${result.request?.email}.` }
+        : {
+            ok: false,
+            text: `Aprovado, mas o e-mail não saiu (${result.mail.error ?? 'erro'}). Copie o link da tabela e envie manualmente.`,
+          };
+    } else if (action === 'recusar') {
+      await refuse(db, id);
+      logged = 'recusado';
+      notice = { ok: true, text: 'Pedido recusado / acesso revogado.' };
+    }
+    if (logged) {
+      await writeAuditLog(db, {
+        userId: Astro.locals.user?.id,
+        userName: Astro.locals.user?.name ?? '',
+        action: 'portfolio.decision',
+        target: `Pedido de Portfólio #${id} ${logged}`,
+        ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+      });
+    }
+  }
+}
+
+const requests = await listPortfolioRequests(db);
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—';
+  const [datePart, timePart] = iso.split(' ');
+  const [y, m, d] = (datePart ?? '').split('-');
+  return `${d}/${m}/${y} ${(timePart ?? '').slice(0, 5)}`;
+}
+---
+
+<AdminLayout
+  title="Portfólio"
+  description="Pedidos de download do Portfólio (PDF). Aprove para enviar o link ao e-mail do solicitante."
+  active="/admin/portfolio"
+>
+  <div slot="actions">
+    <a href="/portfolio" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">
+      <Icon name="eye" size={16} /> Ver a página
+    </a>
+  </div>
+
+  {
+    notice && (
+      <div
+        class:list={['form-alert', notice.ok ? 'form-alert--success' : 'form-alert--error']}
+        role="status"
+        style="margin-bottom: var(--sp-5)"
+      >
+        <Icon name={notice.ok ? 'check-circle' : 'alert-circle'} size={18} />
+        <span>{notice.text}</span>
+      </div>
+    )
+  }
+
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Solicitante</th>
+            <th>Status</th>
+            <th>Link / downloads</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            requests.length === 0 && (
+              <tr>
+                <td colspan="5">Nenhum pedido ainda.</td>
+              </tr>
+            )
+          }
+          {
+            requests.map((r) => (
+              <tr>
+                <td class="nowrap muted small">{formatDate(r.created_at)}</td>
+                <td>
+                  <strong>{r.name}</strong>
+                  <span class="table__sub">{r.role}{r.role && r.company ? ' — ' : ''}{r.company}</span>
+                  <a class="small" href={`mailto:${r.email}`}>{r.email}</a>
+                  <span class="table__sub">{r.phone}</span>
+                </td>
+                <td>
+                  <span class:list={['badge', tone[r.status]]}>{labels[r.status]}</span>
+                  {r.status === 'aprovado' && !r.mail_sent && (
+                    <span class="table__sub">e-mail não enviado</span>
+                  )}
+                </td>
+                <td class="small">
+                  {r.status === 'aprovado' && r.download_token ? (
+                    <>
+                      <input
+                        class="input input--sm"
+                        readonly
+                        value={downloadUrl(r.download_token)}
+                        onclick="this.select()"
+                        aria-label="Link de download"
+                      />
+                      <span class="table__sub">
+                        válido até {formatDate(r.download_expires)} UTC · {r.downloads} download(s)
+                      </span>
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>
+                  <form method="post" class="actions">
+                    <input type="hidden" name="id" value={r.id} />
+                    {r.status !== 'aprovado' && (
+                      <button type="submit" name="action" value="aprovar" class="btn btn--accent btn--sm">
+                        <Icon name="check" size={16} /> Aprovar e enviar
+                      </button>
+                    )}
+                    {r.status === 'aprovado' && (
+                      <button type="submit" name="action" value="aprovar" class="btn btn--secondary btn--sm">
+                        Novo link
+                      </button>
+                    )}
+                    {r.status !== 'recusado' && (
+                      <button type="submit" name="action" value="recusar" class="btn btn--ghost btn--sm">
+                        {r.status === 'aprovado' ? 'Revogar' : 'Recusar'}
+                      </button>
+                    )}
+                  </form>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="panel__foot">
+      <span class="muted small">
+        Ao aprovar, o solicitante recebe um e-mail com um link que vale 7 dias. Recusar ou revogar
+        derruba o link na hora.
+      </span>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .text-right {
+    text-align: right !important;
+  }
+
+  .nowrap {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
+</style>

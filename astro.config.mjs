@@ -27,7 +27,7 @@ export default defineConfig({
   trailingSlash: 'ignore',
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/admin'),
+      filter: (page) => !page.includes('/admin') && !page.includes('/portfolio'),
     }),
   ],
 });

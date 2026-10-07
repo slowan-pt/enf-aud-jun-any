@@ -30,6 +30,8 @@ type CloudflareEnv = {
   RESEND_API_KEY?: string;
   /** Remetente da newsletter (precisa ser do domínio verificado no Resend). Padrão: MAIL_FROM. */
   NEWSLETTER_FROM?: string;
+  /** Remetente dos e-mails do Portfólio. Padrão: NEWSLETTER_FROM, depois MAIL_FROM. */
+  PORTFOLIO_FROM?: string;
 };
 
 declare module 'cloudflare:email' {

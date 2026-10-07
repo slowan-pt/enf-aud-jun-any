@@ -23,6 +23,8 @@ const assets = [
   // fluxogramas, item 8 do escopo) — nunca pelo site público nem pelo
   // restante do painel.
   ['node_modules/fabric/dist/index.min.js', 'public/vendor/fabric.min.js'],
+  // Só carregado pela página /portfolio (revista com páginas que viram).
+  ['node_modules/page-flip/dist/js/page-flip.browser.js', 'public/vendor/page-flip.browser.js'],
 ];
 
 for (const [from, to] of assets) {

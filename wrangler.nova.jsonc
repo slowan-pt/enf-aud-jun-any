@@ -44,6 +44,7 @@
   "vars": {
     "MAIL_FROM": "curriculos@essencialsaudeauditoria.com.br",
     "NEWSLETTER_FROM": "novidades@essencialsaudeauditoria.com.br",
+    "PORTFOLIO_FROM": "portfolio@essencialsaudeauditoria.com.br",
     "PUBLIC_SITE_URL": "https://essencialsaudeauditoria.com.br",
   },
 }
