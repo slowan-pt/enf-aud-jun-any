@@ -5,7 +5,7 @@
  */
 import Icon from './Icon.astro';
 
-const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
+const pages = [1, 2, 3, 4, 5, 6].map((n) => `/portfolio/pagina-${n}.webp`);
 ---
 <section class="section section--tight">
   <div class="container">
@@ -42,8 +42,7 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
     <div class="request" data-request>
       <h2 class="title-md">Quer receber o Portfólio em PDF?</h2>
       <p class="request__lead">
-        Preencha os dados abaixo. Nossa equipe analisa o pedido e, se aprovado, enviamos o PDF para o
-        e-mail informado.
+        Preencha os dados e teremos a satisfação de enviar o Portfólio para você.
       </p>
 
       <form class="request__form" method="post" action="/api/portfolio" novalidate data-request-form>
@@ -384,7 +383,7 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
         .then(function (r) {
           if (r.res.ok && r.payload && r.payload.success) {
             form.reset();
-            show('Pedido enviado! Nossa equipe vai analisar e, se aprovado, você receberá o PDF no e-mail informado.', 'ok');
+            show('Recebemos o seu pedido! Em breve enviaremos o Portfólio para o e-mail informado.', 'ok');
           } else if (r.res.status === 422 && r.payload && r.payload.fields) {
             show(Object.values(r.payload.fields)[0] || 'Verifique os campos.', 'error');
           } else {
