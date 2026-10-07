@@ -32,8 +32,11 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
   <section class="section section--tight">
     <div class="container">
       <div class="flipbook" data-flipbook data-pages={JSON.stringify(pages)}>
-        <div class="flipbook__stage" data-stage>
-          <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
+        <div class="flipbook__view" data-view>
+          <div class="flipbook__stage" data-stage>
+            <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
+          </div>
+          <div class="flipbook__lens" data-lens hidden></div>
         </div>
         <div class="flipbook__bar">
           <button type="button" class="btn btn--ghost btn--sm" data-prev aria-label="Página anterior">
@@ -43,11 +46,14 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
           <button type="button" class="btn btn--ghost btn--sm" data-next aria-label="Próxima página">
             Próxima <Icon name="arrow-right" size={16} />
           </button>
+          <button type="button" class="btn btn--ghost btn--sm" data-zoom aria-pressed="false">
+            <Icon name="search" size={16} /> Zoom
+          </button>
           <button type="button" class="btn btn--ghost btn--sm" data-full aria-label="Tela cheia">
             Tela cheia
           </button>
         </div>
-        <p class="flipbook__hint">Clique ou arraste as bordas da página para virar.</p>
+        <p class="flipbook__hint" data-hint>Clique ou arraste as bordas da página para virar.</p>
       </div>
     </div>
   </section>
@@ -117,6 +123,32 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
     justify-items: center;
   }
 
+  .flipbook__view {
+    position: relative;
+    width: 100%;
+    max-width: 980px;
+    overflow: hidden;
+    border-radius: var(--r-md);
+  }
+
+  .flipbook__stage {
+    transition: transform 0.18s ease-out;
+  }
+
+  .flipbook__view.is-zoom .flipbook__stage {
+    transform: scale(2.2);
+  }
+
+  /* Com o zoom ligado, esta camada fica por cima e captura mouse/dedo
+     (em vez de virar a página). */
+  .flipbook__lens {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    cursor: zoom-in;
+    touch-action: none;
+  }
+
   .flipbook__fallback {
     max-width: 420px;
     width: 100%;
@@ -145,6 +177,11 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
     font-size: var(--fs-xs);
     color: var(--text-faint);
     text-align: center;
+  }
+
+  .flipbook :global(.btn.is-active) {
+    background: var(--c-accent-50, #e8f6ef);
+    color: var(--c-accent-700);
   }
 
   .flipbook:fullscreen {
@@ -274,7 +311,32 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
           else root.requestFullscreen();
         });
       }
+      // ---------- zoom: passa o mouse (ou arrasta o dedo) para ver os detalhes ----------
+      var view = root.querySelector('[data-view]');
+      var lens = root.querySelector('[data-lens]');
+      var zoomBtn = root.querySelector('[data-zoom]');
+      var hint = root.querySelector('[data-hint]');
+      var hintOff = hint ? hint.textContent : '';
+      var move = function (e) {
+        var box = view.getBoundingClientRect();
+        var x = Math.max(0, Math.min(100, ((e.clientX - box.left) / box.width) * 100));
+        var y = Math.max(0, Math.min(100, ((e.clientY - box.top) / box.height) * 100));
+        stage.style.transformOrigin = x + '% ' + y + '%';
+      };
+      var setZoom = function (on) {
+        view.classList.toggle('is-zoom', on);
+        lens.hidden = !on;
+        zoomBtn.setAttribute('aria-pressed', String(on));
+        zoomBtn.classList.toggle('is-active', on);
+        stage.style.transformOrigin = '50% 50%';
+        if (hint) hint.textContent = on ? 'Passe o mouse sobre a página (ou arraste o dedo) para ampliar. Clique em Zoom para sair.' : hintOff;
+      };
+      zoomBtn.addEventListener('click', function () { setZoom(!view.classList.contains('is-zoom')); });
+      lens.addEventListener('pointermove', move);
+      lens.addEventListener('pointerdown', move);
+
       document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setZoom(false);
         if (e.key === 'ArrowLeft') flip.flipPrev();
         if (e.key === 'ArrowRight') flip.flipNext();
       });
