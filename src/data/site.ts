@@ -81,6 +81,7 @@ export const social: SocialLink[] = [
 export const mainNav: NavItem[] = [
   { label: 'Início', href: '/' },
   { label: 'Quem Somos', href: '/quem-somos' },
+  { label: 'Portfólio', href: '/portfolio' },
   { label: 'Serviços', href: '/servicos' },
   { label: 'Conteúdos', href: '/conteudos' },
   { label: 'Contato', href: '/contato' },
@@ -94,6 +95,7 @@ export const headerCta = {
 export const footerLinks = {
   institucional: [
     { label: 'Quem Somos', href: '/quem-somos' },
+    { label: 'Portfólio', href: '/portfolio' },
     { label: 'Serviços', href: '/servicos' },
     { label: 'Conteúdos', href: '/conteudos' },
     { label: 'Contato', href: '/contato' },

@@ -3,8 +3,8 @@
  * Portfólio institucional: o PDF aparece como revista (páginas que viram) e,
  * embaixo, o formulário para pedir o PDF. O pedido vai para aprovação da Essencial.
  *
- * Página "escondida": sem link no menu/rodapé, fora do sitemap e com noindex —
- * só abre por quem recebe o endereço.
+ * Página pública (menu, rodapé e sitemap). As rotas /portfolio/decisao e
+ * /portfolio/baixar seguem privadas (noindex, fora do sitemap).
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PageHero from '../../components/PageHero.astro';
@@ -19,7 +19,6 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
   title="Portfólio"
   description="Portfólio institucional da Essencial Saúde Auditoria."
   path="/portfolio"
-  noindex
   bodyClass="page-portfolio"
 >
   <PageHero
