@@ -5,6 +5,7 @@ import Icon from '../components/Icon.astro';
 import EloDiagram from '../components/EloDiagram.astro';
 import ProcessSteps from '../components/ProcessSteps.astro';
 import CtaBand from '../components/CtaBand.astro';
+import PortfolioViewer from '../components/PortfolioViewer.astro';
 import SectionOverlays from '../components/SectionOverlays.astro';
 import { getDB } from '../lib/db';
 import { getQuemSomosContent } from '../lib/documents';
@@ -310,6 +311,10 @@ const secStyle = (key: string, style: SectionStyle) =>
       <SectionOverlays section="mvv" overlays={overlays} />
     </div>
   </section>
+
+  <div style="order:90">
+    <PortfolioViewer />
+  </div>
 
   <div style="order:99">
     <CtaBand
