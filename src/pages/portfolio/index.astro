@@ -36,6 +36,7 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
           <div class="flipbook__stage" data-stage>
             <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
           </div>
+          <div class="flipbook__zoomview" data-zoomview hidden></div>
           <div class="flipbook__lens" data-lens hidden></div>
         </div>
         <div class="flipbook__bar">
@@ -136,7 +137,31 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
   }
 
   .flipbook__view.is-zoom .flipbook__stage {
-    transform: scale(2.2);
+    visibility: hidden;
+  }
+
+  /* Ampliação: usa imagens em alta resolução (não o canvas da revista),
+     então o texto fica nítido como no PDF original. */
+  .flipbook__zoomview {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    display: flex;
+    justify-content: center;
+    background: #fff;
+    transform: scale(2.6);
+    transition: transform-origin 0.05s linear;
+  }
+
+  .flipbook__zoomview[hidden] {
+    display: none;
+  }
+
+  .flipbook__zoomview img {
+    height: 100%;
+    width: auto;
+    max-width: 50%;
+    object-fit: contain;
   }
 
   /* Com o zoom ligado, esta camada fica por cima e captura mouse/dedo
@@ -316,19 +341,39 @@ const pages = [1, 2, 3, 4].map((n) => `/portfolio/pagina-${n}.webp`);
       var lens = root.querySelector('[data-lens]');
       var zoomBtn = root.querySelector('[data-zoom]');
       var hint = root.querySelector('[data-hint]');
+      var zoomview = root.querySelector('[data-zoomview]');
       var hintOff = hint ? hint.textContent : '';
       var move = function (e) {
         var box = view.getBoundingClientRect();
         var x = Math.max(0, Math.min(100, ((e.clientX - box.left) / box.width) * 100));
         var y = Math.max(0, Math.min(100, ((e.clientY - box.top) / box.height) * 100));
-        stage.style.transformOrigin = x + '% ' + y + '%';
+        zoomview.style.transformOrigin = x + '% ' + y + '%';
       };
       var setZoom = function (on) {
+        if (on) {
+          // Quais páginas estão à vista agora (capa e contracapa ficam sozinhas).
+          var i = flip.getCurrentPageIndex();
+          var total = flip.getPageCount();
+          var shown = [i];
+          if (flip.getOrientation() !== 'portrait' && i > 0) {
+            var left = i % 2 === 1 ? i : i - 1;
+            shown = left + 1 < total ? [left, left + 1] : [left];
+          }
+          zoomview.innerHTML = '';
+          shown.forEach(function (n) {
+            var img = new Image();
+            img.alt = 'Página ' + (n + 1) + ' ampliada';
+            img.decoding = 'async';
+            img.src = urls[n].replace('pagina-', 'zoom-');
+            zoomview.appendChild(img);
+          });
+          zoomview.style.transformOrigin = '50% 50%';
+        }
         view.classList.toggle('is-zoom', on);
+        zoomview.hidden = !on;
         lens.hidden = !on;
         zoomBtn.setAttribute('aria-pressed', String(on));
         zoomBtn.classList.toggle('is-active', on);
-        stage.style.transformOrigin = '50% 50%';
         if (hint) hint.textContent = on ? 'Passe o mouse sobre a página (ou arraste o dedo) para ampliar. Clique em Zoom para sair.' : hintOff;
       };
       zoomBtn.addEventListener('click', function () { setZoom(!view.classList.contains('is-zoom')); });
