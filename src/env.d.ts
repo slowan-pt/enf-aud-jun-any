@@ -32,6 +32,10 @@ type CloudflareEnv = {
   NEWSLETTER_FROM?: string;
   /** Remetente dos e-mails do Portfólio. Padrão: NEWSLETTER_FROM, depois MAIL_FROM. */
   PORTFOLIO_FROM?: string;
+  /** Token da Cloudflare só com permissão "Analytics: leitura" (segredo) — liga o painel Estatísticas do Site. */
+  CLOUDFLARE_API_TOKEN?: string;
+  /** ID da zona essencialsaudeauditoria.com.br (não é segredo, mas fica fora do código). */
+  CLOUDFLARE_ZONE_ID?: string;
 };
 
 declare module 'cloudflare:email' {

@@ -1,0 +1,534 @@
+---
+/**
+ * Estatísticas do Site — só administrador. Os números vêm de
+ * /admin/api/estatisticas (servidor → Cloudflare GraphQL Analytics); nada de
+ * Cloudflare é chamado pelo navegador e nenhum segredo chega aqui.
+ */
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { isAdmin } from '../../lib/admin-guard';
+
+export const prerender = false;
+
+if (!isAdmin(Astro.locals.user)) return Astro.redirect('/admin');
+---
+
+<AdminLayout
+  title="Estatísticas do Site"
+  description="Acessos ao site segundo a Cloudflare. Visitas não são, necessariamente, pessoas: robôs e scanners também contam."
+>
+  <div slot="actions">
+    <button type="button" class="btn btn--secondary btn--sm" data-refresh>
+      <Icon name="refresh" size={16} /> Atualizar
+    </button>
+  </div>
+
+  <div class="stats" data-stats>
+    <div class="stats__bar">
+      <div class="seg" role="group" aria-label="Período">
+        <button type="button" class="seg__btn" data-period="today">Hoje</button>
+        <button type="button" class="seg__btn is-active" data-period="7d">7 dias</button>
+        <button type="button" class="seg__btn" data-period="30d">30 dias</button>
+      </div>
+      <span class="stats__updated muted small" data-updated></span>
+    </div>
+
+    <div class="form-alert form-alert--error" role="alert" data-error hidden></div>
+    <div class="form-alert" data-notice hidden></div>
+
+    <section class="stat-grid" data-cards>
+      <div class="stat">
+        <span class="stat__icon"><Icon name="users" size={20} /></span>
+        <span class="stat__label">
+          Visitas
+          <button
+            type="button"
+            class="info"
+            aria-label="O que são visitas?"
+            title="Visitas representam sessões/acessos identificados pela infraestrutura de análise e não necessariamente pessoas distintas."
+            data-tip="Visitas representam sessões/acessos identificados pela infraestrutura de análise e não necessariamente pessoas distintas."
+          >
+            <Icon name="info" size={14} />
+          </button>
+        </span>
+        <span class="stat__value" data-v="visits">—</span>
+        <span class="stat__hint">podem incluir tráfego automatizado</span>
+      </div>
+      <div class="stat">
+        <span class="stat__icon stat__icon--accent"><Icon name="eye" size={20} /></span>
+        <span class="stat__label">Visualizações de página</span>
+        <span class="stat__value" data-v="pageviews">—</span>
+        <span class="stat__hint" data-h="pageviews">páginas HTML entregues</span>
+      </div>
+      <div class="stat">
+        <span class="stat__icon stat__icon--accent"><Icon name="user-check" size={20} /></span>
+        <span class="stat__label">
+          Visitas prováveis de humanos
+          <button
+            type="button"
+            class="info"
+            aria-label="Como é calculado?"
+            title="Estimativa baseada na identificação e exclusão de tráfego automatizado conhecido."
+            data-tip="Estimativa baseada na identificação e exclusão de tráfego automatizado conhecido."
+          >
+            <Icon name="info" size={14} />
+          </button>
+        </span>
+        <span class="stat__value" data-v="humanVisits">—</span>
+        <span class="stat__hint">visitas − robôs conhecidos</span>
+      </div>
+      <div class="stat">
+        <span class="stat__icon stat__icon--neutral"><Icon name="activity" size={20} /></span>
+        <span class="stat__label">Tráfego automatizado</span>
+        <span class="stat__value" data-v="automatedVisits">—</span>
+        <span class="stat__hint" data-h="requests">—</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Visitas ao longo do tempo</h2>
+        <span class="legend">
+          <span class="legend__item"><i class="legend__dot legend__dot--visits"></i>Visitas</span>
+          <span class="legend__item"><i class="legend__dot legend__dot--pv"></i>Visualizações</span>
+        </span>
+      </div>
+      <div class="panel__body chart" data-chart>
+        <div class="skeleton skeleton--chart"></div>
+      </div>
+    </section>
+
+    <div class="stats__grid">
+      <section class="panel">
+        <div class="panel__head"><h2 class="panel__title">Origem dos acessos</h2></div>
+        <div class="panel__body" data-list="countries"><div class="skeleton"></div></div>
+      </section>
+      <section class="panel">
+        <div class="panel__head"><h2 class="panel__title">Dispositivos</h2></div>
+        <div class="panel__body" data-list="devices"><div class="skeleton"></div></div>
+      </section>
+      <section class="panel">
+        <div class="panel__head"><h2 class="panel__title">Navegadores</h2></div>
+        <div class="panel__body" data-list="browsers"><div class="skeleton"></div></div>
+      </section>
+      <section class="panel">
+        <div class="panel__head"><h2 class="panel__title">Sistemas operacionais</h2></div>
+        <div class="panel__body" data-list="operatingSystems"><div class="skeleton"></div></div>
+      </section>
+      <section class="panel stats__wide">
+        <div class="panel__head"><h2 class="panel__title">Páginas mais acessadas</h2></div>
+        <div class="panel__body" data-list="pages"><div class="skeleton"></div></div>
+      </section>
+      <section class="panel stats__wide">
+        <div class="panel__head"><h2 class="panel__title">Tráfego automatizado identificado</h2></div>
+        <div class="panel__body" data-bots><div class="skeleton"></div></div>
+      </section>
+    </div>
+
+    <p class="muted small stats__foot">
+      Dados da Cloudflare, atualizados a cada 5 minutos. Robôs que se passam por navegador não são
+      detectáveis aqui, então "prováveis de humanos" é uma estimativa. As datas dos gráficos diários
+      seguem o horário UTC.
+    </p>
+  </div>
+</AdminLayout>
+
+<style>
+  .stats {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  .stats__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
+
+  .seg {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--c-white);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+  }
+
+  .seg__btn {
+    padding: 0.45rem 0.95rem;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text-muted);
+    background: none;
+    border: 0;
+    border-radius: calc(var(--r-md) - 3px);
+    cursor: pointer;
+  }
+
+  .seg__btn.is-active {
+    background: var(--c-brand-600);
+    color: #fff;
+  }
+
+  .stat__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-right: 3rem;
+  }
+
+  .info {
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    color: var(--text-faint);
+    background: none;
+    border: 0;
+    cursor: help;
+  }
+
+  .stats__grid {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  @media (min-width: 900px) {
+    .stats__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .stats__wide {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .legend {
+    display: inline-flex;
+    gap: var(--sp-4);
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+
+  .legend__dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 0.35rem;
+    border-radius: 50%;
+  }
+
+  .legend__dot--visits {
+    background: var(--c-brand-600);
+  }
+
+  .legend__dot--pv {
+    background: var(--c-accent-600);
+  }
+
+  .chart {
+    position: relative;
+  }
+
+  .skeleton {
+    height: 120px;
+    border-radius: var(--r-md);
+    background: linear-gradient(90deg, var(--c-ink-100) 25%, var(--c-ink-50) 50%, var(--c-ink-100) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s linear infinite;
+  }
+
+  .skeleton--chart {
+    height: 260px;
+  }
+
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  .empty {
+    margin: 0;
+    padding: var(--sp-4) 0;
+    color: var(--text-muted);
+    text-align: left;
+  }
+
+  .rank {
+    display: grid;
+    gap: var(--sp-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .rank__row {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .rank__top {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    font-size: var(--fs-sm);
+    color: var(--text-strong);
+  }
+
+  .rank__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+
+  .rank__name small {
+    display: block;
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+
+  .rank__num {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+  }
+
+  .rank__bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--c-ink-100);
+    overflow: hidden;
+  }
+
+  .rank__bar i {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--c-brand-600);
+  }
+
+  .stats__foot {
+    margin: 0;
+    text-align: left;
+  }
+
+  .tip {
+    position: fixed;
+    z-index: 50;
+    max-width: 260px;
+    padding: 0.55rem 0.7rem;
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+    color: #fff;
+    background: var(--c-brand-950);
+    border-radius: var(--r-sm);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+  }
+
+  .chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var root = document.querySelector('[data-stats]');
+    if (!root) return;
+    var period = '7d';
+    var fmt = new Intl.NumberFormat('pt-BR');
+    var $ = function (s) { return root.querySelector(s); };
+    var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+    var errorBox = $('[data-error]');
+    var noticeBox = $('[data-notice]');
+    var tipEl = null;
+
+    function esc(text) {
+      return String(text).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function num(n) { return n == null ? '—' : fmt.format(n); }
+
+    // ---- dicas (ícone de informação): funcionam com mouse e toque
+    function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } }
+    function showTip(target, text) {
+      hideTip();
+      tipEl = document.createElement('div');
+      tipEl.className = 'tip';
+      tipEl.textContent = text;
+      document.body.appendChild(tipEl);
+      var r = target.getBoundingClientRect();
+      var left = Math.min(Math.max(8, r.left + r.width / 2 - tipEl.offsetWidth / 2), window.innerWidth - tipEl.offsetWidth - 8);
+      tipEl.style.left = left + 'px';
+      tipEl.style.top = r.bottom + 8 + 'px';
+    }
+    $$('[data-tip]').forEach(function (btn) {
+      btn.addEventListener('mouseenter', function () { showTip(btn, btn.dataset.tip); });
+      btn.addEventListener('mouseleave', hideTip);
+      btn.addEventListener('click', function (e) { e.stopPropagation(); showTip(btn, btn.dataset.tip); });
+    });
+    document.addEventListener('click', hideTip);
+
+    // ---- estados
+    function setLoading() {
+      errorBox.hidden = true;
+      noticeBox.hidden = true;
+      $$('[data-v]').forEach(function (el) { el.textContent = '…'; });
+      $('[data-chart]').innerHTML = '<div class="skeleton skeleton--chart"></div>';
+      $$('[data-list]').forEach(function (el) { el.innerHTML = '<div class="skeleton"></div>'; });
+      $('[data-bots]').innerHTML = '<div class="skeleton"></div>';
+    }
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.hidden = false;
+      $$('[data-v]').forEach(function (el) { el.textContent = '—'; });
+      $('[data-chart]').innerHTML = '<p class="empty">Nenhum dado para mostrar.</p>';
+      $$('[data-list]').forEach(function (el) { el.innerHTML = '<p class="empty">Nenhum dado para mostrar.</p>'; });
+      $('[data-bots]').innerHTML = '<p class="empty">Nenhum dado para mostrar.</p>';
+    }
+
+    // ---- rankings
+    function renderList(el, rows, unit, unavailable) {
+      if (unavailable) { el.innerHTML = '<p class="empty">Indisponível na Cloudflare para este plano.</p>'; return; }
+      if (!rows || !rows.length) { el.innerHTML = '<p class="empty">Nenhum dado disponível para este período.</p>'; return; }
+      var max = Math.max.apply(null, rows.map(function (r) { return r[unit]; })) || 1;
+      el.innerHTML = '<ul class="rank">' + rows.map(function (r) {
+        var sub = r.key && r.key.charAt(0) === '/' && r.key !== r.label ? '<small>' + esc(r.key) + '</small>' : '';
+        return '<li class="rank__row"><div class="rank__top"><span class="rank__name">' + esc(r.label) + sub +
+          '</span><span class="rank__num">' + num(r[unit]) + ' · ' + String(r.percent).replace('.', ',') + '%</span></div>' +
+          '<div class="rank__bar"><i style="width:' + Math.max(2, Math.round((r[unit] / max) * 100)) + '%"></i></div></li>';
+      }).join('') + '</ul>';
+    }
+
+    // ---- gráfico (SVG): visitas (linha/área) + visualizações (linha)
+    function renderChart(data) {
+      var box = $('[data-chart]');
+      var pts = data.timeline;
+      if (!pts.length || pts.every(function (p) { return !p.visits && !p.requests; })) {
+        box.innerHTML = '<p class="empty">Nenhum dado disponível para este período.</p>';
+        return;
+      }
+      var W = 800, H = 260, L = 44, R = 12, T = 12, B = 30;
+      var series = [{ k: 'visits', c: 'var(--c-brand-600)' }];
+      if (data.pageviews != null) series.push({ k: 'pageviews', c: 'var(--c-accent-600)' });
+      var max = 1;
+      pts.forEach(function (p) { series.forEach(function (s) { max = Math.max(max, p[s.k] || 0); }); });
+      var step = Math.pow(10, Math.floor(Math.log10(max)));
+      var top = Math.ceil(max / step) * step;
+      if (top / step < 3) top = Math.ceil(max / (step / 2)) * (step / 2);
+      var x = function (i) { return L + (pts.length === 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (pts.length - 1)); };
+      var y = function (v) { return T + (H - T - B) * (1 - v / top); };
+      var hourly = data.range.bucket === 'hour';
+      var label = function (p) {
+        if (hourly) { var d = new Date(p.t); return String(d.getHours()).padStart(2, '0') + 'h'; }
+        var parts = p.t.split('-'); return parts[2] + '/' + parts[1];
+      };
+      var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Visitas ao longo do tempo">';
+      for (var g = 0; g <= 4; g++) {
+        var gv = (top / 4) * g, gy = y(gv);
+        svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + gy + '" y2="' + gy + '" stroke="var(--line)"/>' +
+          '<text x="' + (L - 8) + '" y="' + (gy + 4) + '" text-anchor="end" font-size="11" fill="var(--text-faint)">' + fmt.format(Math.round(gv)) + '</text>';
+      }
+      var every = Math.ceil(pts.length / 8);
+      pts.forEach(function (p, i) {
+        if (i % every === 0) svg += '<text x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="var(--text-faint)">' + label(p) + '</text>';
+      });
+      series.slice().reverse().forEach(function (s) {
+        var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p[s.k] || 0).toFixed(1); }).join(' ');
+        if (s.k === 'visits') {
+          svg += '<path d="' + d + ' L' + x(pts.length - 1) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + ' Z" fill="' + s.c + '" opacity="0.1"/>';
+        }
+        svg += '<path d="' + d + '" fill="none" stroke="' + s.c + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      });
+      svg += '<line data-cursor x1="0" x2="0" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--text-faint)" stroke-dasharray="3 3" visibility="hidden"/>';
+      svg += '</svg>';
+      box.innerHTML = svg;
+
+      var el = box.querySelector('svg');
+      var cursor = box.querySelector('[data-cursor]');
+      function point(evt) {
+        var rect = el.getBoundingClientRect();
+        var cx = ((evt.clientX - rect.left) / rect.width) * W;
+        var i = Math.round(((cx - L) / (W - L - R)) * (pts.length - 1));
+        i = Math.max(0, Math.min(pts.length - 1, i));
+        var p = pts[i];
+        cursor.setAttribute('x1', x(i)); cursor.setAttribute('x2', x(i)); cursor.setAttribute('visibility', 'visible');
+        var when = hourly ? new Date(p.t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : p.t.split('-').reverse().join('/');
+        var text = when + ' — ' + num(p.visits) + ' visitas' + (p.pageviews != null ? ' · ' + num(p.pageviews) + ' visualizações' : ' · ' + num(p.requests) + ' requisições');
+        showTip({ getBoundingClientRect: function () { return { left: evt.clientX, width: 0, bottom: rect.top + y(Math.max(p.visits, p.pageviews || 0)) * (rect.height / H) - 52 }; } }, text);
+      }
+      el.addEventListener('pointermove', point);
+      el.addEventListener('pointerdown', point);
+      el.addEventListener('pointerleave', function () { cursor.setAttribute('visibility', 'hidden'); hideTip(); });
+    }
+
+    function render(data) {
+      var un = {};
+      (data.unavailable || []).forEach(function (u) { un[u.section] = u.reason; });
+      $('[data-v="visits"]').textContent = num(data.visits);
+      $('[data-v="pageviews"]').textContent = num(data.pageviews);
+      $('[data-h="pageviews"]').textContent = data.pageviews == null ? 'indisponível na Cloudflare' : 'páginas HTML entregues';
+      $('[data-v="humanVisits"]').textContent = num(data.humanVisits);
+      $('[data-v="automatedVisits"]').textContent = num(data.automatedVisits);
+      $('[data-h="requests"]').textContent = num(data.requests) + ' requisições no total';
+      renderChart(data);
+      renderList($('[data-list="countries"]'), data.countries, 'visits', un['Países']);
+      renderList($('[data-list="devices"]'), data.devices, 'visits', un['Dispositivos']);
+      renderList($('[data-list="browsers"]'), data.browsers, 'visits', un['Navegadores']);
+      renderList($('[data-list="operatingSystems"]'), data.operatingSystems, 'visits', un['Sistemas operacionais']);
+      renderList($('[data-list="pages"]'), data.pages, 'requests', un['Páginas mais acessadas']);
+
+      var bots = $('[data-bots]');
+      if (un['Tráfego automatizado']) bots.innerHTML = '<p class="empty">Indisponível na Cloudflare para este plano.</p>';
+      else if (!data.bots.length) bots.innerHTML = '<p class="empty">Nenhum tráfego automatizado conhecido neste período.</p>';
+      else {
+        var max = data.bots[0].requests || 1;
+        bots.innerHTML = '<ul class="rank">' + data.bots.map(function (b) {
+          return '<li class="rank__row"><div class="rank__top"><span class="rank__name">' + esc(b.name) + '</span><span class="rank__num">' +
+            num(b.requests) + ' requisições</span></div><div class="rank__bar"><i style="width:' + Math.max(2, Math.round((b.requests / max) * 100)) + '%"></i></div></li>';
+        }).join('') + '</ul>';
+      }
+
+      var missing = Object.keys(un);
+      if (missing.length) {
+        noticeBox.textContent = 'A Cloudflare não entregou: ' + missing.join(', ') + '. Os demais dados estão corretos.';
+        noticeBox.hidden = false;
+      }
+      var when = new Date(data.generatedAt);
+      $('[data-updated]').textContent = 'Atualizado às ' + when.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function load(refresh) {
+      setLoading();
+      var url = '/admin/api/estatisticas?period=' + period + (refresh ? '&refresh=1' : '');
+      fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        .then(function (res) {
+          return res.json().then(function (body) { return { res: res, body: body }; });
+        })
+        .then(function (r) {
+          if (r.body.configured === false) {
+            showError('O Analytics ainda não foi configurado. Defina CLOUDFLARE_API_TOKEN e CLOUDFLARE_ZONE_ID (veja o passo a passo enviado na implantação).');
+          } else if (!r.res.ok || r.body.error) {
+            showError(r.body.message || 'Não foi possível carregar as estatísticas no momento.');
+          } else {
+            render(r.body);
+          }
+        })
+        .catch(function () { showError('Não foi possível carregar as estatísticas no momento.'); });
+    }
+
+    $$('[data-period]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        period = btn.dataset.period;
+        $$('[data-period]').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        load(false);
+      });
+    });
+    document.querySelector('[data-refresh]').addEventListener('click', function () { load(true); });
+    load(false);
+  })();
+</script>

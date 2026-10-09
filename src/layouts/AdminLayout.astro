@@ -5,7 +5,8 @@ import '../styles/admin.css';
 
 import Icon from '../components/Icon.astro';
 import Logo from '../components/Logo.astro';
-import { adminNav } from '../data/admin';
+import { adminNav as allNav } from '../data/admin';
+import { isAdmin } from '../lib/admin-guard';
 import { seo } from '../data/site';
 
 const { company } = Astro.locals.settings;
@@ -29,6 +30,7 @@ const user = Astro.locals.user ?? {
   email: '',
   role: 'editor' as const,
 };
+const adminNav = allNav.filter((item) => !item.adminOnly || isAdmin(user));
 const initials = user.name
   .split(' ')
   .map((part) => part[0])
