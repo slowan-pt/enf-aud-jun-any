@@ -10,8 +10,8 @@ $secure = Read-Host 'Cole o token da Cloudflare e tecle Enter (nao aparece na te
 $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)).Trim()
 if (-not $token) { throw 'Token vazio.' }
 $token = $token -replace '^Bearer\s+',''
-if ($token -notmatch '^[A-Za-z0-9_-]{40}$') {
-  throw ("O texto colado tem {0} caracteres e um token da Cloudflare tem 40 (so letras, numeros, - e _). Copie SO o token, sem o comando curl, sem espacos e sem aspas." -f $token.Length)
+if ($token -notmatch '^[A-Za-z0-9_-]{36,80}$') {
+  throw ("O texto colado tem {0} caracteres e um token da Cloudflare tem de 36 a 80 (so letras, numeros, - e _). Copie SO o token, sem o comando curl, sem espacos e sem aspas." -f $token.Length)
 }
 $headers = @{ Authorization = "Bearer $token" }
 
