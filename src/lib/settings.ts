@@ -40,6 +40,7 @@ export interface ThemeSettings {
   headingColor: string;
 }
 
+import { DEFAULT_POPUP, normalizePopup, type PopupSettings } from './popup';
 import { DEFAULT_CARD_STYLE, normalizeCardStyle, type CardStyle } from './card-style';
 
 export interface SiteSettings {
@@ -61,6 +62,8 @@ export interface SiteSettings {
   clientSegments: typeof defaultClientSegments;
   /** Cor dos cards (tom geral + exceções por card) — ver src/lib/card-style.ts. */
   cardStyle: CardStyle;
+  /** Pop-up de aviso da página inicial — ver src/lib/popup.ts e /admin/popup. */
+  popup: PopupSettings;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -93,13 +96,14 @@ const DEFAULTS: SiteSettings = {
   missionVisionValues: defaultMissionVisionValues,
   clientSegments: defaultClientSegments,
   cardStyle: DEFAULT_CARD_STYLE,
+  popup: DEFAULT_POPUP,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
       .prepare(
-        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)'
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)'
       )
       .bind(
         'company',
@@ -111,7 +115,8 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         'howWeWork',
         'missionVisionValues',
         'clientSegments',
-        'cardStyle'
+        'cardStyle',
+        'popup'
       )
       .all<{ key: string; value_json: string }>();
 
@@ -126,6 +131,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       missionVisionValues: DEFAULTS.missionVisionValues,
       clientSegments: DEFAULTS.clientSegments,
       cardStyle: DEFAULTS.cardStyle,
+      popup: DEFAULTS.popup,
     };
 
     for (const row of results) {
@@ -145,6 +151,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
           out.clientSegments = { ...DEFAULTS.clientSegments, ...value };
         }
         if (row.key === 'cardStyle') out.cardStyle = normalizeCardStyle(value);
+        if (row.key === 'popup') out.popup = normalizePopup(value);
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -168,7 +175,8 @@ export async function updateSetting(
     | 'howWeWork'
     | 'missionVisionValues'
     | 'clientSegments'
-    | 'cardStyle',
+    | 'cardStyle'
+    | 'popup',
   value: unknown,
   userId?: number
 ): Promise<void> {

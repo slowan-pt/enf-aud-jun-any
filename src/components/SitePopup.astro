@@ -1,0 +1,131 @@
+---
+/**
+ * Pop-up de aviso: imagem na frente da página; o X (ou Esc, ou clicar fora)
+ * fecha e mostra o site normal. Configurado em /admin/popup.
+ * Não aparece no editor visual, nem na janela de Política de Privacidade.
+ */
+import { shouldShowPopup } from '../lib/popup';
+
+const popup = Astro.locals.settings?.popup;
+const POPUP_JS = "\n  (function () {\n    var dialog = document.querySelector('[data-site-popup]');\n    if (!dialog || typeof dialog.showModal !== 'function') return;\n    if (document.documentElement.classList.contains('is-popup')) return;\n\n    var key = 'site-popup:' + dialog.getAttribute('data-version');\n    var frequency = dialog.getAttribute('data-frequency');\n    var DAY = 86400000;\n\n    function seenRecently() {\n      try {\n        if (frequency === 'always') return false;\n        if (frequency === 'session') return sessionStorage.getItem(key) === '1';\n        var last = Number(localStorage.getItem(key) || 0);\n        return last && Date.now() - last < (frequency === 'weekly' ? 7 * DAY : DAY);\n      } catch (e) {\n        return false;\n      }\n    }\n    function remember() {\n      try {\n        if (frequency === 'session') sessionStorage.setItem(key, '1');\n        else if (frequency !== 'always') localStorage.setItem(key, String(Date.now()));\n      } catch (e) {}\n    }\n\n    // ?popup=1 for\u00e7a a exibi\u00e7\u00e3o (para conferir o resultado depois de editar).\n    var forced = /[?&]popup=1(&|$)/.test(location.search);\n    if (!forced && seenRecently()) return;\n\n    var close = function () { dialog.close(); };\n    dialog.addEventListener('close', remember);\n    dialog.querySelector('[data-popup-close]').addEventListener('click', close);\n    // clique fora da imagem (no fundo escurecido) tamb\u00e9m fecha\n    dialog.addEventListener('click', function (e) { if (e.target === dialog) close(); });\n\n    var img = dialog.querySelector('img');\n    var open = function () { if (!dialog.open) dialog.showModal(); };\n    var start = function () { setTimeout(open, 600); };\n    if (img && !img.complete) img.addEventListener('load', start, { once: true });\n    else start();\n  })();\n";
+const show =
+  popup && !Astro.locals.editMode && shouldShowPopup(popup, Astro.url.pathname, new Date());
+---
+
+{
+  show && (
+    <dialog
+      class="site-popup"
+      data-site-popup
+      data-version={popup.version}
+      data-frequency={popup.frequency}
+      aria-label={popup.alt || 'Aviso'}
+    >
+      <button type="button" class="site-popup__close" data-popup-close aria-label="Fechar aviso">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none" />
+        </svg>
+      </button>
+      {popup.link ? (
+        <a
+          href={popup.link}
+          class="site-popup__link"
+          target={popup.newTab ? '_blank' : undefined}
+          rel={popup.newTab ? 'noopener' : undefined}
+        >
+          <img class="site-popup__img" src={popup.image} alt={popup.alt} decoding="async" />
+        </a>
+      ) : (
+        <img class="site-popup__img" src={popup.image} alt={popup.alt} decoding="async" />
+      )}
+    </dialog>
+  )
+}
+
+<style is:global>
+  .site-popup {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    padding: 0;
+    width: fit-content;
+    height: fit-content;
+    max-width: min(92vw, 520px);
+    max-height: 90vh;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  .site-popup::backdrop {
+    background: rgb(10 20 35 / 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .site-popup[open] {
+    animation: site-popup-in 0.35s ease-out both;
+  }
+
+  .site-popup__img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 86vh;
+    margin: 0 auto;
+    filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.28));
+  }
+
+  .site-popup__link {
+    display: block;
+  }
+
+  .site-popup__close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    color: #253550;
+    background: #fff;
+    border: 0;
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.3);
+    cursor: pointer;
+  }
+
+  .site-popup__close:hover {
+    transform: scale(1.06);
+  }
+
+  .site-popup__close:focus-visible {
+    outline: 3px solid #138b82;
+    outline-offset: 2px;
+  }
+
+  @keyframes site-popup-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.96);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-popup[open] {
+      animation: none;
+    }
+  }
+
+  html.is-popup .site-popup {
+    display: none;
+  }
+</style>
+
+{show && (
+<script is:inline set:html={POPUP_JS} />
+)}

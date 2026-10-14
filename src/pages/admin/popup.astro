@@ -1,0 +1,216 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { updateSetting } from '../../lib/settings';
+import { FREQUENCY_LABELS, normalizePopup, type PopupFrequency } from '../../lib/popup';
+
+export const prerender = false;
+
+const popup = Astro.locals.settings.popup;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const text = (key: string) => String(form.get(key) ?? '').trim();
+  const updated = normalizePopup({
+    enabled: form.get('enabled') === 'on',
+    image: text('image') || popup.image,
+    alt: text('alt'),
+    link: text('link'),
+    newTab: form.get('newTab') === 'on',
+    scope: text('scope'),
+    frequency: text('frequency'),
+    startDate: text('startDate'),
+    endDate: text('endDate'),
+    // Novo aviso (ou editado): quem já fechou o anterior volta a ver este.
+    version: Date.now().toString(36),
+  });
+  const db = getDB();
+  await updateSetting(db, 'popup', updated, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'settings.update',
+    target: 'Pop-up do site',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+  return Astro.redirect('/admin/popup?saved=1');
+}
+
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+---
+
+<AdminLayout
+  title="Pop-up do site"
+  description="Aviso em imagem que abre na frente do site. O visitante fecha no X e vê a página normalmente."
+>
+  <div slot="actions">
+    <a href="/?popup=1" target="_blank" rel="noopener" class="btn btn--secondary btn--sm">
+      <Icon name="eye" size={16} /> Ver no site
+    </a>
+  </div>
+
+  {
+    justSaved && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span>
+          <strong>Pop-up salvo.</strong> Já vale para o site publicado. Use "Ver no site" para conferir.
+        </span>
+      </div>
+    )
+  }
+
+  <form method="post" class="panel popup-form">
+    <div class="popup-form__preview">
+      <span class="label">Imagem do aviso</span>
+      <div class="popup-form__frame">
+        <img id="popup-preview" src={popup.image} alt="Pré-visualização do pop-up" />
+      </div>
+      <label class="btn btn--secondary btn--sm popup-form__upload">
+        <Icon name="upload" size={16} /> Trocar imagem
+        <input type="file" id="popup-file" accept="image/png,image/webp,image/jpeg" hidden />
+      </label>
+      <span class="hint" id="popup-status">PNG ou WebP com fundo transparente fica melhor. Até 5 MB.</span>
+      <input type="hidden" name="image" id="popup-image" value={popup.image} />
+    </div>
+
+    <div class="popup-form__fields">
+      <label class="checkbox">
+        <input type="checkbox" name="enabled" checked={popup.enabled} />
+        <span><strong>Pop-up ativo</strong> (desmarque para tirar o aviso do ar sem apagar nada)</span>
+      </label>
+
+      <div class="field">
+        <label class="label" for="alt">Texto alternativo (descrição da imagem)</label>
+        <input class="input" id="alt" name="alt" value={popup.alt} maxlength="300" />
+        <span class="hint">Lido por leitores de tela. Descreva o que está escrito na imagem.</span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="link">Link ao clicar na imagem (opcional)</label>
+        <input class="input" id="link" name="link" value={popup.link} placeholder="/contato ou https://…" />
+        <label class="checkbox">
+          <input type="checkbox" name="newTab" checked={popup.newTab} />
+          <span>Abrir em nova aba</span>
+        </label>
+      </div>
+
+      <div class="form-grid form-grid--2">
+        <div class="field">
+          <label class="label" for="scope">Onde aparece</label>
+          <select class="input" id="scope" name="scope">
+            <option value="home" selected={popup.scope === 'home'}>Só na página inicial</option>
+            <option value="all" selected={popup.scope === 'all'}>Em todas as páginas do site</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="frequency">Com que frequência</label>
+          <select class="input" id="frequency" name="frequency">
+            {
+              (Object.keys(FREQUENCY_LABELS) as PopupFrequency[]).map((key) => (
+                <option value={key} selected={popup.frequency === key}>
+                  {FREQUENCY_LABELS[key]}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="startDate">Começa em (opcional)</label>
+          <input class="input" type="date" id="startDate" name="startDate" value={popup.startDate} />
+        </div>
+        <div class="field">
+          <label class="label" for="endDate">Termina em (opcional)</label>
+          <input class="input" type="date" id="endDate" name="endDate" value={popup.endDate} />
+        </div>
+      </div>
+      <span class="hint">
+        As datas valem pelo horário de Brasília e incluem o último dia. Ao salvar, quem já tinha
+        fechado o aviso anterior volta a ver este.
+      </span>
+
+      <div>
+        <button type="submit" class="btn">
+          <Icon name="save" size={16} /> Salvar pop-up
+        </button>
+      </div>
+    </div>
+  </form>
+</AdminLayout>
+
+<style>
+  .popup-form {
+    display: grid;
+    gap: var(--sp-6);
+    padding: var(--sp-6);
+  }
+
+  @media (min-width: 900px) {
+    .popup-form {
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+  }
+
+  .popup-form__preview {
+    display: grid;
+    gap: var(--sp-3);
+    align-content: start;
+  }
+
+  .popup-form__frame {
+    display: grid;
+    place-items: center;
+    padding: var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background:
+      repeating-conic-gradient(var(--c-ink-100) 0% 25%, var(--c-white) 0% 50%) 50% / 16px 16px;
+  }
+
+  .popup-form__frame img {
+    max-width: 100%;
+    max-height: 320px;
+    height: auto;
+  }
+
+  .popup-form__upload {
+    justify-self: start;
+    cursor: pointer;
+  }
+
+  .popup-form__fields {
+    display: grid;
+    gap: var(--sp-5);
+    align-content: start;
+  }
+</style>
+
+<script>
+  const file = document.querySelector<HTMLInputElement>('#popup-file');
+  const status = document.querySelector<HTMLElement>('#popup-status');
+  const preview = document.querySelector<HTMLImageElement>('#popup-preview');
+  const hidden = document.querySelector<HTMLInputElement>('#popup-image');
+
+  file?.addEventListener('change', async () => {
+    const chosen = file.files?.[0];
+    if (!chosen || !status || !preview || !hidden) return;
+    status.textContent = 'Enviando…';
+    const body = new FormData();
+    body.append('file', chosen);
+    body.append('alt', 'Pop-up do site');
+    try {
+      const res = await fetch('/admin/api/upload', { method: 'POST', body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        status.textContent = data.error || 'Não foi possível enviar a imagem.';
+        return;
+      }
+      hidden.value = data.url;
+      preview.src = data.url;
+      status.textContent = 'Imagem enviada. Clique em "Salvar pop-up" para publicar.';
+    } catch {
+      status.textContent = 'Falha de conexão. Tente de novo.';
+    }
+  });
+</script>
