@@ -150,6 +150,8 @@ const at = (field: string) => (editPath ? `${editPath}.${field}` : undefined);
     font-size: var(--fs-md);
     max-width: 52ch;
     white-space: pre-line;
+    /* Justificado, o texto estreito abre buracos grandes entre as palavras. */
+    text-align: left;
   }
 
   .cta-band__actions {
