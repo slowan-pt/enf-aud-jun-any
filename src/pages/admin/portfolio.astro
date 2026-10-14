@@ -6,7 +6,7 @@ import { listPortfolioRequests, type PortfolioStatus } from '../../lib/portfolio
 import { approveAndSend, downloadUrl, refuse } from '../../lib/portfolio-flow';
 
 const db = getDB();
-const { company } = Astro.locals.settings;
+const { company, portfolio: files } = Astro.locals.settings;
 
 const labels: Record<PortfolioStatus, string> = {
   pendente: 'Pendente',
@@ -86,6 +86,42 @@ function formatDate(iso: string | null): string {
       </div>
     )
   }
+
+  <section class="panel file-panel" data-file-panel>
+    <div class="panel__head">
+      <h2 class="panel__title">Arquivo do Portfólio</h2>
+    </div>
+    <div class="panel__body file-panel__body">
+      <p class="small" style="margin: 0; text-align: left">
+        {
+          files.version
+            ? `No ar agora: PDF enviado pelo painel (${files.pageCount} páginas).`
+            : `No ar agora: o portfólio original do site (${files.pageCount} páginas).`
+        }
+        Envie um PDF novo e o site monta a revista sozinho, com o mesmo visual e o mesmo zoom. O
+        PDF para download também passa a ser este.
+      </p>
+      <div class="file-panel__row">
+        <label class="btn btn--sm file-panel__pick">
+          <Icon name="upload" size={16} /> Enviar PDF novo
+          <input type="file" accept="application/pdf" hidden data-pdf-input />
+        </label>
+        {
+          files.version && (
+            <button type="button" class="btn btn--ghost btn--sm" data-restore>
+              Voltar ao portfólio original
+            </button>
+          )
+        }
+      </div>
+      <progress class="file-panel__bar" value="0" max="100" hidden data-progress></progress>
+      <p class="small file-panel__status" data-pdf-status role="status"></p>
+      <span class="muted small">
+        PDF de até 40 MB e 60 páginas. A conversão acontece no seu navegador (use Chrome ou Edge) e
+        o site só muda quando tudo termina com sucesso.
+      </span>
+    </div>
+  </section>
 
   <section class="panel">
     <div class="table-wrap">
@@ -192,4 +228,167 @@ function formatDate(iso: string | null): string {
     justify-content: flex-end;
     gap: var(--sp-2);
   }
+
+  .file-panel {
+    margin-bottom: var(--sp-5);
+  }
+
+  .file-panel__body {
+    display: grid;
+    gap: var(--sp-3);
+  }
+
+  .file-panel__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    align-items: center;
+  }
+
+  .file-panel__pick {
+    cursor: pointer;
+  }
+
+  .file-panel__bar {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .file-panel__status {
+    margin: 0;
+    text-align: left;
+    min-height: 1.2em;
+  }
 </style>
+
+<script is:inline type="module">
+  const input = document.querySelector('[data-pdf-input]');
+  const status = document.querySelector('[data-pdf-status]');
+  const bar = document.querySelector('[data-progress]');
+  const restore = document.querySelector('[data-restore]');
+  const panel = document.querySelector('[data-file-panel]');
+  let busy = false;
+
+  const say = (text, error) => {
+    status.textContent = text;
+    status.style.color = error ? '#b42318' : '';
+  };
+  const progress = (value) => {
+    bar.hidden = value == null;
+    if (value != null) bar.value = value;
+  };
+
+  async function post(url, body, json) {
+    const res = await fetch(url, {
+      method: 'POST',
+      body: json ? JSON.stringify(body) : body,
+      headers: json ? { 'Content-Type': 'application/json' } : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Falha ao enviar (' + res.status + ').');
+    return data;
+  }
+
+  const toWebp = (canvas, quality) =>
+    new Promise((resolve, reject) =>
+      canvas.toBlob(
+        (blob) =>
+          blob && blob.type === 'image/webp'
+            ? resolve(blob)
+            : reject(new Error('Este navegador não gera imagens WebP. Use Chrome ou Edge.')),
+        'image/webp',
+        quality
+      )
+    );
+
+  async function convertAndSend(file) {
+    if (file.size > 40 * 1024 * 1024) throw new Error('O PDF passa de 40 MB.');
+    say('Carregando o conversor…');
+    // O conversor usa requestAnimationFrame, que o navegador pausa em aba escondida:
+    // com isto a conversão segue mesmo se você trocar de aba.
+    window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
+    const pdfjs = await import('/vendor/pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
+
+    const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const count = doc.numPages;
+    if (count > 60) throw new Error('O PDF tem ' + count + ' páginas (o máximo é 60).');
+
+    const first = (await doc.getPage(1)).getViewport({ scale: 1 });
+    const ratio = first.width / first.height;
+    const version = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const total = count * 2 + 2;
+    let done = 0;
+    const step = (text) => {
+      done += 1;
+      progress(Math.round((done / total) * 100));
+      say(text);
+    };
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    for (let n = 1; n <= count; n++) {
+      const page = await doc.getPage(n);
+      const base = page.getViewport({ scale: 1 });
+      for (const [prefix, width, quality] of [['pagina', 1250, 0.82], ['zoom', 2800, 0.88]]) {
+        const viewport = page.getViewport({ scale: width / base.width });
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
+        await page.render({ canvasContext: ctx, viewport, background: '#ffffff' }).promise;
+        const blob = await toWebp(canvas, quality);
+        const body = new FormData();
+        body.append('version', version);
+        body.append('name', prefix + '-' + n + '.webp');
+        body.append('file', blob, prefix + '-' + n + '.webp');
+        await post('/admin/api/portfolio-arquivo', body);
+        step('Página ' + n + ' de ' + count + (prefix === 'zoom' ? ' (alta resolução)' : '') + '…');
+      }
+      page.cleanup();
+    }
+
+    const pdfBody = new FormData();
+    pdfBody.append('version', version);
+    pdfBody.append('name', 'portfolio.pdf');
+    pdfBody.append('file', file, 'portfolio.pdf');
+    await post('/admin/api/portfolio-arquivo', pdfBody);
+    step('Enviando o PDF para download…');
+
+    await post('/admin/api/portfolio-publicar', { version, pageCount: count, ratio }, true);
+    step('Publicando…');
+    progress(100);
+    say('Pronto! O novo Portfólio já está no ar. Atualizando a página…');
+    setTimeout(() => location.reload(), 1200);
+  }
+
+  input?.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file || busy) return;
+    if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+      say('Escolha um arquivo PDF.', true);
+      return;
+    }
+    busy = true;
+    panel.style.opacity = '0.85';
+    try {
+      await convertAndSend(file);
+    } catch (error) {
+      progress(null);
+      say('Nada mudou no site. ' + ((error && error.message) || 'Não foi possível converter o PDF.'), true);
+      busy = false;
+      panel.style.opacity = '';
+    }
+  });
+
+  restore?.addEventListener('click', async () => {
+    if (busy || !confirm('Voltar ao portfólio original do site?')) return;
+    busy = true;
+    try {
+      await post('/admin/api/portfolio-publicar', { restore: true }, true);
+      location.reload();
+    } catch (error) {
+      say(error.message, true);
+      busy = false;
+    }
+  });
+</script>

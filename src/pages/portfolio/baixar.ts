@@ -12,6 +12,7 @@ import {
   countDownload,
   getByValidDownloadToken,
 } from '../../lib/portfolio';
+import { pdfKeyFor } from '../../lib/portfolio-files';
 
 export const prerender = false;
 
@@ -21,7 +22,7 @@ const page = (title: string, text: string, status: number) =>
     { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } }
   );
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals }) => {
   const db = getDB();
   const request = await getByValidDownloadToken(db, url.searchParams.get('token') ?? '');
   if (!request) {
@@ -32,7 +33,10 @@ export const GET: APIRoute = async ({ url }) => {
     );
   }
 
-  const object = await getBucket().get(PORTFOLIO_PDF_KEY);
+  // PDF vigente (o que o admin enviou por último); se faltar, cai no original.
+  const bucket = getBucket();
+  const object =
+    (await bucket.get(pdfKeyFor(locals.settings.portfolio))) ?? (await bucket.get(PORTFOLIO_PDF_KEY));
   if (!object) return page('Arquivo indisponível', 'Não foi possível localizar o arquivo agora. Tente mais tarde.', 404);
 
   await countDownload(db, request.id);

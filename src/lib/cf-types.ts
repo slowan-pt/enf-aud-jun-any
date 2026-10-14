@@ -54,5 +54,6 @@ export interface R2Bucket {
     options?: { httpMetadata?: { contentType?: string } }
   ): Promise<R2Object>;
   get(key: string, options?: { range?: R2Range | Headers }): Promise<R2ObjectBody | null>;
+  head(key: string): Promise<R2Object | null>;
   delete(key: string): Promise<void>;
 }

@@ -4,12 +4,25 @@
  * Usado em /portfolio e no fim de Quem Somos.
  */
 import Icon from './Icon.astro';
+import { DEFAULT_PORTFOLIO_FILES, pageImageUrls } from '../lib/portfolio-files';
 
-const pages = [1, 2, 3, 4, 5, 6, 7].map((n) => `/portfolio/pagina-${n}.webp`);
+const files = Astro.locals.settings?.portfolio ?? DEFAULT_PORTFOLIO_FILES;
+const pages = pageImageUrls(files);
+// Proporção da página (largura/altura): o padrão é A4 em pé.
+const pageW = 550;
+const pageH = Math.round(pageW / files.ratio);
+const dims = {
+  width: pageW,
+  height: pageH,
+  minWidth: 240,
+  maxWidth: 560,
+  minHeight: Math.round(240 / files.ratio),
+  maxHeight: Math.round(560 / files.ratio),
+};
 ---
 <section class="section section--tight">
   <div class="container">
-    <div class="flipbook" data-flipbook data-pages={JSON.stringify(pages)}>
+    <div class="flipbook" data-flipbook data-pages={JSON.stringify(pages)} data-dims={JSON.stringify(dims)}>
       <div class="flipbook__view" data-view>
         <div class="flipbook__stage" data-stage>
           <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
@@ -282,14 +295,15 @@ const pages = [1, 2, 3, 4, 5, 6, 7].map((n) => `/portfolio/pagina-${n}.webp`);
     if (root && stage && window.St && window.St.PageFlip) {
       var urls = JSON.parse(root.getAttribute('data-pages') || '[]');
       stage.innerHTML = '';
+      var dims = JSON.parse(root.getAttribute('data-dims') || '{}');
       var flip = new window.St.PageFlip(stage, {
-        width: 550,
-        height: 778,
+        width: dims.width || 550,
+        height: dims.height || 778,
         size: 'stretch',
-        minWidth: 240,
-        maxWidth: 560,
-        minHeight: 340,
-        maxHeight: 792,
+        minWidth: dims.minWidth || 240,
+        maxWidth: dims.maxWidth || 560,
+        minHeight: dims.minHeight || 340,
+        maxHeight: dims.maxHeight || 792,
         showCover: true,
         usePortrait: true,
         maxShadowOpacity: 0.45,

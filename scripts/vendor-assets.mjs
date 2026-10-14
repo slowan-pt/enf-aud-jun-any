@@ -25,6 +25,9 @@ const assets = [
   ['node_modules/fabric/dist/index.min.js', 'public/vendor/fabric.min.js'],
   // Só carregado pela página /portfolio (revista com páginas que viram).
   ['node_modules/page-flip/dist/js/page-flip.browser.js', 'public/vendor/page-flip.browser.js'],
+  // Só carregado por /admin/portfolio: converte o PDF enviado em imagens no navegador.
+  ['node_modules/pdfjs-dist/legacy/build/pdf.min.mjs', 'public/vendor/pdf.min.mjs'],
+  ['node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs', 'public/vendor/pdf.worker.min.mjs'],
 ];
 
 for (const [from, to] of assets) {

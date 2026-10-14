@@ -40,6 +40,11 @@ export interface ThemeSettings {
   headingColor: string;
 }
 
+import {
+  DEFAULT_PORTFOLIO_FILES,
+  normalizePortfolioFiles,
+  type PortfolioFilesSettings,
+} from './portfolio-files';
 import { DEFAULT_POPUP, normalizePopup, type PopupSettings } from './popup';
 import { DEFAULT_CARD_STYLE, normalizeCardStyle, type CardStyle } from './card-style';
 
@@ -64,6 +69,8 @@ export interface SiteSettings {
   cardStyle: CardStyle;
   /** Pop-up de aviso da página inicial — ver src/lib/popup.ts e /admin/popup. */
   popup: PopupSettings;
+  /** Arquivos do Portfólio (revista + PDF) — ver src/lib/portfolio-files.ts. */
+  portfolio: PortfolioFilesSettings;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -97,13 +104,14 @@ const DEFAULTS: SiteSettings = {
   clientSegments: defaultClientSegments,
   cardStyle: DEFAULT_CARD_STYLE,
   popup: DEFAULT_POPUP,
+  portfolio: DEFAULT_PORTFOLIO_FILES,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
       .prepare(
-        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)'
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)'
       )
       .bind(
         'company',
@@ -116,7 +124,8 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         'missionVisionValues',
         'clientSegments',
         'cardStyle',
-        'popup'
+        'popup',
+        'portfolio'
       )
       .all<{ key: string; value_json: string }>();
 
@@ -132,6 +141,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       clientSegments: DEFAULTS.clientSegments,
       cardStyle: DEFAULTS.cardStyle,
       popup: DEFAULTS.popup,
+      portfolio: DEFAULTS.portfolio,
     };
 
     for (const row of results) {
@@ -152,6 +162,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         }
         if (row.key === 'cardStyle') out.cardStyle = normalizeCardStyle(value);
         if (row.key === 'popup') out.popup = normalizePopup(value);
+        if (row.key === 'portfolio') out.portfolio = normalizePortfolioFiles(value);
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -176,7 +187,8 @@ export async function updateSetting(
     | 'missionVisionValues'
     | 'clientSegments'
     | 'cardStyle'
-    | 'popup',
+    | 'popup'
+    | 'portfolio',
   value: unknown,
   userId?: number
 ): Promise<void> {
