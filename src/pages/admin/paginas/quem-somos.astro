@@ -65,6 +65,12 @@ if (Astro.request.method === 'POST') {
         })
       ),
     },
+    finalCta: {
+      ...current.finalCta,
+      eyebrow: text('cta_eyebrow', current.finalCta.eyebrow),
+      title: text('cta_title', current.finalCta.title),
+      text: text('cta_text', current.finalCta.text),
+    },
   };
 
   const updatedHowWeWork = {
@@ -118,7 +124,7 @@ if (Astro.request.method === 'POST') {
 }
 
 const content = await getQuemSomosContent(db);
-const { about, elo } = content;
+const { about, elo, finalCta } = content;
 const { howWeWork, missionVisionValues, clientSegments } = await getSettings(db);
 const justSaved = Astro.url.searchParams.get('saved') === '1';
 ---
@@ -400,6 +406,26 @@ const justSaved = Astro.url.searchParams.get('saved') === '1';
           ]}
           addLabel="Adicionar valor"
         />
+      </div>
+    </section>
+
+    <section class="panel" id="chamada-final">
+      <div class="panel__head">
+        <h2 class="panel__title">Chamada final (faixa azul no fim da página)</h2>
+      </div>
+      <div class="panel__body">
+        <div class="field">
+          <label class="label" for="cta_eyebrow">Etiqueta</label>
+          <input class="input" id="cta_eyebrow" name="cta_eyebrow" value={finalCta.eyebrow} />
+        </div>
+        <div class="field">
+          <label class="label" for="cta_title">Título</label>
+          <input class="input" id="cta_title" name="cta_title" value={finalCta.title} />
+        </div>
+        <div class="field">
+          <label class="label" for="cta_text">Texto</label>
+          <textarea class="textarea" id="cta_text" name="cta_text" rows="3">{finalCta.text}</textarea>
+        </div>
       </div>
     </section>
 
