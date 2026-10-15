@@ -98,7 +98,6 @@ const activeSocial = social.filter((s) => s.enabled);
     <div class="container footer__bottom-inner">
       <div class="footer__credits">
         <p>© {year} {company.name}. Todos os direitos reservados.</p>
-        <a class="footer__login" href="/admin/login">Login para edição</a>
       </div>
       <ul class="footer__legal">
         <li><a href="/politica-de-privacidade">Política de Privacidade</a></li>
@@ -269,26 +268,7 @@ const activeSocial = social.filter((s) => s.enabled);
     margin: 0;
   }
 
-  .footer__login {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    background: var(--c-accent-500);
-    color: var(--c-brand-950);
-    font-weight: var(--fw-semibold);
-    text-decoration: none;
-    transition:
-      background var(--dur) var(--ease),
-      transform var(--dur) var(--ease);
-  }
 
-  .footer__login:hover {
-    background: var(--c-accent-300);
-    transform: translateY(-1px);
-  }
 
   .footer__legal {
     display: flex;
