@@ -40,6 +40,7 @@ export const adminNav: AdminNavItem[] = [
   { label: 'Comentários', href: '/admin/comentarios', icon: 'message' },
   { label: 'Inscritos', href: '/admin/inscritos', icon: 'mail' },
   { label: 'Pop-up do site', href: '/admin/popup', icon: 'bell' },
+  { label: 'Textos do site', href: '/admin/textos', icon: 'edit' },
   { label: 'Portfólio', href: '/admin/portfolio', icon: 'download' },
   { label: 'Estatísticas do Site', href: '/admin/estatisticas', icon: 'chart', adminOnly: true },
   { label: 'Mídia', href: '/admin/midia', icon: 'image' },

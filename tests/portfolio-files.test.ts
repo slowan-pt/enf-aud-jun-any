@@ -164,3 +164,27 @@ describe('texto do topo do Portfólio', () => {
     });
   });
 });
+
+describe('textos do site (antes fixos)', () => {
+  it('sem edição, os textos são exatamente os de antes; edição vale; vazio volta ao original', async () => {
+    const { DEFAULT_SITE_TEXTS, normalizeSiteTexts } = await import('../src/lib/site-texts');
+    const { updateSetting } = await import('../src/lib/settings');
+    const db = createSqliteD1(SCHEMA);
+    const base = (await getSettings(db)).siteTexts;
+    expect(base).toEqual(DEFAULT_SITE_TEXTS);
+    expect(base.header.ctaLabel).toBe('Fale com a Essencial');
+    expect(base.footer.contactTitle).toBe('Contato');
+
+    await updateSetting(
+      db,
+      'siteTexts',
+      normalizeSiteTexts({ header: { ctaLabel: 'Fale conosco', ctaHref: 'javascript:alert(1)' }, footer: { about: '  Novo texto  ', linksTitle: '' } })
+    );
+    const next = (await getSettings(db)).siteTexts;
+    expect(next.header.ctaLabel).toBe('Fale conosco');
+    expect(next.header.ctaHref).toBe('/contato'); // link perigoso é recusado
+    expect(next.footer.about).toBe('Novo texto');
+    expect(next.footer.linksTitle).toBe('Links rápidos');
+    expect(next.careers).toEqual(DEFAULT_SITE_TEXTS.careers);
+  });
+});

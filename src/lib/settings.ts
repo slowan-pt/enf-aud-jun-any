@@ -40,6 +40,7 @@ export interface ThemeSettings {
   headingColor: string;
 }
 
+import { DEFAULT_SITE_TEXTS, normalizeSiteTexts, type SiteTexts } from './site-texts';
 import {
   DEFAULT_PORTFOLIO_FILES,
   DEFAULT_PORTFOLIO_HERO,
@@ -76,6 +77,8 @@ export interface SiteSettings {
   portfolio: PortfolioFilesSettings;
   /** Textos do topo da página /portfolio (editados em /admin/portfolio). */
   portfolioHero: PortfolioHero;
+  /** Textos antes fixos (topo, rodapé, formulários) — ver src/lib/site-texts.ts. */
+  siteTexts: SiteTexts;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -111,13 +114,14 @@ const DEFAULTS: SiteSettings = {
   popup: DEFAULT_POPUP,
   portfolio: DEFAULT_PORTFOLIO_FILES,
   portfolioHero: DEFAULT_PORTFOLIO_HERO,
+  siteTexts: DEFAULT_SITE_TEXTS,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
       .prepare(
-        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)'
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)'
       )
       .bind(
         'company',
@@ -132,7 +136,8 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         'cardStyle',
         'popup',
         'portfolio',
-        'portfolioHero'
+        'portfolioHero',
+        'siteTexts'
       )
       .all<{ key: string; value_json: string }>();
 
@@ -150,6 +155,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       popup: DEFAULTS.popup,
       portfolio: DEFAULTS.portfolio,
       portfolioHero: DEFAULTS.portfolioHero,
+      siteTexts: DEFAULTS.siteTexts,
     };
 
     for (const row of results) {
@@ -172,6 +178,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         if (row.key === 'popup') out.popup = normalizePopup(value);
         if (row.key === 'portfolio') out.portfolio = normalizePortfolioFiles(value);
         if (row.key === 'portfolioHero') out.portfolioHero = normalizePortfolioHero(value);
+        if (row.key === 'siteTexts') out.siteTexts = normalizeSiteTexts(value);
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -198,7 +205,8 @@ export async function updateSetting(
     | 'cardStyle'
     | 'popup'
     | 'portfolio'
-    | 'portfolioHero',
+    | 'portfolioHero'
+    | 'siteTexts',
   value: unknown,
   userId?: number
 ): Promise<void> {

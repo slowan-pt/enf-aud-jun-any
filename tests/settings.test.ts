@@ -21,7 +21,7 @@ const SCHEMA = `
 `;
 
 describe('getSettings', () => {
-  it('lê todas as 13 chaves salvas, sem cair no padrão por causa de um erro de SQL', async () => {
+  it('lê todas as 14 chaves salvas, sem cair no padrão por causa de um erro de SQL', async () => {
     const db = createSqliteD1(SCHEMA);
     await updateSetting(db, 'company', { email: 'contato@exemplo.com.br' });
     await updateSetting(db, 'howWeWork', { title: 'Título editado' });

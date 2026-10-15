@@ -5,8 +5,10 @@
  */
 import Icon from './Icon.astro';
 import { DEFAULT_PORTFOLIO_FILES, pageImageUrls } from '../lib/portfolio-files';
+import { DEFAULT_SITE_TEXTS } from '../lib/site-texts';
 
 const files = Astro.locals.settings?.portfolio ?? DEFAULT_PORTFOLIO_FILES;
+const form = (Astro.locals.settings?.siteTexts ?? DEFAULT_SITE_TEXTS).portfolioForm;
 const pages = pageImageUrls(files);
 // Proporção da página (largura/altura): o padrão é A4 em pé.
 const pageW = 550;
@@ -53,12 +55,12 @@ const dims = {
 <section class="section section--subtle" id="receber">
   <div class="container container--narrow">
     <div class="request" data-request>
-      <h2 class="title-md">Quer receber o Portfólio em PDF?</h2>
+      <h2 class="title-md">{form.title}</h2>
       <p class="request__lead">
-        Preencha os dados e teremos a satisfação de enviar o Portfólio para você.
+        {form.lead}
       </p>
 
-      <form class="request__form" method="post" action="/api/portfolio" novalidate data-request-form>
+      <form class="request__form" method="post" action="/api/portfolio" novalidate data-request-form data-success={form.success}>
         <div class="request__hp" aria-hidden="true">
           <label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
         </div>
@@ -91,7 +93,7 @@ const dims = {
           </span>
         </label>
         <button type="submit" class="btn btn--primary request__submit">
-          <Icon name="download" size={18} /> Quero receber o Portfólio
+          <Icon name="download" size={18} /> {form.button}
         </button>
         <p class="request__msg" role="status" data-msg></p>
       </form>
@@ -397,7 +399,7 @@ const dims = {
         .then(function (r) {
           if (r.res.ok && r.payload && r.payload.success) {
             form.reset();
-            show('Recebemos o seu pedido! Em breve enviaremos o Portfólio para o e-mail informado.', 'ok');
+            show(form.getAttribute('data-success') || 'Recebemos o seu pedido!', 'ok');
           } else if (r.res.status === 422 && r.payload && r.payload.fields) {
             show(Object.values(r.payload.fields)[0] || 'Verifique os campos.', 'error');
           } else {

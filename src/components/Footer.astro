@@ -7,6 +7,7 @@ import { publishedOnly } from '../lib/services';
 const { company, whatsapp, social } = Astro.locals.settings;
 const publishedServices = publishedOnly(Astro.locals.services);
 const year = new Date().getFullYear();
+const texts = Astro.locals.settings.siteTexts.footer;
 const activeSocial = social.filter((s) => s.enabled);
 ---
 
@@ -14,11 +15,7 @@ const activeSocial = social.filter((s) => s.enabled);
   <div class="container footer__top">
     <div class="footer__brand">
       <Logo variant="inverse" />
-      <p class="footer__about">
-        Empresa especializada em gestão e auditoria em saúde, atuando como elo técnico entre
-        fontes pagadoras, prestadores e beneficiários, com foco na segurança do paciente e na
-        sustentabilidade do sistema.
-      </p>
+      <p class="footer__about">{texts.about}</p>
       {
         activeSocial.length > 0 && (
           <ul class="footer__social">
@@ -35,7 +32,7 @@ const activeSocial = social.filter((s) => s.enabled);
     </div>
 
     <nav class="footer__col" aria-label="Serviços">
-      <h2 class="footer__title">Serviços</h2>
+      <h2 class="footer__title">{texts.servicesTitle}</h2>
       <ul class="footer__list">
         {
           publishedServices.map((service) => (
@@ -48,7 +45,7 @@ const activeSocial = social.filter((s) => s.enabled);
     </nav>
 
     <nav class="footer__col" aria-label="Links rápidos">
-      <h2 class="footer__title">Links rápidos</h2>
+      <h2 class="footer__title">{texts.linksTitle}</h2>
       <ul class="footer__list">
         {
           footerLinks.institucional.map((link) => (
@@ -61,7 +58,7 @@ const activeSocial = social.filter((s) => s.enabled);
     </nav>
 
     <div class="footer__col">
-      <h2 class="footer__title">Contato</h2>
+      <h2 class="footer__title">{texts.contactTitle}</h2>
       <ul class="footer__contact">
         <li>
           <Icon name="whatsapp" size={18} />

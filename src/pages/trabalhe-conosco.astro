@@ -8,6 +8,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PageHero from '../components/PageHero.astro';
 import Icon from '../components/Icon.astro';
+
+const careers = Astro.locals.settings.siteTexts.careers;
 ---
 
 <BaseLayout
@@ -17,9 +19,9 @@ import Icon from '../components/Icon.astro';
   bodyClass="page-trabalhe"
 >
   <PageHero
-    eyebrow="Carreiras"
-    title="Trabalhe conosco"
-    lead="Quer fazer parte da equipe? Envie seu currículo em PDF e entraremos em contato quando houver uma oportunidade compatível com o seu perfil."
+    eyebrow={careers.eyebrow}
+    title={careers.title}
+    lead={careers.lead}
     crumbs={[{ label: 'Trabalhe conosco' }]}
   />
 

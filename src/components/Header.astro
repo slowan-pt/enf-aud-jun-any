@@ -1,7 +1,7 @@
 ---
 import Logo from './Logo.astro';
 import Icon from './Icon.astro';
-import { mainNav, headerCta, waLink } from '../data/site';
+import { mainNav, waLink } from '../data/site';
 import { publishedOnly } from '../lib/services';
 
 const { company, whatsapp, social } = Astro.locals.settings;
@@ -17,6 +17,7 @@ function isActive(href: string): boolean {
 // src/data/site.ts) — um serviço criado, renomeado ou arquivado pelo painel
 // aparece/some aqui automaticamente, sem editar código.
 const publishedServices = publishedOnly(Astro.locals.services);
+const headerCta = Astro.locals.settings.siteTexts.header;
 const storedNav = Astro.locals.navigation ?? [];
 const baseNav = storedNav.length
   ? storedNav
@@ -178,8 +179,8 @@ const nav = baseNav.map((item) =>
       </nav>
 
       <div class="bar__actions">
-        <a href={headerCta.href} class="btn btn--sm bar__cta">
-          {headerCta.label}
+        <a href={headerCta.ctaHref} class="btn btn--sm bar__cta">
+          {headerCta.ctaLabel}
           <Icon name="arrow-right" size={16} class="icon--arrow" />
         </a>
         <button
@@ -266,7 +267,7 @@ const nav = baseNav.map((item) =>
     </nav>
 
     <div class="drawer__foot">
-      <a href={headerCta.href} class="btn btn--block">{headerCta.label}</a>
+      <a href={headerCta.ctaHref} class="btn btn--block">{headerCta.ctaLabel}</a>
       <a
         href={waLink(whatsapp.number, whatsapp.defaultMessage)}
         class="btn btn--secondary btn--block"

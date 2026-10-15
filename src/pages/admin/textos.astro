@@ -1,0 +1,108 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getDB, writeAuditLog } from '../../lib/db';
+import { updateSetting } from '../../lib/settings';
+import { GROUP_TITLES, TEXT_FIELDS, normalizeSiteTexts, type SiteTexts } from '../../lib/site-texts';
+
+export const prerender = false;
+
+let texts: SiteTexts = Astro.locals.settings.siteTexts;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const submitted: Record<string, Record<string, string>> = {};
+  for (const field of TEXT_FIELDS) {
+    (submitted[field.group] ??= {})[field.key] = String(form.get(`${field.group}.${field.key}`) ?? '');
+  }
+  const db = getDB();
+  texts = normalizeSiteTexts(submitted);
+  await updateSetting(db, 'siteTexts', texts, Astro.locals.user?.id);
+  await writeAuditLog(db, {
+    userId: Astro.locals.user?.id,
+    userName: Astro.locals.user?.name ?? '',
+    action: 'settings.update',
+    target: 'Textos do site (botão do topo, rodapé, formulários)',
+    ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+  });
+  return Astro.redirect('/admin/textos?saved=1');
+}
+
+const justSaved = Astro.url.searchParams.get('saved') === '1';
+const groups = [...new Set(TEXT_FIELDS.map((f) => f.group))];
+const valueOf = (group: keyof SiteTexts, key: string) =>
+  (texts[group] as unknown as Record<string, string>)[key] ?? '';
+---
+
+<AdminLayout
+  title="Textos do site"
+  description="Textos que ficavam fixos: botão do topo, rodapé, Trabalhe conosco, formulário do Portfólio e caixas das matérias. Campo em branco volta ao texto original."
+>
+  {
+    justSaved && (
+      <div class="form-alert form-alert--success" role="status" style="margin-bottom: var(--sp-5)">
+        <Icon name="check-circle" size={18} />
+        <span><strong>Textos salvos.</strong> Já valem para o site publicado.</span>
+      </div>
+    )
+  }
+
+  <form method="post" class="texts-form">
+    {
+      groups.map((group) => (
+        <section class="panel">
+          <div class="panel__head">
+            <h2 class="panel__title">{GROUP_TITLES[group]}</h2>
+          </div>
+          <div class="panel__body texts-form__body">
+            {TEXT_FIELDS.filter((f) => f.group === group).map((field) => {
+              const id = `${field.group}-${field.key}`;
+              const name = `${field.group}.${field.key}`;
+              return (
+                <div class="field">
+                  <label class="label" for={id}>
+                    {field.label}
+                  </label>
+                  {field.kind === 'textarea' ? (
+                    <textarea class="textarea" id={id} name={name} rows="3" maxlength={field.max}>{valueOf(field.group, field.key)}</textarea>
+                  ) : (
+                    <input
+                      class="input"
+                      id={id}
+                      name={name}
+                      value={valueOf(field.group, field.key)}
+                      maxlength={field.max}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))
+    }
+
+    <div>
+      <button type="submit" class="btn">
+        <Icon name="save" size={16} /> Salvar textos
+      </button>
+    </div>
+    <p class="muted small" style="margin: 0; text-align: left">
+      Outros textos têm tela própria: o menu em Páginas → Menu, os dados da empresa em
+      Configurações, o topo da página Portfólio em Portfólio e o aviso da página inicial em Pop-up
+      do site.
+    </p>
+  </form>
+</AdminLayout>
+
+<style>
+  .texts-form {
+    display: grid;
+    gap: var(--sp-5);
+  }
+
+  .texts-form__body {
+    display: grid;
+    gap: var(--sp-4);
+  }
+</style>

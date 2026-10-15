@@ -22,6 +22,7 @@ interface Props {
 }
 
 const { postId, postSlug, comments, replyAuthor } = Astro.props;
+const t = Astro.locals.settings.siteTexts.engagement;
 
 function formatDate(iso: string): string {
   const [datePart] = iso.split(' ');
@@ -32,10 +33,8 @@ function formatDate(iso: string): string {
 
 <section class="engage" aria-label="Receber publicações e comentários">
   <div class="engage__box" data-engage-form="inscricao">
-    <h2 class="engage__title">Receba as novas publicações</h2>
-    <p class="engage__hint">
-      Deixe seu e-mail para ser avisado quando publicarmos novos conteúdos.
-    </p>
+    <h2 class="engage__title">{t.subscribeTitle}</h2>
+    <p class="engage__hint">{t.subscribeHint}</p>
     <form class="engage__form" method="post" action="/api/inscricao" novalidate>
       <input type="hidden" name="origem" value={postSlug} />
       <div class="engage__hp" aria-hidden="true">
@@ -81,7 +80,7 @@ function formatDate(iso: string): string {
       Comentários {comments.length > 0 && <span class="engage__count">({comments.length})</span>}
     </h2>
 
-    {comments.length === 0 && <p class="engage__hint">Seja o primeiro a comentar.</p>}
+    {comments.length === 0 && <p class="engage__hint">{t.firstComment}</p>}
 
     {
       comments.length > 0 && (
@@ -106,7 +105,7 @@ function formatDate(iso: string): string {
     }
 
     <form class="engage__form" method="post" action="/api/comentarios" data-engage-form="comentario" novalidate>
-      <h3 class="engage__subtitle">Deixe seu comentário</h3>
+      <h3 class="engage__subtitle">{t.commentTitle}</h3>
       <input type="hidden" name="post_id" value={postId} />
       <div class="engage__hp" aria-hidden="true">
         <label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
@@ -141,7 +140,7 @@ function formatDate(iso: string): string {
         <Icon name="message" size={16} /> Enviar comentário
       </button>
       <p class="engage__msg" role="status" data-msg></p>
-      <p class="engage__hint">Os comentários são analisados antes de aparecer no site.</p>
+      <p class="engage__hint">{t.moderationNote}</p>
     </form>
   </div>
 </section>
