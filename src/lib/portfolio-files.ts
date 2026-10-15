@@ -23,6 +23,28 @@ export const DEFAULT_PORTFOLIO_FILES: PortfolioFilesSettings = {
   ratio: 595 / 842,
 };
 
+export interface PortfolioHero {
+  eyebrow: string;
+  title: string;
+  lead: string;
+}
+
+export const DEFAULT_PORTFOLIO_HERO: PortfolioHero = {
+  eyebrow: 'Institucional',
+  title: 'Portfólio',
+  lead: 'Conheça a Essencial Saúde Auditoria: o que fazemos, em quais segmentos atuamos e como trabalhamos.',
+};
+
+/** Texto vazio volta ao padrão: o topo da página nunca fica sem título. */
+export function normalizePortfolioHero(raw: unknown): PortfolioHero {
+  const v = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const pick = (key: keyof PortfolioHero, max: number) => {
+    const text = typeof v[key] === 'string' ? (v[key] as string).trim().slice(0, max) : '';
+    return text || DEFAULT_PORTFOLIO_HERO[key];
+  };
+  return { eyebrow: pick('eyebrow', 80), title: pick('title', 120), lead: pick('lead', 400) };
+}
+
 export const MAX_PAGES = 60;
 export const VERSION_RE = /^[a-z0-9]{6,20}$/;
 /** Imagens públicas da revista (o PDF nunca é público). */

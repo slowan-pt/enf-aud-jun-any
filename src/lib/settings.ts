@@ -42,8 +42,11 @@ export interface ThemeSettings {
 
 import {
   DEFAULT_PORTFOLIO_FILES,
+  DEFAULT_PORTFOLIO_HERO,
   normalizePortfolioFiles,
+  normalizePortfolioHero,
   type PortfolioFilesSettings,
+  type PortfolioHero,
 } from './portfolio-files';
 import { DEFAULT_POPUP, normalizePopup, type PopupSettings } from './popup';
 import { DEFAULT_CARD_STYLE, normalizeCardStyle, type CardStyle } from './card-style';
@@ -71,6 +74,8 @@ export interface SiteSettings {
   popup: PopupSettings;
   /** Arquivos do Portfólio (revista + PDF) — ver src/lib/portfolio-files.ts. */
   portfolio: PortfolioFilesSettings;
+  /** Textos do topo da página /portfolio (editados em /admin/portfolio). */
+  portfolioHero: PortfolioHero;
 }
 
 const DEFAULT_SEO: SeoSettings = {
@@ -105,13 +110,14 @@ const DEFAULTS: SiteSettings = {
   cardStyle: DEFAULT_CARD_STYLE,
   popup: DEFAULT_POPUP,
   portfolio: DEFAULT_PORTFOLIO_FILES,
+  portfolioHero: DEFAULT_PORTFOLIO_HERO,
 };
 
 export async function getSettings(db: D1Database): Promise<SiteSettings> {
   try {
     const { results } = await db
       .prepare(
-        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)'
+        'SELECT key, value_json FROM settings WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)'
       )
       .bind(
         'company',
@@ -125,7 +131,8 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         'clientSegments',
         'cardStyle',
         'popup',
-        'portfolio'
+        'portfolio',
+        'portfolioHero'
       )
       .all<{ key: string; value_json: string }>();
 
@@ -142,6 +149,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
       cardStyle: DEFAULTS.cardStyle,
       popup: DEFAULTS.popup,
       portfolio: DEFAULTS.portfolio,
+      portfolioHero: DEFAULTS.portfolioHero,
     };
 
     for (const row of results) {
@@ -163,6 +171,7 @@ export async function getSettings(db: D1Database): Promise<SiteSettings> {
         if (row.key === 'cardStyle') out.cardStyle = normalizeCardStyle(value);
         if (row.key === 'popup') out.popup = normalizePopup(value);
         if (row.key === 'portfolio') out.portfolio = normalizePortfolioFiles(value);
+        if (row.key === 'portfolioHero') out.portfolioHero = normalizePortfolioHero(value);
       } catch {
         // valor corrompido no banco: ignora e mantém o padrão dessa chave
       }
@@ -188,7 +197,8 @@ export async function updateSetting(
     | 'clientSegments'
     | 'cardStyle'
     | 'popup'
-    | 'portfolio',
+    | 'portfolio'
+    | 'portfolioHero',
   value: unknown,
   userId?: number
 ): Promise<void> {

@@ -148,3 +148,19 @@ describe('download do PDF (baixar.ts) segue o PDF vigente', () => {
     expect(await text(res)).toContain('NOVO');
   });
 });
+
+describe('texto do topo do Portfólio', () => {
+  it('padrão, edição salva e texto vazio volta ao padrão', async () => {
+    const { DEFAULT_PORTFOLIO_HERO, normalizePortfolioHero } = await import('../src/lib/portfolio-files');
+    const { updateSetting } = await import('../src/lib/settings');
+    const db = createSqliteD1(SCHEMA);
+    expect((await getSettings(db)).portfolioHero).toEqual(DEFAULT_PORTFOLIO_HERO);
+
+    await updateSetting(db, 'portfolioHero', normalizePortfolioHero({ eyebrow: 'Novo', title: 'Nosso portfólio', lead: '' }));
+    expect((await getSettings(db)).portfolioHero).toEqual({
+      eyebrow: 'Novo',
+      title: 'Nosso portfólio',
+      lead: DEFAULT_PORTFOLIO_HERO.lead,
+    });
+  });
+});

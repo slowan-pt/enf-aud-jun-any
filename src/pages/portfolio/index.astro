@@ -12,6 +12,8 @@ import PortfolioViewer from '../../components/PortfolioViewer.astro';
 
 export const prerender = false;
 
+const hero = Astro.locals.settings.portfolioHero;
+
 ---
 
 <BaseLayout
@@ -21,9 +23,9 @@ export const prerender = false;
   bodyClass="page-portfolio"
 >
   <PageHero
-    eyebrow="Institucional"
-    title="Portfólio"
-    lead="Conheça a Essencial Saúde Auditoria: o que fazemos, em quais segmentos atuamos e como trabalhamos."
+    eyebrow={hero.eyebrow}
+    title={hero.title}
+    lead={hero.lead}
     crumbs={[{ label: 'Portfólio' }]}
   />
 

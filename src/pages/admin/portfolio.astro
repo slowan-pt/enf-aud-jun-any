@@ -4,9 +4,12 @@ import Icon from '../../components/Icon.astro';
 import { getDB, writeAuditLog } from '../../lib/db';
 import { listPortfolioRequests, type PortfolioStatus } from '../../lib/portfolio';
 import { approveAndSend, downloadUrl, refuse } from '../../lib/portfolio-flow';
+import { updateSetting } from '../../lib/settings';
+import { normalizePortfolioHero } from '../../lib/portfolio-files';
 
 const db = getDB();
 const { company, portfolio: files } = Astro.locals.settings;
+let hero = Astro.locals.settings.portfolioHero;
 
 const labels: Record<PortfolioStatus, string> = {
   pendente: 'Pendente',
@@ -25,7 +28,22 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const id = Number(form.get('id'));
   const action = String(form.get('action') ?? '');
-  if (Number.isInteger(id) && id > 0) {
+  if (form.get('_form') === 'hero') {
+    hero = normalizePortfolioHero({
+      eyebrow: form.get('hero_eyebrow'),
+      title: form.get('hero_title'),
+      lead: form.get('hero_lead'),
+    });
+    await updateSetting(db, 'portfolioHero', hero, Astro.locals.user?.id);
+    await writeAuditLog(db, {
+      userId: Astro.locals.user?.id,
+      userName: Astro.locals.user?.name ?? '',
+      action: 'settings.update',
+      target: 'Portfólio: texto do topo da página',
+      ip: Astro.request.headers.get('cf-connecting-ip') ?? '',
+    });
+    notice = { ok: true, text: 'Texto do topo salvo. Já vale para o site.' };
+  } else if (Number.isInteger(id) && id > 0) {
     let logged = '';
     if (action === 'aprovar') {
       const result = await approveAndSend(db, id, company.name, company.email);
@@ -86,6 +104,31 @@ function formatDate(iso: string | null): string {
       </div>
     )
   }
+
+  <section class="panel file-panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Texto do topo da página Portfólio</h2>
+      <a href="/portfolio" target="_blank" rel="noopener" class="small">Ver a página</a>
+    </div>
+    <form method="post" class="panel__body file-panel__body">
+      <input type="hidden" name="_form" value="hero" />
+      <div class="field">
+        <label class="label" for="hero_eyebrow">Etiqueta (letras pequenas acima do título)</label>
+        <input class="input" id="hero_eyebrow" name="hero_eyebrow" value={hero.eyebrow} maxlength="80" />
+      </div>
+      <div class="field">
+        <label class="label" for="hero_title">Título</label>
+        <input class="input" id="hero_title" name="hero_title" value={hero.title} maxlength="120" />
+      </div>
+      <div class="field">
+        <label class="label" for="hero_lead">Mensagem (texto abaixo do título)</label>
+        <textarea class="textarea" id="hero_lead" name="hero_lead" rows="3" maxlength="400">{hero.lead}</textarea>
+      </div>
+      <div>
+        <button type="submit" class="btn btn--sm"><Icon name="save" size={16} /> Salvar texto</button>
+      </div>
+    </form>
+  </section>
 
   <section class="panel file-panel" data-file-panel>
     <div class="panel__head">
