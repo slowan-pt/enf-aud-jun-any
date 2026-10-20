@@ -32,13 +32,13 @@
     { "pattern": "essencialsaudeauditoria.online", "custom_domain": true },
     { "pattern": "www.essencialsaudeauditoria.online", "custom_domain": true },
   ],
-  // Único destino permitido para o aviso por e-mail de contato/currículo —
-  // precisa estar VERIFICADO na Cloudflare (wrangler email routing addresses
-  // list) para os envios saírem de verdade.
+  // Plano B do aviso de contato/currículo (o principal é o Resend, que entrega
+  // na caixa do UOL). Só funciona se o destino estiver VERIFICADO no Email
+  // Routing da Cloudflare — com o MX no UOL, normalmente não estará.
   "send_email": [
     {
       "name": "EMAIL",
-      "allowed_destination_addresses": ["essencialsaudeauditoria@gmail.com"],
+      "allowed_destination_addresses": ["contato@essencialsaudeauditoria.com.br"],
     },
   ],
   "vars": {

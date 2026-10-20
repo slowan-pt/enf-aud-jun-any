@@ -103,6 +103,50 @@ export function resolveNotifyDestination(fallback: string): string {
   return bindings.NOTIFY_TEST_EMAIL || fallback;
 }
 
+/**
+ * Envio pelo Resend (segredo RESEND_API_KEY) — entrega a qualquer endereço,
+ * inclusive uma caixa de e-mail externa (ex.: UOL) que não é "destino
+ * verificado" do Email Routing da Cloudflare. Devolve null quando não há
+ * chave (aí vale o caminho do binding), true/false conforme o envio.
+ */
+async function sendViaResend(mail: {
+  from: string;
+  to: string;
+  replyTo: string;
+  subject: string;
+  text: string;
+  attachment?: { filename: string; content: Uint8Array };
+}): Promise<boolean | null> {
+  const key = (env as unknown as { RESEND_API_KEY?: string }).RESEND_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: `Essencial Saúde Auditoria <${mail.from}>`,
+        to: [mail.to],
+        reply_to: headerSafe(mail.replyTo),
+        subject: mail.subject,
+        text: mail.text,
+        ...(mail.attachment
+          ? {
+              attachments: [
+                {
+                  filename: mail.attachment.filename.replace(/[^\w .()-]/g, '') || 'curriculo.pdf',
+                  content: b64(mail.attachment.content),
+                },
+              ],
+            }
+          : {}),
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** Envia o e-mail via o binding, sem lançar — devolve se conseguiu. */
 async function sendMail(raw: string, from: string, to: string): Promise<boolean> {
   try {
@@ -144,11 +188,21 @@ export async function notifyNewContact(
     contact.message,
   ].filter((line) => line !== '');
 
+  const subject = `Contato — ${headerSafe(contact.subject)}`;
+  const viaResend = await sendViaResend({
+    from: bindings.MAIL_FROM,
+    to,
+    replyTo: contact.email,
+    subject,
+    text: lines.join('\n'),
+  });
+  if (viaResend) return true;
+
   const raw = buildPlainMime({
     from: bindings.MAIL_FROM,
     to,
     replyTo: contact.email,
-    subject: `Contato — ${headerSafe(contact.subject)}`,
+    subject,
     text: lines.join('\n'),
     domain: bindings.MAIL_FROM.split('@')[1] ?? 'localhost',
   });
@@ -172,11 +226,22 @@ export async function notifyNewApplication(
     application.message ? `\nMensagem:\n${application.message}` : '',
   ];
 
+  const subject = `Currículo — ${headerSafe(application.name)}`;
+  const viaResend = await sendViaResend({
+    from: bindings.MAIL_FROM,
+    to,
+    replyTo: application.email,
+    subject,
+    text: lines.join('\n'),
+    attachment: { filename: application.filename, content: new Uint8Array(pdf) },
+  });
+  if (viaResend) return true;
+
   const raw = buildResumeMime({
     from: bindings.MAIL_FROM,
     to,
     replyTo: application.email,
-    subject: `Currículo — ${headerSafe(application.name)}`,
+    subject,
     text: lines.join('\n'),
     filename: application.filename,
     pdf: new Uint8Array(pdf),
