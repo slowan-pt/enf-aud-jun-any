@@ -29,8 +29,9 @@ const dims = {
         <div class="flipbook__stage" data-stage>
           <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
         </div>
-        <div class="flipbook__zoomview" data-zoomview hidden></div>
-        <div class="flipbook__lens" data-lens hidden></div>
+        <div class="flipbook__zoomview" data-zoomview hidden>
+          <div class="flipbook__zoominner" data-zoominner></div>
+        </div>
       </div>
       <div class="flipbook__bar">
         <button type="button" class="btn btn--ghost btn--sm" data-prev aria-label="Página anterior">
@@ -41,13 +42,13 @@ const dims = {
           Próxima <Icon name="arrow-right" size={16} />
         </button>
         <button type="button" class="btn btn--ghost btn--sm" data-zoom aria-pressed="false">
-          <Icon name="search" size={16} /> Zoom
+          <Icon name="search" size={16} /> <span data-zoom-label>Zoom</span>
         </button>
         <button type="button" class="btn btn--ghost btn--sm" data-full aria-label="Tela cheia">
           Tela cheia
         </button>
       </div>
-      <p class="flipbook__hint" data-hint>Clique ou arraste as bordas da página para virar.</p>
+      <p class="flipbook__hint" data-hint></p>
     </div>
   </div>
 </section>
@@ -132,38 +133,51 @@ const dims = {
     visibility: hidden;
   }
 
-  /* Ampliação: usa imagens em alta resolução (não o canvas da revista),
-     então o texto fica nítido como no PDF original. */
+  /* Ampliação: camada com as imagens em alta resolução (não as da revista), então o
+     texto fica nítido como no PDF original. O JavaScript move/escala o conteúdo. */
   .flipbook__zoomview {
     position: absolute;
     inset: 0;
     z-index: 4;
-    display: flex;
-    justify-content: center;
+    overflow: hidden;
     background: #fff;
-    transform: scale(2.6);
-    transition: transform-origin 0.05s linear;
+    touch-action: none;
+    cursor: default;
   }
 
   .flipbook__zoomview[hidden] {
     display: none;
   }
 
-  .flipbook__zoomview img {
-    height: 100%;
-    width: auto;
-    max-width: 50%;
-    object-fit: contain;
-  }
-
-  /* Com o zoom ligado, esta camada fica por cima e captura mouse/dedo
-     (em vez de virar a página). */
-  .flipbook__lens {
+  .flipbook__zoominner {
     position: absolute;
     inset: 0;
-    z-index: 5;
-    cursor: zoom-in;
-    touch-action: none;
+    display: flex;
+    transform-origin: 0 0;
+  }
+
+  .flipbook__zoominner.is-right {
+    justify-content: flex-end;
+  }
+
+  .flipbook :global(.flipbook__zoominner img) {
+    display: block;
+    flex: none;
+    width: 50%;
+    height: 100%;
+    object-fit: fill;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .flipbook :global(.flipbook__zoominner.is-full img) {
+    width: 100%;
+  }
+
+  @media (pointer: fine) {
+    .flipbook__stage {
+      cursor: zoom-in;
+    }
   }
 
   /* Celular: a revista ocupa a largura inteira da tela (a página fica ~10% maior e mais legível). */
@@ -223,8 +237,8 @@ const dims = {
   }
 
   .flipbook :global(.btn.is-active) {
-    background: var(--c-accent-50, #e8f6ef);
-    color: var(--c-accent-700);
+    background: var(--c-accent-600);
+    color: #fff;
   }
 
   .flipbook:fullscreen {
@@ -388,6 +402,7 @@ const dims = {
         maxShadowOpacity: 0.45,
         flippingTime: 800,
         mobileScrollSupport: false,
+        disableFlipByClick: true,
       });
       flip.loadFromHTML(items);
       var count = root.querySelector('[data-count]');
@@ -396,8 +411,13 @@ const dims = {
       };
       flip.on('flip', update);
       flip.on('init', update);
-      root.querySelector('[data-prev]').addEventListener('click', function () { flip.flipPrev(); });
-      root.querySelector('[data-next]').addEventListener('click', function () { flip.flipNext(); });
+      var go = function (dir) {
+        if (Z.on) exitZoom();
+        if (dir > 0) flip.flipNext();
+        else flip.flipPrev();
+      };
+      root.querySelector('[data-prev]').addEventListener('click', function () { go(-1); });
+      root.querySelector('[data-next]').addEventListener('click', function () { go(1); });
       var full = root.querySelector('[data-full]');
       if (full) {
         if (!root.requestFullscreen) full.hidden = true;
@@ -406,56 +426,215 @@ const dims = {
           else root.requestFullscreen();
         });
       }
-      // ---------- zoom: passa o mouse (ou arrasta o dedo) para ver os detalhes ----------
+      // ---------- zoom ----------
+      // Computador: um clique amplia no ponto clicado; mover o mouse percorre a página
+      // (roda do mouse ajusta o nível). Celular: gesto de pinça com dois dedos amplia e
+      // mantém o zoom ao soltar; com um dedo você arrasta a página ampliada.
       var view = root.querySelector('[data-view]');
-      var lens = root.querySelector('[data-lens]');
-      var zoomBtn = root.querySelector('[data-zoom]');
-      var hint = root.querySelector('[data-hint]');
       var zoomview = root.querySelector('[data-zoomview]');
-      var hintOff = hint ? hint.textContent : '';
-      var move = function (e) {
-        var box = view.getBoundingClientRect();
-        var x = Math.max(0, Math.min(100, ((e.clientX - box.left) / box.width) * 100));
-        var y = Math.max(0, Math.min(100, ((e.clientY - box.top) / box.height) * 100));
-        zoomview.style.transformOrigin = x + '% ' + y + '%';
-      };
-      var setZoom = function (on) {
-        if (on) {
-          // Quais páginas estão à vista agora (capa e contracapa ficam sozinhas).
-          var i = flip.getCurrentPageIndex();
-          var total = flip.getPageCount();
-          var shown = [i];
-          if (flip.getOrientation() !== 'portrait' && i > 0) {
+      var inner = root.querySelector('[data-zoominner]');
+      var zoomBtn = root.querySelector('[data-zoom]');
+      var zoomLabel = root.querySelector('[data-zoom-label]');
+      var hint = root.querySelector('[data-hint]');
+      var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      var HINT_OFF = coarse
+        ? 'Deslize para virar a página · use dois dedos para ampliar.'
+        : 'Clique na página para ampliar · arraste o canto ou use as setas para virar.';
+      var HINT_ON = coarse
+        ? 'Arraste com um dedo para mover · pince com dois dedos para ajustar · toque em “Sair do zoom” para voltar.'
+        : 'Mova o mouse para percorrer a página · role o mouse para ajustar o zoom · “Sair do zoom” ou Esc para voltar.';
+      if (hint) hint.textContent = HINT_OFF;
+
+      var Z = { on: false, s: 1, tx: 0, ty: 0, W: 1, H: 1 };
+      var START = 2.6;
+      var MAXS = 5;
+      var lastTouch = 0;
+      var lastMouse = null;
+
+      function measure() {
+        var b = view.getBoundingClientRect();
+        Z.W = b.width || 1;
+        Z.H = b.height || 1;
+      }
+      function clampPan() {
+        Z.tx = Math.min(0, Math.max(Z.W * (1 - Z.s), Z.tx));
+        Z.ty = Math.min(0, Math.max(Z.H * (1 - Z.s), Z.ty));
+      }
+      function apply(smooth) {
+        inner.style.transition = smooth ? 'transform 0.14s ease-out' : 'none';
+        inner.style.transform = 'translate3d(' + Z.tx + 'px,' + Z.ty + 'px,0) scale(' + Z.s + ')';
+      }
+      function rel(clientX, clientY) {
+        var b = view.getBoundingClientRect();
+        return { x: clientX - b.left, y: clientY - b.top };
+      }
+      // Com o mouse, a parte da página sob o cursor é a que aparece (ponto fixo = fração do cursor).
+      function followMouse(p) {
+        Z.tx = -(p.x / Z.W) * (Z.s - 1) * Z.W;
+        Z.ty = -(p.y / Z.H) * (Z.s - 1) * Z.H;
+        clampPan();
+        apply(true);
+      }
+
+      function buildZoomPages() {
+        var i = flip.getCurrentPageIndex();
+        var total = flip.getPageCount();
+        var shown = [i];
+        var mode = 'is-full';
+        if (flip.getOrientation() !== 'portrait') {
+          if (i === 0) {
+            shown = [0];
+            mode = 'is-right'; // a capa fica na metade direita, como na revista
+          } else {
             var left = i % 2 === 1 ? i : i - 1;
             shown = left + 1 < total ? [left, left + 1] : [left];
+            mode = '';
           }
-          zoomview.innerHTML = '';
-          shown.forEach(function (n) {
-            var img = new Image();
-            img.alt = 'Página ' + (n + 1) + ' ampliada';
-            img.decoding = 'async';
-            img.src = urls[n].replace('pagina-', 'zoom-');
-            zoomview.appendChild(img);
-          });
-          zoomview.style.transformOrigin = '50% 50%';
         }
+        inner.className = 'flipbook__zoominner ' + mode;
+        inner.innerHTML = '';
+        shown.forEach(function (n) {
+          var img = new Image();
+          img.alt = 'Página ' + (n + 1) + ' ampliada';
+          img.decoding = 'async';
+          img.draggable = false;
+          img.src = urls[n]; // já em cache: aparece na hora
+          var hi = new Image(); // troca pela versão de altíssima resolução quando chegar
+          hi.onload = function () { img.src = hi.src; };
+          hi.src = urls[n].replace('pagina-', 'zoom-');
+          inner.appendChild(img);
+        });
+      }
+
+      function setUi(on) {
         view.classList.toggle('is-zoom', on);
         zoomview.hidden = !on;
-        lens.hidden = !on;
         zoomBtn.setAttribute('aria-pressed', String(on));
         zoomBtn.classList.toggle('is-active', on);
-        if (hint) hint.textContent = on ? 'Passe o mouse sobre a página (ou arraste o dedo) para ampliar. Clique em Zoom para sair.' : hintOff;
+        if (zoomLabel) zoomLabel.textContent = on ? 'Sair do zoom' : 'Zoom';
+        if (hint) hint.textContent = on ? HINT_ON : HINT_OFF;
+      }
+      function enterZoom(x, y, scale) {
+        buildZoomPages();
+        measure();
+        Z.on = true;
+        Z.s = scale;
+        Z.tx = x - x * scale;
+        Z.ty = y - y * scale;
+        clampPan();
+        apply(false);
+        setUi(true);
+      }
+      function exitZoom() {
+        Z.on = false;
+        setUi(false);
+      }
+
+      zoomBtn.addEventListener('click', function () {
+        if (Z.on) exitZoom();
+        else {
+          measure();
+          enterZoom(Z.W / 2, Z.H / 2, START);
+        }
+      });
+
+      // --- computador ---
+      var downX = 0;
+      var downY = 0;
+      view.addEventListener('mousedown', function (e) { downX = e.clientX; downY = e.clientY; }, true);
+      view.addEventListener('click', function (e) {
+        if (Date.now() - lastTouch < 800) return; // clique "fantasma" depois de um toque
+        if (Z.on) return;
+        if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) return; // foi arrasto (virar página)
+        measure();
+        var p = rel(e.clientX, e.clientY);
+        enterZoom(p.x, p.y, START);
+      });
+      view.addEventListener('mousemove', function (e) {
+        if (!Z.on || Date.now() - lastTouch < 800) return;
+        lastMouse = rel(e.clientX, e.clientY);
+        followMouse(lastMouse);
+      });
+      view.addEventListener('wheel', function (e) {
+        if (!Z.on) return;
+        e.preventDefault();
+        Z.s = Math.min(MAXS, Math.max(1.3, Z.s * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+        followMouse(rel(e.clientX, e.clientY));
+      }, { passive: false });
+
+      // --- celular: pinça e arrastar ---
+      var T = { mode: null, dist: 0, mid: null, last: null };
+      var rel0 = function (t) { return rel(t.clientX, t.clientY); };
+      var spread = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+      view.addEventListener('touchstart', function (e) {
+        lastTouch = Date.now();
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          e.stopPropagation();
+          var a = rel0(e.touches[0]);
+          var b = rel0(e.touches[1]);
+          T.mode = 'pinch';
+          T.dist = spread(a, b);
+          T.mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          if (!Z.on) enterZoom(T.mid.x, T.mid.y, 1);
+        } else if (e.touches.length === 1 && Z.on) {
+          e.stopPropagation();
+          T.mode = 'pan';
+          T.last = rel0(e.touches[0]);
+        }
+      }, { capture: true, passive: false });
+      view.addEventListener('touchmove', function (e) {
+        lastTouch = Date.now();
+        if (!Z.on && e.touches.length < 2) return; // um dedo fora do zoom: deixa virar página
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.touches.length === 2 && T.mode === 'pinch') {
+          var a = rel0(e.touches[0]);
+          var b = rel0(e.touches[1]);
+          var dist = spread(a, b);
+          var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+          var ns = Math.min(MAXS, Math.max(1, Z.s * (dist / T.dist)));
+          // O ponto da página sob os dedos continua sob os dedos enquanto você pinça.
+          var cx = (T.mid.x - Z.tx) / Z.s;
+          var cy = (T.mid.y - Z.ty) / Z.s;
+          Z.s = ns;
+          Z.tx = mid.x - cx * ns;
+          Z.ty = mid.y - cy * ns;
+          clampPan();
+          apply(false);
+          T.dist = dist;
+          T.mid = mid;
+        } else if (e.touches.length === 1 && T.mode === 'pan') {
+          var p = rel0(e.touches[0]);
+          Z.tx += p.x - T.last.x;
+          Z.ty += p.y - T.last.y;
+          T.last = p;
+          clampPan();
+          apply(false);
+        }
+      }, { capture: true, passive: false });
+      var touchEnd = function (e) {
+        lastTouch = Date.now();
+        if (e.touches.length === 0) {
+          T.mode = null;
+          // Voltou ao tamanho normal com a pinça: sai do zoom sozinho.
+          if (Z.on && Z.s < 1.08) exitZoom();
+        } else if (e.touches.length === 1 && Z.on) {
+          T.mode = 'pan'; // sobrou um dedo: ele passa a arrastar
+          T.last = rel0(e.touches[0]);
+        }
       };
-      zoomBtn.addEventListener('click', function () { setZoom(!view.classList.contains('is-zoom')); });
-      lens.addEventListener('pointermove', move);
-      lens.addEventListener('pointerdown', move);
+      view.addEventListener('touchend', touchEnd, { capture: true });
+      view.addEventListener('touchcancel', touchEnd, { capture: true });
+
+      window.addEventListener('resize', function () { if (Z.on) exitZoom(); });
 
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') setZoom(false);
+        if (e.key === 'Escape' && Z.on) exitZoom();
         var t = e.target && e.target.tagName;
         if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
-        if (e.key === 'ArrowLeft') flip.flipPrev();
-        if (e.key === 'ArrowRight') flip.flipNext();
+        if (e.key === 'ArrowLeft') go(-1);
+        if (e.key === 'ArrowRight') go(1);
       });
     }
 
