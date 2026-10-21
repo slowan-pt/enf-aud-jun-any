@@ -25,13 +25,41 @@ const dims = {
 <section class="section section--tight">
   <div class="container">
     <div class="flipbook" data-flipbook data-pages={JSON.stringify(pages)} data-dims={JSON.stringify(dims)}>
-      <div class="flipbook__view" data-view>
-        <div class="flipbook__stage" data-stage>
-          <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
+      <div class="flipbook__row">
+        <button type="button" class="flipbook__side flipbook__side--prev" data-prev aria-label="Página anterior">
+          <Icon name="chevron-left" size={26} />
+        </button>
+        <div class="flipbook__view" data-view>
+          <div class="flipbook__stage" data-stage>
+            <img class="flipbook__fallback" src={pages[0]} alt="Portfólio — capa" />
+          </div>
+          <div class="flipbook__zoomview" data-zoomview hidden>
+            <div class="flipbook__zoominner" data-zoominner></div>
+          </div>
+          <div class="tip" data-tip hidden aria-hidden="true">
+            <div class="tip__scene tip__scene--mouse">
+              <div class="tip__page"></div>
+              <div class="tip__ring"></div>
+              <div class="tip__cursor"></div>
+            </div>
+            <div class="tip__scene tip__scene--touch">
+              <div class="tip__page"></div>
+              <div class="tip__finger tip__finger--a"></div>
+              <div class="tip__finger tip__finger--b"></div>
+            </div>
+            <p class="tip__text tip__text--mouse">
+              <span class="tip__a">Clique na página para <b>ampliar</b></span>
+              <span class="tip__b">Clique de novo para <b>sair do zoom</b></span>
+            </p>
+            <p class="tip__text tip__text--touch">
+              <span class="tip__a">Afaste dois dedos para <b>ampliar</b></span>
+              <span class="tip__b">Aproxime os dedos para <b>sair do zoom</b></span>
+            </p>
+          </div>
         </div>
-        <div class="flipbook__zoomview" data-zoomview hidden>
-          <div class="flipbook__zoominner" data-zoominner></div>
-        </div>
+        <button type="button" class="flipbook__side flipbook__side--next" data-next aria-label="Próxima página">
+          <Icon name="chevron-right" size={26} />
+        </button>
       </div>
       <div class="flipbook__bar">
         <button type="button" class="btn btn--ghost btn--sm" data-prev aria-label="Página anterior">
@@ -46,6 +74,9 @@ const dims = {
         </button>
         <button type="button" class="btn btn--ghost btn--sm" data-full aria-label="Tela cheia">
           Tela cheia
+        </button>
+        <button type="button" class="btn btn--ghost btn--sm" data-help>
+          <Icon name="info" size={16} /> Como usar
         </button>
       </div>
       <p class="flipbook__hint" data-hint></p>
@@ -115,6 +146,372 @@ const dims = {
     max-width: 1180px;
     display: grid;
     justify-items: center;
+  }
+
+  .flipbook__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    max-width: 1300px;
+  }
+
+  /* Setas laterais: sempre à vista, inclusive com o zoom ligado (saem do zoom e viram a página). */
+  .flipbook__side {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    color: var(--c-brand-700, #1f3a5f);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition:
+      transform 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .flipbook__side:hover {
+    background: var(--c-accent-50, #e8f6ef);
+    transform: scale(1.06);
+  }
+
+  .flipbook__side:focus-visible {
+    outline: 3px solid var(--c-accent-600, #138b82);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 640px) {
+    .flipbook__row {
+      display: block;
+      max-width: 100%;
+    }
+
+    .flipbook__side {
+      position: absolute;
+      top: 50%;
+      z-index: 6;
+      width: 40px;
+      height: 40px;
+      margin-top: -20px;
+      background: rgb(255 255 255 / 0.88);
+    }
+
+    .flipbook__side--prev {
+      left: calc(50% - 50vw + 6px);
+    }
+
+    .flipbook__side--next {
+      right: calc(50% - 50vw + 6px);
+    }
+  }
+
+  /* Dica animada: ensina o gesto de zoom (clique no computador, dois dedos no celular). */
+  .tip {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    background: rgb(8 22 40 / 0.78);
+    color: #fff;
+    text-align: center;
+    pointer-events: none;
+    animation: tip-in 0.3s ease-out both;
+  }
+
+  .tip[hidden] {
+    display: none;
+  }
+
+  .tip.is-leaving {
+    animation: tip-out 0.3s ease-in both;
+  }
+
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tip-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  .tip__scene {
+    position: relative;
+    width: 180px;
+    height: 130px;
+    overflow: hidden;
+    border-radius: var(--r-md);
+    background: rgb(255 255 255 / 0.08);
+  }
+
+  .tip__scene--touch,
+  .tip__text--touch {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .tip__scene--mouse,
+    .tip__text--mouse {
+      display: none;
+    }
+
+    .tip__scene--touch {
+      display: block;
+    }
+
+    .tip__text--touch {
+      display: grid;
+    }
+  }
+
+  .tip__page {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 64px;
+    height: 90px;
+    margin: -45px 0 0 -32px;
+    background:
+      repeating-linear-gradient(#cfd8e3 0 3px, transparent 3px 9px) 8px 22px / 48px 62px no-repeat,
+      linear-gradient(#1c4b7a 0 0) 8px 8px / 48px 9px no-repeat,
+      #fff;
+    border-radius: 3px;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+    animation: tip-zoom 5s ease-in-out infinite;
+  }
+
+  .tip__scene--touch .tip__page {
+    animation-name: tip-pinch;
+  }
+
+  @keyframes tip-zoom {
+    0%,
+    14% {
+      transform: scale(1);
+    }
+    24%,
+    52% {
+      transform: scale(2.1);
+    }
+    64%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes tip-pinch {
+    0%,
+    10% {
+      transform: scale(1);
+    }
+    40%,
+    56% {
+      transform: scale(2.1);
+    }
+    86%,
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .tip__cursor {
+    position: absolute;
+    left: 40%;
+    top: 78%;
+    width: 18px;
+    height: 24px;
+    background: #fff;
+    clip-path: polygon(0 0, 0 100%, 30% 76%, 52% 100%, 66% 92%, 44% 68%, 82% 68%);
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.5));
+    animation: tip-cursor 5s ease-in-out infinite;
+  }
+
+  @keyframes tip-cursor {
+    0% {
+      transform: translate(-30px, 30px);
+    }
+    12%,
+    58% {
+      transform: translate(18px, -26px);
+    }
+    100% {
+      transform: translate(18px, -26px);
+    }
+  }
+
+  .tip__ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 38px;
+    height: 38px;
+    margin: -34px 0 0 -2px;
+    border: 3px solid #5fe0cf;
+    border-radius: 50%;
+    opacity: 0;
+    animation: tip-ring 5s ease-out infinite;
+  }
+
+  @keyframes tip-ring {
+    0%,
+    10% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    14% {
+      opacity: 1;
+      transform: scale(0.5);
+    }
+    26% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    56% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(0.5);
+    }
+    72%,
+    100% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+  }
+
+  .tip__finger {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    background: rgb(95 224 207 / 0.75);
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.4);
+  }
+
+  .tip__finger--a {
+    animation: tip-finger-a 5s ease-in-out infinite;
+  }
+
+  .tip__finger--b {
+    animation: tip-finger-b 5s ease-in-out infinite;
+  }
+
+  @keyframes tip-finger-a {
+    0%,
+    10% {
+      transform: translate(-10px, 10px);
+    }
+    40%,
+    56% {
+      transform: translate(-46px, 38px);
+    }
+    86%,
+    100% {
+      transform: translate(-10px, 10px);
+    }
+  }
+
+  @keyframes tip-finger-b {
+    0%,
+    10% {
+      transform: translate(10px, -10px);
+    }
+    40%,
+    56% {
+      transform: translate(46px, -38px);
+    }
+    86%,
+    100% {
+      transform: translate(10px, -10px);
+    }
+  }
+
+  .tip__text {
+    position: relative;
+    display: grid;
+    min-height: 2.6em;
+    margin: 0;
+    font-size: var(--fs-sm);
+    line-height: 1.35;
+    color: #fff;
+    text-align: center;
+  }
+
+  .tip__text span {
+    grid-area: 1 / 1;
+    opacity: 0;
+  }
+
+  .tip__text b {
+    color: #5fe0cf;
+  }
+
+  .tip__a {
+    animation: tip-text-a 5s ease-in-out infinite;
+  }
+
+  .tip__b {
+    animation: tip-text-b 5s ease-in-out infinite;
+  }
+
+  @keyframes tip-text-a {
+    0%,
+    4% {
+      opacity: 0;
+    }
+    10%,
+    48% {
+      opacity: 1;
+    }
+    56%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tip-text-b {
+    0%,
+    54% {
+      opacity: 0;
+    }
+    62%,
+    96% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip *,
+    .tip {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+
+    .tip__a {
+      opacity: 1 !important;
+    }
   }
 
   .flipbook__view {
@@ -404,6 +801,22 @@ const dims = {
         mobileScrollSupport: false,
         disableFlipByClick: true,
       });
+      // Desligar "virar por clique" faz a biblioteca recusar o flipPrev (botão "Anterior" e deslizar
+      // para voltar) no modo retrato do celular. Então liberamos a trava só durante os giros
+      // por botão/deslize; o clique continua sem virar a página (ele serve para o zoom).
+      ['flipPrev', 'flipNext'].forEach(function (name) {
+        var original = flip[name].bind(flip);
+        flip[name] = function (corner) {
+          var st = flip.getSettings();
+          var old = st.disableFlipByClick;
+          st.disableFlipByClick = false;
+          try {
+            original(corner);
+          } finally {
+            st.disableFlipByClick = old;
+          }
+        };
+      });
       flip.loadFromHTML(items);
       var count = root.querySelector('[data-count]');
       var update = function () {
@@ -416,8 +829,8 @@ const dims = {
         if (dir > 0) flip.flipNext();
         else flip.flipPrev();
       };
-      root.querySelector('[data-prev]').addEventListener('click', function () { go(-1); });
-      root.querySelector('[data-next]').addEventListener('click', function () { go(1); });
+      root.querySelectorAll('[data-prev]').forEach(function (b) { b.addEventListener('click', function () { go(-1); }); });
+      root.querySelectorAll('[data-next]').forEach(function (b) { b.addEventListener('click', function () { go(1); }); });
       var full = root.querySelector('[data-full]');
       if (full) {
         if (!root.requestFullscreen) full.hidden = true;
@@ -631,6 +1044,45 @@ const dims = {
       view.addEventListener('touchcancel', touchEnd, { capture: true });
 
       window.addEventListener('resize', function () { if (Z.on) exitZoom(); });
+
+      // ---------- dica animada (aparece na primeira visita; "Como usar" mostra de novo) ----------
+      var tip = root.querySelector('[data-tip]');
+      var helpBtn = root.querySelector('[data-help]');
+      var tipTimer = null;
+      var SEEN_KEY = 'portfolio-tip-v1';
+      var markSeen = function () { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) {} };
+      var wasSeen = function () { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch (e) { return false; } };
+      function hideTip() {
+        clearTimeout(tipTimer);
+        if (!tip || tip.hidden) return;
+        tip.classList.add('is-leaving');
+        setTimeout(function () { tip.hidden = true; tip.classList.remove('is-leaving'); }, 300);
+      }
+      function showTip(ms) {
+        if (!tip) return;
+        if (Z.on) exitZoom();
+        clearTimeout(tipTimer);
+        tip.classList.remove('is-leaving');
+        tip.hidden = false;
+        // reinicia as animações do começo
+        tip.querySelectorAll('*').forEach(function (el) { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
+        tipTimer = setTimeout(hideTip, ms || 7500);
+        markSeen();
+      }
+      if (helpBtn) helpBtn.addEventListener('click', function () { if (tip && !tip.hidden) hideTip(); else showTip(9000); });
+      // qualquer interação com a revista fecha a dica
+      ['mousedown', 'touchstart', 'keydown'].forEach(function (ev) {
+        view.addEventListener(ev, function () { hideTip(); }, true);
+      });
+      if (tip && !wasSeen() && 'IntersectionObserver' in window) {
+        var seenObs = new IntersectionObserver(function (entries) {
+          if (entries[0].isIntersecting) {
+            seenObs.disconnect();
+            setTimeout(function () { if (!Z.on) showTip(7500); }, 900);
+          }
+        }, { threshold: 0.6 });
+        seenObs.observe(view);
+      }
 
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && Z.on) exitZoom();
