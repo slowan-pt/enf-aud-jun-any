@@ -439,10 +439,10 @@ const dims = {
       var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
       var HINT_OFF = coarse
         ? 'Deslize para virar a página · use dois dedos para ampliar.'
-        : 'Clique na página para ampliar · arraste o canto ou use as setas para virar.';
+        : 'Clique na página para ampliar (e clique de novo para sair) · arraste o canto ou use as setas para virar.';
       var HINT_ON = coarse
         ? 'Arraste com um dedo para mover · pince com dois dedos para ajustar · toque em “Sair do zoom” para voltar.'
-        : 'Mova o mouse para percorrer a página · role o mouse para ajustar o zoom · “Sair do zoom” ou Esc para voltar.';
+        : 'Mova o mouse para percorrer a página · role o mouse para ajustar o zoom · clique de novo, “Sair do zoom” ou Esc para voltar.';
       if (hint) hint.textContent = HINT_OFF;
 
       var Z = { on: false, s: 1, tx: 0, ty: 0, W: 1, H: 1 };
@@ -544,8 +544,11 @@ const dims = {
       view.addEventListener('mousedown', function (e) { downX = e.clientX; downY = e.clientY; }, true);
       view.addEventListener('click', function (e) {
         if (Date.now() - lastTouch < 800) return; // clique "fantasma" depois de um toque
-        if (Z.on) return;
         if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) return; // foi arrasto (virar página)
+        if (Z.on) {
+          exitZoom(); // segundo clique: sai do zoom
+          return;
+        }
         measure();
         var p = rel(e.clientX, e.clientY);
         enterZoom(p.x, p.y, START);
