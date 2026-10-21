@@ -17,9 +17,9 @@ const dims = {
   width: pageW,
   height: pageH,
   minWidth: 240,
-  maxWidth: 560,
+  maxWidth: 640,
   minHeight: Math.round(240 / files.ratio),
-  maxHeight: Math.round(560 / files.ratio),
+  maxHeight: Math.round(640 / files.ratio),
 };
 ---
 <section class="section section--tight">
@@ -111,7 +111,7 @@ const dims = {
 
   .flipbook__stage {
     width: 100%;
-    max-width: 980px;
+    max-width: 1180px;
     display: grid;
     justify-items: center;
   }
@@ -119,7 +119,7 @@ const dims = {
   .flipbook__view {
     position: relative;
     width: 100%;
-    max-width: 980px;
+    max-width: 1180px;
     overflow: hidden;
     border-radius: var(--r-md);
   }
@@ -164,6 +164,32 @@ const dims = {
     z-index: 5;
     cursor: zoom-in;
     touch-action: none;
+  }
+
+  /* Celular: a revista ocupa a largura inteira da tela (a página fica ~10% maior e mais legível). */
+  @media (max-width: 640px) {
+    .flipbook__view,
+    .flipbook__stage {
+      width: 100vw;
+      max-width: 100vw;
+      margin-inline: calc(50% - 50vw);
+      border-radius: 0;
+    }
+  }
+
+  .flipbook :global(.flipbook__page) {
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .flipbook :global(.flipbook__page img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
   .flipbook__fallback {
@@ -288,6 +314,42 @@ const dims = {
   }
 </style>
 
+<style is:global>
+  /* Estilos exigidos pelo modo HTML da biblioteca da revista (page-flip, MIT). */
+  .stf__parent {
+    position: relative;
+    display: block;
+    box-sizing: border-box;
+    transform: translateZ(0);
+    touch-action: pan-y;
+  }
+  .stf__wrapper {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .stf__block {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    perspective: 2000px;
+  }
+  .stf__item {
+    display: none;
+    position: absolute;
+    transform-style: preserve-3d;
+  }
+  .stf__outerShadow,
+  .stf__innerShadow,
+  .stf__hardShadow,
+  .stf__hardInnerShadow {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+</style>
+
 <script is:inline src="/vendor/page-flip.browser.js"></script>
 <script is:inline>
   (function () {
@@ -298,6 +360,21 @@ const dims = {
       var urls = JSON.parse(root.getAttribute('data-pages') || '[]');
       stage.innerHTML = '';
       var dims = JSON.parse(root.getAttribute('data-dims') || '{}');
+      // Modo HTML: cada página é uma <img> de verdade. O navegador reduz a imagem com
+      // qualidade e usa a densidade de pixels do aparelho (o modo canvas desenhava em
+      // baixa resolução e ficava borrado, principalmente no celular).
+      var items = urls.map(function (url, i) {
+        var page = document.createElement('div');
+        page.className = 'flipbook__page';
+        if (i === 0 || i === urls.length - 1) page.setAttribute('data-density', 'hard');
+        var img = new Image();
+        img.src = url;
+        img.alt = 'Página ' + (i + 1) + ' do Portfólio';
+        img.decoding = 'async';
+        img.draggable = false;
+        page.appendChild(img);
+        return page;
+      });
       var flip = new window.St.PageFlip(stage, {
         width: dims.width || 550,
         height: dims.height || 778,
@@ -312,7 +389,7 @@ const dims = {
         flippingTime: 800,
         mobileScrollSupport: false,
       });
-      flip.loadFromImages(urls);
+      flip.loadFromHTML(items);
       var count = root.querySelector('[data-count]');
       var update = function () {
         if (count) count.textContent = flip.getCurrentPageIndex() + 1 + ' / ' + flip.getPageCount();

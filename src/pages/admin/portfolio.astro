@@ -373,7 +373,7 @@ function formatDate(iso: string | null): string {
     for (let n = 1; n <= count; n++) {
       const page = await doc.getPage(n);
       const base = page.getViewport({ scale: 1 });
-      for (const [prefix, width, quality] of [['pagina', 1250, 0.82], ['zoom', 2800, 0.88]]) {
+      for (const [prefix, width, quality] of [['pagina', 1800, 0.84], ['zoom', 2800, 0.88]]) {
         const viewport = page.getViewport({ scale: width / base.width });
         canvas.width = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
