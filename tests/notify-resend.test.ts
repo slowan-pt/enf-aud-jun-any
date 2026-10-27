@@ -4,7 +4,7 @@ vi.mock('cloudflare:workers', () => ({
   env: { RESEND_API_KEY: 're_test_123', MAIL_FROM: 'curriculos@site.com.br' },
 }));
 
-import { notifyNewApplication, notifyNewContact } from '../src/lib/notify';
+import { notifyNewApplication, notifyNewContact, sendApplicantReceipt } from '../src/lib/notify';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -49,6 +49,25 @@ describe('avisos de contato e currículo pelo Resend', () => {
     const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
     expect(body.attachments[0].filename).toBe('cv da Bia.pdf');
     expect(atob(body.attachments[0].content)).toContain('%PDF-1.7');
+  });
+
+  it('confirmação ao candidato: vai para o e-mail dele, com o texto aprovado e Reply-To da empresa', async () => {
+    const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const ok = await sendApplicantReceipt(
+      { name: 'Maria da Silva', email: 'maria@exemplo.com' },
+      'contato@site.com.br'
+    );
+
+    expect(ok).toBe(true);
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(body.to).toEqual(['maria@exemplo.com']);
+    expect(body.reply_to).toBe('contato@site.com.br');
+    expect(body.text).toContain('Olá, Maria!');
+    expect(body.text).toContain('banco de talentos');
+    expect(body.text).toContain('Presença técnica onde o cuidado acontece!');
+    expect(body.attachments).toBeUndefined();
   });
 
   it('se o Resend recusar e não houver binding, devolve false sem lançar (o contato segue salvo)', async () => {

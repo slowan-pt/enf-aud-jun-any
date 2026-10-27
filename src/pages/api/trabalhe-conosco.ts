@@ -3,7 +3,11 @@ import { getDB } from '../../lib/db';
 import { isRateLimited } from '../../lib/contacts';
 import { getBucket, safeFileKey } from '../../lib/media';
 import { insertApplication, markApplicationEmailed } from '../../lib/applications';
-import { notifyNewApplication, resolveNotifyDestination } from '../../lib/notify';
+import {
+  notifyNewApplication,
+  resolveNotifyDestination,
+  sendApplicantReceipt,
+} from '../../lib/notify';
 
 export const prerender = false;
 
@@ -39,7 +43,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Mesma tabela de limite do formulário de contato, com chave própria.
   if (await isRateLimited(db, `cv:${ip}`, 5, 60)) {
     return json(
-      { success: false, error: 'rate_limited', message: 'Muitos envios. Tente novamente mais tarde.' },
+      {
+        success: false,
+        error: 'rate_limited',
+        message: 'Muitos envios. Tente novamente mais tarde.',
+      },
       429
     );
   }
@@ -96,6 +104,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     resolveNotifyDestination(locals.settings.company.email)
   );
   if (sent) await markApplicationEmailed(db, id);
+
+  // Confirmação ao candidato: falha aqui nunca derruba o envio do currículo.
+  try {
+    await sendApplicantReceipt({ name, email }, locals.settings.company.email);
+  } catch {
+    // ignorado de propósito
+  }
 
   return json({ success: true, id }, 201);
 };

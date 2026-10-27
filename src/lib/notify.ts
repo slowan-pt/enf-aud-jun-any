@@ -133,7 +133,8 @@ async function sendViaResend(mail: {
           ? {
               attachments: [
                 {
-                  filename: mail.attachment.filename.replace(/[^\w .()-]/g, '') || 'curriculo.pdf',
+                  filename:
+                    mail.attachment.filename.replace(/[^\w .()-]/g, '') || 'curriculo.pdf',
                   content: b64(mail.attachment.content),
                 },
               ],
@@ -209,8 +210,53 @@ export async function notifyNewContact(
   return sendMail(raw, bindings.MAIL_FROM, to);
 }
 
+/** Texto da confirmação enviada ao candidato que mandou o currículo. */
+export function buildApplicantReceiptText(name: string): string {
+  const firstName = name.trim().split(/\s+/)[0] || name;
+  return [
+    `Olá, ${firstName}!`,
+    '',
+    'Agradecemos seu interesse em fazer parte da Essencial Saúde Auditoria.',
+    '',
+    'Recebemos seu currículo, que passará a integrar nosso banco de talentos para futuras oportunidades compatíveis com seu perfil profissional.',
+    '',
+    'Acompanhe nosso LinkedIn e nossas redes sociais para ficar por dentro das novidades e oportunidades.',
+    '',
+    'Essencial Saúde Auditoria',
+    'Presença técnica onde o cuidado acontece!',
+  ].join('\n');
+}
+
+/**
+ * Confirmação automática ao candidato. Só sai pelo Resend: o Email Routing da
+ * Cloudflare entrega apenas a destinos verificados, e o candidato é um
+ * endereço qualquer. Sem RESEND_API_KEY/MAIL_FROM devolve false e não lança —
+ * o currículo já está gravado e o aviso à equipe é independente.
+ */
+export async function sendApplicantReceipt(
+  applicant: { name: string; email: string },
+  replyTo: string
+): Promise<boolean> {
+  const bindings = env as unknown as { MAIL_FROM?: string };
+  if (!bindings.MAIL_FROM || !applicant.email) return false;
+  const sent = await sendViaResend({
+    from: bindings.MAIL_FROM,
+    to: applicant.email,
+    replyTo,
+    subject: 'Recebemos seu currículo — Essencial Saúde Auditoria',
+    text: buildApplicantReceiptText(applicant.name),
+  });
+  return sent === true;
+}
+
 export async function notifyNewApplication(
-  application: { name: string; email: string; phone: string; message: string; filename: string },
+  application: {
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+    filename: string;
+  },
   pdf: ArrayBuffer,
   to: string
 ): Promise<boolean> {

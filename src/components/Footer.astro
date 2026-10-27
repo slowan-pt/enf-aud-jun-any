@@ -7,6 +7,7 @@ import { publishedOnly } from '../lib/services';
 const { company, whatsapp, social } = Astro.locals.settings;
 const publishedServices = publishedOnly(Astro.locals.services);
 const year = new Date().getFullYear();
+const cnpj = '69.550.788/0001-06';
 const texts = Astro.locals.settings.siteTexts.footer;
 const activeSocial = social.filter((s) => s.enabled);
 ---
@@ -95,11 +96,15 @@ const activeSocial = social.filter((s) => s.enabled);
     <div class="container footer__bottom-inner">
       <div class="footer__credits">
         <p>© {year} {company.name}. Todos os direitos reservados.</p>
+        <p>CNPJ {cnpj}</p>
       </div>
       <ul class="footer__legal">
         <li><a href="/politica-de-privacidade">Política de Privacidade</a></li>
         <li><a href="/contato">Contato</a></li>
       </ul>
+    </div>
+    <div class="container footer__faith-row">
+      <p class="footer__faith">Deus é Fiel</p>
     </div>
   </div>
 </footer>
@@ -265,7 +270,15 @@ const activeSocial = social.filter((s) => s.enabled);
     margin: 0;
   }
 
+  .footer__faith-row {
+    padding-bottom: var(--sp-4);
+  }
 
+  .footer__faith {
+    margin: 0;
+    text-align: left;
+    font-style: italic;
+  }
 
   .footer__legal {
     display: flex;
