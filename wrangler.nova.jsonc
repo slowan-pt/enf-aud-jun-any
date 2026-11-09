@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "clone-estratagema-claude-db",
-      "database_id": "e02e8f7f-f32c-4863-b504-1e8b3c7227a3",
+      "database_id": "29a812fb-63bf-4de1-80ae-a6acc8b3e997",
       "migrations_dir": "migrations",
     },
   ],
